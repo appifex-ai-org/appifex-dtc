@@ -90,7 +90,7 @@ describe('pipeline design_delta phase', () => {
 
     await expect(runDesignDeltaPhase(deps)).resolves.not.toThrow()
 
-    expect(emitted.some(e => e.phase === 'design_delta' && e.status === 'completed')).toBe(true)
+    expect(emitted.some((e) => e.phase === 'design_delta' && e.status === 'completed')).toBe(true)
   })
 
   it('interactive add-feature with changed tokens, user answers n → pipeline throws with cancel message', async () => {
@@ -105,7 +105,9 @@ describe('pipeline design_delta phase', () => {
     }
     const { deps } = makeDeps({ readline: rl })
 
-    await expect(runDesignDeltaPhase(deps)).rejects.toThrow('Pipeline cancelled by user at pre-build summary.')
+    await expect(runDesignDeltaPhase(deps)).rejects.toThrow(
+      'Pipeline cancelled by user at pre-build summary.',
+    )
   })
 
   it('non-interactive add-feature with changed tokens and no acceptDrift → throws error mentioning designDelta and --accept-drift', async () => {
@@ -144,7 +146,7 @@ describe('pipeline design_delta phase', () => {
 
     await runDesignDeltaPhase(deps)
 
-    expect(emitted.some(e => e.phase === 'design_delta' && e.status === 'skipped')).toBe(true)
+    expect(emitted.some((e) => e.phase === 'design_delta' && e.status === 'skipped')).toBe(true)
     const ctx = ctxBuilder.build('completed')
     expect(ctx.designDelta).toBeUndefined()
     // diffDesignTokens must not be called when there's no baseline
@@ -157,7 +159,7 @@ describe('pipeline design_delta phase', () => {
 
     await runDesignDeltaPhase(deps)
 
-    expect(emitted.some(e => e.phase === 'design_delta')).toBe(false)
+    expect(emitted.some((e) => e.phase === 'design_delta')).toBe(false)
     const ctx = ctxBuilder.build('completed')
     expect(ctx.designDelta).toBeUndefined()
   })

@@ -15,7 +15,9 @@ function makeResult(overrides: Partial<BaasIntegrationResult> = {}): BaasIntegra
   }
 }
 
-function makeViolation(overrides: Partial<BaasIntegrationViolation> = {}): BaasIntegrationViolation {
+function makeViolation(
+  overrides: Partial<BaasIntegrationViolation> = {},
+): BaasIntegrationViolation {
   return {
     file: 'AuthManager.swift',
     platform: 'swiftui',
@@ -60,9 +62,7 @@ describe('checkBaasParity', () => {
   })
 
   it('Test 3: platformsScanned has only swiftui -> allPassed: true (parity N/A)', () => {
-    const result = checkBaasParity(
-      makeResult({ platformsScanned: ['swiftui'] }),
-    )
+    const result = checkBaasParity(makeResult({ platformsScanned: ['swiftui'] }))
 
     expect(result.allPassed).toBe(true)
     expect(result.violations).toEqual([])
@@ -130,17 +130,13 @@ describe('checkBaasParity', () => {
   })
 
   it('Test 7: platformsScanned is undefined -> allPassed: true (backward compat)', () => {
-    const result = checkBaasParity(
-      makeResult({ platformsScanned: undefined }),
-    )
+    const result = checkBaasParity(makeResult({ platformsScanned: undefined }))
 
     expect(result.allPassed).toBe(true)
   })
 
   it('Test 8: platformsScanned is empty [] -> allPassed: true', () => {
-    const result = checkBaasParity(
-      makeResult({ platformsScanned: [] }),
-    )
+    const result = checkBaasParity(makeResult({ platformsScanned: [] }))
 
     expect(result.allPassed).toBe(true)
   })

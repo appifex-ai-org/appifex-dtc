@@ -106,7 +106,7 @@ describe('LocalRunner', () => {
       const matches = await runner.glob(join(workDir, '*.ts'))
 
       expect(matches).toHaveLength(2)
-      expect(matches.map(m => m.split('/').pop())).toEqual(
+      expect(matches.map((m) => m.split('/').pop())).toEqual(
         expect.arrayContaining(['a.ts', 'b.ts']),
       )
     })

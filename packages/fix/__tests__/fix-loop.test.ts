@@ -3,7 +3,12 @@ import { fixLoop, type FixLoopOpts } from '../src/index.js'
 import type { FixResult, FixAttempt } from '@appifex/core'
 import type { ValidationResult } from '@appifex/validate'
 
-function makeValidationResult(uiPassed: number, uiTotal: number, unitPassed: number, unitTotal: number): ValidationResult {
+function makeValidationResult(
+  uiPassed: number,
+  uiTotal: number,
+  unitPassed: number,
+  unitTotal: number,
+): ValidationResult {
   return {
     ui: {
       total: uiTotal,
@@ -56,9 +61,10 @@ describe('fixLoop', () => {
   })
 
   it('retries until all tests pass', async () => {
-    const validateFn = vi.fn()
-      .mockResolvedValueOnce(makeValidationResult(4, 5, 11, 12))  // attempt 1: still failing
-      .mockResolvedValueOnce(makeValidationResult(5, 5, 12, 12))  // attempt 2: all green
+    const validateFn = vi
+      .fn()
+      .mockResolvedValueOnce(makeValidationResult(4, 5, 11, 12)) // attempt 1: still failing
+      .mockResolvedValueOnce(makeValidationResult(5, 5, 12, 12)) // attempt 2: all green
 
     const result = await fixLoop(makeValidationResult(3, 5, 10, 12), makeOpts({ validateFn }))
 
@@ -68,7 +74,8 @@ describe('fixLoop', () => {
 
   it('stops after maxAttempts', async () => {
     // Each attempt makes a tiny bit of progress but never reaches all_green
-    const validateFn = vi.fn()
+    const validateFn = vi
+      .fn()
       .mockResolvedValueOnce(makeValidationResult(4, 5, 10, 12)) // +1 ui pass
       .mockResolvedValueOnce(makeValidationResult(4, 5, 11, 12)) // +1 unit pass
       .mockResolvedValueOnce(makeValidationResult(5, 5, 11, 12)) // +1 ui pass, still 1 unit fail
@@ -112,7 +119,10 @@ describe('fixLoop', () => {
       callCount++
       const r = makeValidationResult(3, 5, 10, 12)
       // Make error messages unique so same_error_repeated doesn't trigger first
-      r.ui.results = r.ui.results.map((f, i) => ({ ...f, error: f.error ? `${f.error}-v${callCount}` : undefined }))
+      r.ui.results = r.ui.results.map((f, i) => ({
+        ...f,
+        error: f.error ? `${f.error}-v${callCount}` : undefined,
+      }))
       r.unit.failures = r.unit.failures.map((f, i) => ({ ...f, error: `${f.error}-v${callCount}` }))
       return r
     })
@@ -124,8 +134,7 @@ describe('fixLoop', () => {
   })
 
   it('rolls back and stops when fix makes things worse', async () => {
-    const validateFn = vi.fn()
-      .mockResolvedValueOnce(makeValidationResult(2, 5, 8, 12)) // worse than initial
+    const validateFn = vi.fn().mockResolvedValueOnce(makeValidationResult(2, 5, 8, 12)) // worse than initial
 
     const initial = makeValidationResult(3, 5, 10, 12)
     const result = await fixLoop(initial, makeOpts({ validateFn }))
@@ -157,7 +166,12 @@ describe('fixLoop', () => {
     const result = await fixLoop(makeValidationResult(3, 5, 10, 12), opts)
 
     expect(result.recommendation).toBeDefined()
-    expect(['manual_fix', 'simplify_design', 'relax_tests', 'split_and_retry', 'add_budget'])
-      .toContain(result.recommendation)
+    expect([
+      'manual_fix',
+      'simplify_design',
+      'relax_tests',
+      'split_and_retry',
+      'add_budget',
+    ]).toContain(result.recommendation)
   })
 })

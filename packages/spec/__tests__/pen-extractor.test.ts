@@ -5,7 +5,11 @@ function makePenDoc(children: unknown[], variables?: Record<string, unknown>): s
   return JSON.stringify({ version: '1', children, variables })
 }
 
-function makeFrame(name: string, overrides: Record<string, unknown> = {}, children: unknown[] = []): unknown {
+function makeFrame(
+  name: string,
+  overrides: Record<string, unknown> = {},
+  children: unknown[] = [],
+): unknown {
   return { type: 'frame', name, width: 390, height: 844, ...overrides, children }
 }
 
@@ -29,9 +33,11 @@ describe('extractSpecFromPen', () => {
     it('extracts vertical layout on container nodes', () => {
       const doc = makePenDoc([
         makeFrame('Home', {}, [
-          makeNode('frame', 'Card', { layout: 'vertical', gap: 12, children: [
-            makeNode('text', 'Title', { content: 'Card Title' }),
-          ] }),
+          makeNode('frame', 'Card', {
+            layout: 'vertical',
+            gap: 12,
+            children: [makeNode('text', 'Title', { content: 'Card Title' })],
+          }),
         ]),
       ])
       const spec = extractSpecFromPen(doc)
@@ -43,10 +49,14 @@ describe('extractSpecFromPen', () => {
     it('extracts horizontal layout on container nodes', () => {
       const doc = makePenDoc([
         makeFrame('Home', {}, [
-          makeNode('frame', 'Row', { layout: 'horizontal', gap: 16, children: [
-            makeNode('text', 'A', { content: 'A' }),
-            makeNode('text', 'B', { content: 'B' }),
-          ] }),
+          makeNode('frame', 'Row', {
+            layout: 'horizontal',
+            gap: 16,
+            children: [
+              makeNode('text', 'A', { content: 'A' }),
+              makeNode('text', 'B', { content: 'B' }),
+            ],
+          }),
         ]),
       ])
       const spec = extractSpecFromPen(doc)
@@ -57,9 +67,7 @@ describe('extractSpecFromPen', () => {
 
     it('extracts gap from frame', () => {
       const doc = makePenDoc([
-        makeFrame('Home', {}, [
-          makeNode('frame', 'List', { gap: 24, children: [] }),
-        ]),
+        makeFrame('Home', {}, [makeNode('frame', 'List', { gap: 24, children: [] })]),
       ])
       const spec = extractSpecFromPen(doc)
       expect(spec.screens[0].components[0].style.gap).toBe(24)
@@ -95,9 +103,7 @@ describe('extractSpecFromPen', () => {
 
     it('defaults screen layout to vertical when not specified', () => {
       const doc = makePenDoc([
-        makeFrame('Home', {}, [
-          makeNode('text', 'Title', { content: 'Hi' }),
-        ]),
+        makeFrame('Home', {}, [makeNode('text', 'Title', { content: 'Hi' })]),
       ])
       const spec = extractSpecFromPen(doc)
       expect(spec.screens[0].layout.direction).toBe('vertical')
@@ -106,9 +112,7 @@ describe('extractSpecFromPen', () => {
 
     it('uses absolute layout type when frame layout is none', () => {
       const doc = makePenDoc([
-        makeFrame('Overlay', { layout: 'none' }, [
-          makeNode('text', 'Float', { content: 'Float' }),
-        ]),
+        makeFrame('Overlay', { layout: 'none' }, [makeNode('text', 'Float', { content: 'Float' })]),
       ])
       const spec = extractSpecFromPen(doc)
       expect(spec.screens[0].layout.type).toBe('absolute')
@@ -118,25 +122,27 @@ describe('extractSpecFromPen', () => {
   describe('padding extraction', () => {
     it('extracts uniform padding', () => {
       const doc = makePenDoc([
-        makeFrame('Home', {}, [
-          makeNode('frame', 'Padded', { padding: 16, children: [] }),
-        ]),
+        makeFrame('Home', {}, [makeNode('frame', 'Padded', { padding: 16, children: [] })]),
       ])
       const spec = extractSpecFromPen(doc)
       expect(spec.screens[0].components[0].style.padding).toEqual({
-        top: 16, right: 16, bottom: 16, left: 16,
+        top: 16,
+        right: 16,
+        bottom: 16,
+        left: 16,
       })
     })
 
     it('extracts [vertical, horizontal] padding', () => {
       const doc = makePenDoc([
-        makeFrame('Home', {}, [
-          makeNode('frame', 'Padded', { padding: [12, 24], children: [] }),
-        ]),
+        makeFrame('Home', {}, [makeNode('frame', 'Padded', { padding: [12, 24], children: [] })]),
       ])
       const spec = extractSpecFromPen(doc)
       expect(spec.screens[0].components[0].style.padding).toEqual({
-        top: 12, right: 24, bottom: 12, left: 24,
+        top: 12,
+        right: 24,
+        bottom: 12,
+        left: 24,
       })
     })
 
@@ -148,7 +154,10 @@ describe('extractSpecFromPen', () => {
       ])
       const spec = extractSpecFromPen(doc)
       expect(spec.screens[0].components[0].style.padding).toEqual({
-        top: 16, right: 24, bottom: 16, left: 24,
+        top: 16,
+        right: 24,
+        bottom: 16,
+        left: 24,
       })
     })
   })
@@ -156,9 +165,7 @@ describe('extractSpecFromPen', () => {
   describe('opacity extraction', () => {
     it('extracts opacity less than 1', () => {
       const doc = makePenDoc([
-        makeFrame('Home', {}, [
-          makeNode('frame', 'Faded', { opacity: 0.5, children: [] }),
-        ]),
+        makeFrame('Home', {}, [makeNode('frame', 'Faded', { opacity: 0.5, children: [] })]),
       ])
       const spec = extractSpecFromPen(doc)
       expect(spec.screens[0].components[0].style.opacity).toBe(0.5)
@@ -166,9 +173,7 @@ describe('extractSpecFromPen', () => {
 
     it('does not set opacity when it is 1', () => {
       const doc = makePenDoc([
-        makeFrame('Home', {}, [
-          makeNode('frame', 'Full', { opacity: 1, children: [] }),
-        ]),
+        makeFrame('Home', {}, [makeNode('frame', 'Full', { opacity: 1, children: [] })]),
       ])
       const spec = extractSpecFromPen(doc)
       expect(spec.screens[0].components[0].style.opacity).toBeUndefined()
@@ -180,7 +185,16 @@ describe('extractSpecFromPen', () => {
       const doc = makePenDoc([
         makeFrame('Home', {}, [
           makeNode('frame', 'Card', {
-            effects: [{ type: 'drop_shadow', color: '#00000033', offsetX: 0, offsetY: 4, blur: 12, spread: 0 }],
+            effects: [
+              {
+                type: 'drop_shadow',
+                color: '#00000033',
+                offsetX: 0,
+                offsetY: 4,
+                blur: 12,
+                spread: 0,
+              },
+            ],
             children: [],
           }),
         ]),
@@ -299,16 +313,13 @@ describe('extractSpecFromPen', () => {
 
   describe('design tokens from variables', () => {
     it('extracts spacing variables instead of hardcoded fallbacks', () => {
-      const doc = makePenDoc(
-        [makeFrame('Home', {}, [makeNode('text', 'Hi', { content: 'Hi' })])],
-        {
-          'color.primary': { type: 'color', value: '#0A84FF' },
-          'spacing.sm': { type: 'number', value: 4 },
-          'spacing.md': { type: 'number', value: 12 },
-          'spacing.lg': { type: 'number', value: 32 },
-          'radius.card': { type: 'number', value: 16 },
-        },
-      )
+      const doc = makePenDoc([makeFrame('Home', {}, [makeNode('text', 'Hi', { content: 'Hi' })])], {
+        'color.primary': { type: 'color', value: '#0A84FF' },
+        'spacing.sm': { type: 'number', value: 4 },
+        'spacing.md': { type: 'number', value: 12 },
+        'spacing.lg': { type: 'number', value: 32 },
+        'radius.card': { type: 'number', value: 16 },
+      })
       const spec = extractSpecFromPen(doc)
       expect(spec.designTokens.colors.colorPrimary).toBe('#0A84FF')
       expect(spec.designTokens.spacing.spacingSm).toBe(4)
@@ -318,10 +329,9 @@ describe('extractSpecFromPen', () => {
     })
 
     it('uses fallback spacing when no spacing variables exist', () => {
-      const doc = makePenDoc(
-        [makeFrame('Home', {}, [makeNode('text', 'Hi', { content: 'Hi' })])],
-        { 'color.bg': { type: 'color', value: '#FFFFFF' } },
-      )
+      const doc = makePenDoc([makeFrame('Home', {}, [makeNode('text', 'Hi', { content: 'Hi' })])], {
+        'color.bg': { type: 'color', value: '#FFFFFF' },
+      })
       const spec = extractSpecFromPen(doc)
       expect(spec.designTokens.spacing).toEqual({ sm: 8, md: 16, lg: 24 })
       expect(spec.designTokens.borderRadius).toEqual({ sm: 8, md: 12, lg: 16 })
@@ -331,9 +341,7 @@ describe('extractSpecFromPen', () => {
   describe('corner radius', () => {
     it('extracts uniform corner radius', () => {
       const doc = makePenDoc([
-        makeFrame('Home', {}, [
-          makeNode('frame', 'Rounded', { cornerRadius: 12, children: [] }),
-        ]),
+        makeFrame('Home', {}, [makeNode('frame', 'Rounded', { cornerRadius: 12, children: [] })]),
       ])
       const spec = extractSpecFromPen(doc)
       expect(spec.screens[0].components[0].style.borderRadius).toBe(12)
@@ -355,7 +363,13 @@ describe('extractSpecFromPen', () => {
       const doc = makePenDoc([
         makeFrame('Home', {}, [
           makeNode('frame', 'GradientCard', {
-            fill: { type: 'gradient', stops: [{ color: '#ff3366', offset: 0 }, { color: '#ffaa00', offset: 1 }] } as unknown as string,
+            fill: {
+              type: 'gradient',
+              stops: [
+                { color: '#ff3366', offset: 0 },
+                { color: '#ffaa00', offset: 1 },
+              ],
+            } as unknown as string,
             children: [],
           }),
         ]),
@@ -367,7 +381,12 @@ describe('extractSpecFromPen', () => {
       const doc = makePenDoc([
         makeFrame('Home', {}, [
           makeNode('frame', 'GradientFill', {
-            fills: [{ type: 'gradient', color: { stops: [{ color: '#ff3366', offset: 0 }] } as unknown as string }],
+            fills: [
+              {
+                type: 'gradient',
+                color: { stops: [{ color: '#ff3366', offset: 0 }] } as unknown as string,
+              },
+            ],
             children: [],
           }),
         ]),
@@ -382,7 +401,12 @@ describe('extractSpecFromPen', () => {
             makeNode('frame', 'VarRefBg', { fill: '$primary', children: [] }),
           ]),
         ],
-        { primary: { type: 'gradient', value: { stops: [{ color: '#ff3366', offset: 0 }] } as unknown as string } },
+        {
+          primary: {
+            type: 'gradient',
+            value: { stops: [{ color: '#ff3366', offset: 0 }] } as unknown as string,
+          },
+        },
       )
       expect(() => extractSpecFromPen(doc)).not.toThrow()
     })

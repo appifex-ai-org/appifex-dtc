@@ -105,8 +105,8 @@ describe('renderBaasTemplates', () => {
   // Test 10
   it('Firebase Kotlin repository contains FirestoreTodoRepository with suspend functions', () => {
     const files = renderBaasTemplates(testSchema, 'firebase', ['kotlin'])
-    const repoFile = files.find((f) =>
-      f.path === 'app/src/main/java/repositories/TodoRepository.kt',
+    const repoFile = files.find(
+      (f) => f.path === 'app/src/main/java/repositories/TodoRepository.kt',
     )
     expect(repoFile).toBeDefined()
     expect(repoFile!.content).toContain('class FirestoreTodoRepository')
@@ -116,8 +116,8 @@ describe('renderBaasTemplates', () => {
   // Test 11
   it('Supabase Kotlin repository contains SupabaseTodoRepository with suspend functions', () => {
     const files = renderBaasTemplates(testSchema, 'supabase', ['kotlin'])
-    const repoFile = files.find((f) =>
-      f.path === 'app/src/main/java/repositories/TodoRepository.kt',
+    const repoFile = files.find(
+      (f) => f.path === 'app/src/main/java/repositories/TodoRepository.kt',
     )
     expect(repoFile).toBeDefined()
     expect(repoFile!.content).toContain('class SupabaseTodoRepository')

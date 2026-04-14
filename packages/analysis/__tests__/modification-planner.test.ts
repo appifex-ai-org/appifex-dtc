@@ -3,7 +3,9 @@ import { planModifications } from '../src/modification-planner.js'
 import type { Runner, RunnerCapabilities, AppContext } from '@appifex/core'
 
 /** Minimal mock Runner for testing modification planner */
-function createMockRunner(files: Record<string, string>): Runner & { writeFileSpy: ReturnType<typeof vi.fn> } {
+function createMockRunner(
+  files: Record<string, string>,
+): Runner & { writeFileSpy: ReturnType<typeof vi.fn> } {
   const caps: RunnerCapabilities = {
     hasMaestro: false,
     hasXcode: false,
@@ -37,7 +39,11 @@ function makeAppContext(overrides?: Partial<AppContext>): AppContext {
       { filePath: 'Sources/SettingsView.swift', type: 'screen', name: 'SettingsView' },
     ],
     navGraph: [
-      { screenId: 'Sources/ContentView.swift', type: 'tab', targets: ['Sources/SettingsView.swift'] },
+      {
+        screenId: 'Sources/ContentView.swift',
+        type: 'tab',
+        targets: ['Sources/SettingsView.swift'],
+      },
     ],
     entryPoint: 'Sources/ContentView.swift',
     scannedAt: Date.now(),
@@ -45,7 +51,10 @@ function makeAppContext(overrides?: Partial<AppContext>): AppContext {
   }
 }
 
-function makeCreateMessage(responseItems: object[], reasoning = 'The feature requires nav changes') {
+function makeCreateMessage(
+  responseItems: object[],
+  reasoning = 'The feature requires nav changes',
+) {
   return vi.fn().mockResolvedValue({
     content: [
       {
@@ -73,7 +82,13 @@ describe('planModifications', () => {
       },
     ])
     const appContext = makeAppContext()
-    const result = await planModifications('Add a settings screen', appContext, OUTPUT_DIR, runner, createMessage)
+    const result = await planModifications(
+      'Add a settings screen',
+      appContext,
+      OUTPUT_DIR,
+      runner,
+      createMessage,
+    )
 
     expect(result.items).toHaveLength(1)
     const item = result.items[0]
@@ -89,7 +104,13 @@ describe('planModifications', () => {
     const runner = createMockRunner({})
     const createMessage = makeCreateMessage([], 'This feature only adds new screens')
     const appContext = makeAppContext()
-    const result = await planModifications('Add a brand new Help screen', appContext, OUTPUT_DIR, runner, createMessage)
+    const result = await planModifications(
+      'Add a brand new Help screen',
+      appContext,
+      OUTPUT_DIR,
+      runner,
+      createMessage,
+    )
 
     expect(result.items).toEqual([])
   })
@@ -103,11 +124,27 @@ describe('planModifications', () => {
       '/project/Sources/SettingsView.swift': content2,
     })
     const createMessage = makeCreateMessage([
-      { filePath: 'Sources/ContentView.swift', screenName: 'ContentView', changeDescription: 'Add tab', changeType: 'navigation' },
-      { filePath: 'Sources/SettingsView.swift', screenName: 'SettingsView', changeDescription: 'Add button', changeType: 'button' },
+      {
+        filePath: 'Sources/ContentView.swift',
+        screenName: 'ContentView',
+        changeDescription: 'Add tab',
+        changeType: 'navigation',
+      },
+      {
+        filePath: 'Sources/SettingsView.swift',
+        screenName: 'SettingsView',
+        changeDescription: 'Add button',
+        changeType: 'button',
+      },
     ])
     const appContext = makeAppContext()
-    const result = await planModifications('Add settings navigation', appContext, OUTPUT_DIR, runner, createMessage)
+    const result = await planModifications(
+      'Add settings navigation',
+      appContext,
+      OUTPUT_DIR,
+      runner,
+      createMessage,
+    )
 
     expect(result.items).toHaveLength(2)
     expect(result.items[0].fileContent).toBe(content1)
@@ -122,7 +159,13 @@ describe('planModifications', () => {
       usage: { input_tokens: 50, output_tokens: 20 },
     })
     const appContext = makeAppContext()
-    const result = await planModifications('Add settings', appContext, OUTPUT_DIR, runner, createMessage)
+    const result = await planModifications(
+      'Add settings',
+      appContext,
+      OUTPUT_DIR,
+      runner,
+      createMessage,
+    )
 
     expect(result.items).toEqual([])
   })
@@ -155,9 +198,24 @@ describe('planModifications', () => {
     })
     // navigation item has lower priority index → kept first
     const createMessage = makeCreateMessage([
-      { filePath: 'Sources/OtherView.swift', screenName: 'OtherView', changeDescription: 'Add layout', changeType: 'other' },
-      { filePath: 'Sources/FormView.swift', screenName: 'FormView', changeDescription: 'Add form field', changeType: 'form' },
-      { filePath: 'Sources/ContentView.swift', screenName: 'ContentView', changeDescription: 'Add nav tab', changeType: 'navigation' },
+      {
+        filePath: 'Sources/OtherView.swift',
+        screenName: 'OtherView',
+        changeDescription: 'Add layout',
+        changeType: 'other',
+      },
+      {
+        filePath: 'Sources/FormView.swift',
+        screenName: 'FormView',
+        changeDescription: 'Add form field',
+        changeType: 'form',
+      },
+      {
+        filePath: 'Sources/ContentView.swift',
+        screenName: 'ContentView',
+        changeDescription: 'Add nav tab',
+        changeType: 'navigation',
+      },
     ])
     const appContext = makeAppContext({
       inventory: [
@@ -166,7 +224,13 @@ describe('planModifications', () => {
         { filePath: 'Sources/ContentView.swift', type: 'screen', name: 'ContentView' },
       ],
     })
-    const result = await planModifications('Add settings', appContext, OUTPUT_DIR, runner, createMessage)
+    const result = await planModifications(
+      'Add settings',
+      appContext,
+      OUTPUT_DIR,
+      runner,
+      createMessage,
+    )
 
     // Total would be 36000 chars (3 * 12000), budget is 32000
     // After sorting by priority (navigation first), must trim to fit budget
@@ -210,11 +274,27 @@ describe('planModifications', () => {
       // SettingsView not in files — will throw
     })
     const createMessage = makeCreateMessage([
-      { filePath: 'Sources/ContentView.swift', screenName: 'ContentView', changeDescription: 'Add tab', changeType: 'navigation' },
-      { filePath: 'Sources/MissingView.swift', screenName: 'MissingView', changeDescription: 'Add button', changeType: 'button' },
+      {
+        filePath: 'Sources/ContentView.swift',
+        screenName: 'ContentView',
+        changeDescription: 'Add tab',
+        changeType: 'navigation',
+      },
+      {
+        filePath: 'Sources/MissingView.swift',
+        screenName: 'MissingView',
+        changeDescription: 'Add button',
+        changeType: 'button',
+      },
     ])
     const appContext = makeAppContext()
-    const result = await planModifications('Add settings navigation', appContext, OUTPUT_DIR, runner, createMessage)
+    const result = await planModifications(
+      'Add settings navigation',
+      appContext,
+      OUTPUT_DIR,
+      runner,
+      createMessage,
+    )
 
     // Should have only the item that was found
     expect(result.items).toHaveLength(1)

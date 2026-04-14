@@ -96,9 +96,7 @@ describe('diffDesignTokens', () => {
     const existing: DesignTokens = { ...emptyTokens, spacing: { md: 8 } }
     const updated: DesignTokens = { ...emptyTokens, spacing: { md: 9 } }
     const result = diffDesignTokens(existing, updated)
-    expect(result.changed).toEqual([
-      { category: 'spacing', name: 'md', oldValue: 8, newValue: 9 },
-    ])
+    expect(result.changed).toEqual([{ category: 'spacing', name: 'md', oldValue: 8, newValue: 9 }])
     expect(result.added).toEqual([])
     expect(result.removed).toEqual([])
   })
@@ -117,6 +115,10 @@ describe('diffDesignTokens', () => {
   })
 
   it('returns empty delta for truly identical inputs (all categories empty)', () => {
-    expect(diffDesignTokens(emptyTokens, emptyTokens)).toEqual({ added: [], removed: [], changed: [] })
+    expect(diffDesignTokens(emptyTokens, emptyTokens)).toEqual({
+      added: [],
+      removed: [],
+      changed: [],
+    })
   })
 })

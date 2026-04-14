@@ -38,17 +38,27 @@ export async function archiveSwift(runner: Runner, opts: ArchiveOpts): Promise<A
   if (!hasAppIcon) {
     // Generate a 1024x1024 placeholder icon using sips (built into macOS)
     const iconPath = `${appIconDir}/appicon.png`
-    const contentsJson = JSON.stringify({
-      images: [{ filename: 'appicon.png', idiom: 'universal', platform: 'ios', size: '1024x1024' }],
-      info: { author: 'xcode', version: 1 },
-    }, null, 2)
+    const contentsJson = JSON.stringify(
+      {
+        images: [
+          { filename: 'appicon.png', idiom: 'universal', platform: 'ios', size: '1024x1024' },
+        ],
+        info: { author: 'xcode', version: 1 },
+      },
+      null,
+      2,
+    )
     await runner.writeFile(`${appIconDir}/Contents.json`, contentsJson)
 
     // Create a simple solid-color PNG icon using sips + built-in macOS tools
     const iconExists = await runner.exists(iconPath)
     if (!iconExists) {
       // Use Python (always available on macOS) to generate a minimal valid PNG
-      await runner.exec('python3', ['-c', `
+      await runner.exec(
+        'python3',
+        [
+          '-c',
+          `
 import struct, zlib
 w, h = 1024, 1024
 raw = b''
@@ -61,21 +71,30 @@ sig = b'\\x89PNG\\r\\n\\x1a\\n'
 ihdr = struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0)
 with open('${iconPath}', 'wb') as f:
     f.write(sig + chunk(b'IHDR', ihdr) + chunk(b'IDAT', zlib.compress(raw)) + chunk(b'IEND', b''))
-`], { cwd: projectDir })
+`,
+        ],
+        { cwd: projectDir },
+      )
     }
 
     // Ensure top-level Assets.xcassets/Contents.json exists
     const assetsContents = `${projectDir}/Sources/Assets.xcassets/Contents.json`
     const hasAssetsContents = await runner.exists(assetsContents)
     if (!hasAssetsContents) {
-      await runner.writeFile(assetsContents, JSON.stringify({ info: { author: 'xcode', version: 1 } }, null, 2))
+      await runner.writeFile(
+        assetsContents,
+        JSON.stringify({ info: { author: 'xcode', version: 1 } }, null, 2),
+      )
     }
   }
 
   // Inject signing config into project.yml
   const hasProjectYml = await runner.exists(`${projectDir}/project.yml`)
   if (!hasProjectYml) {
-    const yml = DEFAULT_PROJECT_YML.replace(/\bApp\b/g, scheme).replace(/\bAppTests\b/g, `${scheme}Tests`)
+    const yml = DEFAULT_PROJECT_YML.replace(/\bApp\b/g, scheme).replace(
+      /\bAppTests\b/g,
+      `${scheme}Tests`,
+    )
     await runner.writeFile(`${projectDir}/project.yml`, yml)
   }
 
@@ -89,10 +108,13 @@ with open('${iconPath}', 'wb') as f:
     ].join('\n')
 
     // Insert signing settings after the target's settings block
-    const targetSettingsMatch = projectYml.match(/(targets:\s*\n\s+\w+:\s*\n[\s\S]*?settings:\s*\n)/m)
+    const targetSettingsMatch = projectYml.match(
+      /(targets:\s*\n\s+\w+:\s*\n[\s\S]*?settings:\s*\n)/m,
+    )
     if (targetSettingsMatch) {
       const insertIdx = targetSettingsMatch.index! + targetSettingsMatch[0].length
-      const patched = projectYml.slice(0, insertIdx) + signingSettings + '\n' + projectYml.slice(insertIdx)
+      const patched =
+        projectYml.slice(0, insertIdx) + signingSettings + '\n' + projectYml.slice(insertIdx)
       await runner.writeFile(`${projectDir}/project.yml`, patched)
     }
   }
@@ -102,8 +124,10 @@ with open('${iconPath}', 'wb') as f:
   const requiredSettings: Record<string, string> = {
     INFOPLIST_KEY_UIApplicationSceneManifest_Generation: 'YES',
     INFOPLIST_KEY_UILaunchScreen_Generation: 'YES',
-    INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: '"UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"',
-    INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: '"UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"',
+    INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad:
+      '"UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"',
+    INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone:
+      '"UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"',
     INFOPLIST_KEY_CFBundleIconName: 'AppIcon',
     ASSETCATALOG_COMPILER_APPICON_NAME: 'AppIcon',
   }
@@ -115,7 +139,9 @@ with open('${iconPath}', 'wb') as f:
   }
   if (missingSettings.length > 0) {
     // Find the first target's settings block and append
-    const settingsMatch = currentYml.match(/(targets:\s*\n\s+\w+:\s*\n[\s\S]*?settings:\s*\n([\s\S]*?)(?=\n\s+\w+:|schemes:|$))/m)
+    const settingsMatch = currentYml.match(
+      /(targets:\s*\n\s+\w+:\s*\n[\s\S]*?settings:\s*\n([\s\S]*?)(?=\n\s+\w+:|schemes:|$))/m,
+    )
     if (settingsMatch) {
       const settingsEnd = settingsMatch.index! + settingsMatch[1].length
       // Find the end of the settings entries (last indented line before next section)
@@ -124,7 +150,10 @@ with open('${iconPath}', 'wb') as f:
       while (insertLine > 0 && lines[insertLine].trim() === '') insertLine--
       const before = lines.slice(0, insertLine + 1).join('\n')
       const after = currentYml.slice(before.length)
-      await runner.writeFile(`${projectDir}/project.yml`, before + '\n' + missingSettings.join('\n') + after)
+      await runner.writeFile(
+        `${projectDir}/project.yml`,
+        before + '\n' + missingSettings.join('\n') + after,
+      )
     }
   }
 
@@ -134,16 +163,28 @@ with open('${iconPath}', 'wb') as f:
   const projectName = projectNameMatch?.[1]?.trim() ?? scheme
 
   // Generate .xcodeproj
-  const genResult = await runner.exec('xcodegen', ['generate', '--spec', 'project.yml'], { cwd: projectDir })
+  const genResult = await runner.exec('xcodegen', ['generate', '--spec', 'project.yml'], {
+    cwd: projectDir,
+  })
   commands.push(genResult.command)
   if (genResult.exitCode !== 0) {
-    return { success: false, error: `xcodegen failed: ${genResult.stderr}`, duration: Date.now() - startTime, commands }
+    return {
+      success: false,
+      error: `xcodegen failed: ${genResult.stderr}`,
+      duration: Date.now() - startTime,
+      commands,
+    }
   }
 
   // Find the .xcodeproj (xcodegen names it from project.yml's `name:` field)
   const projs = await runner.glob(`${projectDir}/*.xcodeproj`)
   if (projs.length === 0) {
-    return { success: false, error: 'No .xcodeproj found after xcodegen', duration: Date.now() - startTime, commands }
+    return {
+      success: false,
+      error: 'No .xcodeproj found after xcodegen',
+      duration: Date.now() - startTime,
+      commands,
+    }
   }
   const projFile = projs[0].split('/').pop()!
   const defaultScheme = projFile.replace('.xcodeproj', '')
@@ -154,22 +195,37 @@ with open('${iconPath}', 'wb') as f:
 
   // xcodebuild archive
   const archiveArgs = [
-    '-project', projFile,
-    '-scheme', schemeForBuild,
-    '-destination', 'generic/platform=iOS',
-    '-archivePath', archivePath,
+    '-project',
+    projFile,
+    '-scheme',
+    schemeForBuild,
+    '-destination',
+    'generic/platform=iOS',
+    '-archivePath',
+    archivePath,
     '-allowProvisioningUpdates',
     `DEVELOPMENT_TEAM=${opts.teamId}`,
     `PRODUCT_BUNDLE_IDENTIFIER=${opts.bundleId}`,
     'archive',
   ]
 
-  const archiveResult = await runner.exec('xcodebuild', archiveArgs, { cwd: projectDir, timeout: 600_000 })
+  const archiveResult = await runner.exec('xcodebuild', archiveArgs, {
+    cwd: projectDir,
+    timeout: 600_000,
+  })
   commands.push(archiveResult.command)
   if (archiveResult.exitCode !== 0) {
     const output = archiveResult.stdout + '\n' + archiveResult.stderr
-    const errorLines = output.split('\n').filter(l => l.includes('error:')).join('\n')
-    return { success: false, error: errorLines || archiveResult.stderr, duration: Date.now() - startTime, commands }
+    const errorLines = output
+      .split('\n')
+      .filter((l) => l.includes('error:'))
+      .join('\n')
+    return {
+      success: false,
+      error: errorLines || archiveResult.stderr,
+      duration: Date.now() - startTime,
+      commands,
+    }
   }
 
   // Write ExportOptions.plist for exportArchive
@@ -196,23 +252,47 @@ with open('${iconPath}', 'wb') as f:
   // xcodebuild -exportArchive
   const exportArgs = [
     '-exportArchive',
-    '-archivePath', archivePath,
-    '-exportPath', exportPath,
-    '-exportOptionsPlist', exportOptionsPlistPath,
+    '-archivePath',
+    archivePath,
+    '-exportPath',
+    exportPath,
+    '-exportOptionsPlist',
+    exportOptionsPlistPath,
     '-allowProvisioningUpdates',
   ]
 
-  const exportResult = await runner.exec('xcodebuild', exportArgs, { cwd: projectDir, timeout: 300_000 })
+  const exportResult = await runner.exec('xcodebuild', exportArgs, {
+    cwd: projectDir,
+    timeout: 300_000,
+  })
   commands.push(exportResult.command)
   if (exportResult.exitCode !== 0) {
-    return { success: false, error: `Export failed: ${exportResult.stderr}`, archivePath, duration: Date.now() - startTime, commands }
+    return {
+      success: false,
+      error: `Export failed: ${exportResult.stderr}`,
+      archivePath,
+      duration: Date.now() - startTime,
+      commands,
+    }
   }
 
   // Find the exported .ipa
   const ipas = await runner.glob(`${exportPath}/*.ipa`)
   if (ipas.length === 0) {
-    return { success: false, error: 'Export succeeded but no .ipa found in output', archivePath, duration: Date.now() - startTime, commands }
+    return {
+      success: false,
+      error: 'Export succeeded but no .ipa found in output',
+      archivePath,
+      duration: Date.now() - startTime,
+      commands,
+    }
   }
 
-  return { success: true, ipaPath: ipas[0], archivePath, duration: Date.now() - startTime, commands }
+  return {
+    success: true,
+    ipaPath: ipas[0],
+    archivePath,
+    duration: Date.now() - startTime,
+    commands,
+  }
 }

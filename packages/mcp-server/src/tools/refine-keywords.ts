@@ -25,41 +25,108 @@ export interface EnrichResult {
 // ── Keyword detection helpers ──
 
 export const SCREEN_KEYWORDS = [
-  'screen', 'page', 'view', 'tab', 'modal', 'sheet', 'detail',
-  'list', 'home', 'settings', 'profile', 'dashboard', 'onboarding',
-  'login', 'signup', 'sign up', 'register', 'feed', 'search',
+  'screen',
+  'page',
+  'view',
+  'tab',
+  'modal',
+  'sheet',
+  'detail',
+  'list',
+  'home',
+  'settings',
+  'profile',
+  'dashboard',
+  'onboarding',
+  'login',
+  'signup',
+  'sign up',
+  'register',
+  'feed',
+  'search',
 ]
 
 export const NAV_KEYWORDS = [
-  'tab', 'tabs', 'tab bar', 'stack', 'drawer', 'sidebar',
-  'navigation', 'bottom bar', 'menu',
+  'tab',
+  'tabs',
+  'tab bar',
+  'stack',
+  'drawer',
+  'sidebar',
+  'navigation',
+  'bottom bar',
+  'menu',
 ]
 
 export const DATA_KEYWORDS = [
-  'data', 'database', 'storage', 'persist', 'save', 'store',
-  'core data', 'swiftdata', 'realm', 'sqlite', 'api', 'backend',
-  'server', 'fetch', 'sync', 'offline', 'cache', 'local',
+  'data',
+  'database',
+  'storage',
+  'persist',
+  'save',
+  'store',
+  'core data',
+  'swiftdata',
+  'realm',
+  'sqlite',
+  'api',
+  'backend',
+  'server',
+  'fetch',
+  'sync',
+  'offline',
+  'cache',
+  'local',
 ]
 
 export const AUTH_KEYWORDS = [
-  'auth', 'login', 'signup', 'sign up', 'register', 'password',
-  'oauth', 'google sign', 'apple sign', 'biometric', 'face id', 'touch id',
+  'auth',
+  'login',
+  'signup',
+  'sign up',
+  'register',
+  'password',
+  'oauth',
+  'google sign',
+  'apple sign',
+  'biometric',
+  'face id',
+  'touch id',
 ]
 
 export const DESIGN_KEYWORDS = [
-  'dark', 'light', 'minimal', 'colorful', 'modern', 'flat',
-  'gradient', 'rounded', 'theme', 'color', 'style', 'design',
-  'material', 'ios', 'native', 'custom',
+  'dark',
+  'light',
+  'minimal',
+  'colorful',
+  'modern',
+  'flat',
+  'gradient',
+  'rounded',
+  'theme',
+  'color',
+  'style',
+  'design',
+  'material',
+  'ios',
+  'native',
+  'custom',
 ]
 
 export const PLATFORM_KEYWORDS = [
-  'swiftui', 'swift', 'ios', 'apple',
-  'android', 'kotlin', 'compose', 'kotlin-compose',
+  'swiftui',
+  'swift',
+  'ios',
+  'apple',
+  'android',
+  'kotlin',
+  'compose',
+  'kotlin-compose',
 ]
 
 export function hasKeywords(prompt: string, keywords: string[]): boolean {
   const lower = prompt.toLowerCase()
-  return keywords.some(kw => lower.includes(kw))
+  return keywords.some((kw) => lower.includes(kw))
 }
 
 export function wordCount(prompt: string): number {

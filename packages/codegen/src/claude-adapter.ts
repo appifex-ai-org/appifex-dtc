@@ -21,11 +21,7 @@ export class ClaudeAdapter implements CodegenAdapter {
   }
 
   /** Files managed by the build pipeline — never overwrite with LLM output */
-  private static PROTECTED_FILES = new Set([
-    'project.yml',
-    'App.xcodeproj',
-    'Info.plist',
-  ])
+  private static PROTECTED_FILES = new Set(['project.yml', 'App.xcodeproj', 'Info.plist'])
 
   async generateAndWrite(input: CodegenInput, runner: Runner): Promise<CodegenResult> {
     const result = await this.generate(input)

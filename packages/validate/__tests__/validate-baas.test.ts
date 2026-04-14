@@ -33,23 +33,58 @@ function mockRunnerBase(): Runner {
     writeFile: vi.fn().mockResolvedValue(undefined),
     exists: vi.fn().mockResolvedValue(true),
     glob: vi.fn().mockResolvedValue([]),
-    capabilities: { hasMaestro: true, hasXcode: false, hasNode: true, hasSemgrep: false, platform: 'linux' },
+    capabilities: {
+      hasMaestro: true,
+      hasXcode: false,
+      hasNode: true,
+      hasSemgrep: false,
+      platform: 'linux',
+    },
   }
 }
 
 function mockExec() {
   return vi.fn().mockImplementation((cmd: string, args?: string[]) => {
-    if (cmd === 'which') return Promise.resolve({ exitCode: 0, stdout: '/usr/local/bin/maestro', stderr: '', duration: 10 })
-    if (cmd === 'defaults') return Promise.resolve({ exitCode: 0, stdout: 'com.dtc.App', stderr: '', duration: 10 })
-    if (cmd === 'mkdir') return Promise.resolve({ exitCode: 0, stdout: '', stderr: '', duration: 10 })
+    if (cmd === 'which')
+      return Promise.resolve({
+        exitCode: 0,
+        stdout: '/usr/local/bin/maestro',
+        stderr: '',
+        duration: 10,
+      })
+    if (cmd === 'defaults')
+      return Promise.resolve({ exitCode: 0, stdout: 'com.dtc.App', stderr: '', duration: 10 })
+    if (cmd === 'mkdir')
+      return Promise.resolve({ exitCode: 0, stdout: '', stderr: '', duration: 10 })
     if (cmd === 'xcrun' && args?.[0] === 'simctl' && args?.[1] === 'list') {
-      return Promise.resolve({ exitCode: 0, stdout: JSON.stringify({ devices: { 'com.apple.CoreSimulator.SimRuntime.iOS-17-5': [{ name: 'iPhone 15', udid: 'sim-123', isAvailable: true }] } }), stderr: '', duration: 100 })
+      return Promise.resolve({
+        exitCode: 0,
+        stdout: JSON.stringify({
+          devices: {
+            'com.apple.CoreSimulator.SimRuntime.iOS-17-5': [
+              { name: 'iPhone 15', udid: 'sim-123', isAvailable: true },
+            ],
+          },
+        }),
+        stderr: '',
+        duration: 100,
+      })
     }
-    if (cmd === 'xcrun' && args?.[0] === 'simctl') return Promise.resolve({ exitCode: 0, stdout: '', stderr: '', duration: 100 })
-    if (cmd === 'xcrun') return Promise.resolve({ exitCode: 1, stdout: '', stderr: '', duration: 100 })
-    if (cmd === 'maestro') return Promise.resolve({ exitCode: 0, stdout: '', stderr: '', duration: 500 })
-    if (cmd === 'xcodebuild') return Promise.resolve({ exitCode: 0, stdout: "Test Case '-[AppTests.T testA]' passed (0.1 seconds).", stderr: '', duration: 1000 })
-    if (cmd === 'xcodegen') return Promise.resolve({ exitCode: 0, stdout: '', stderr: '', duration: 100 })
+    if (cmd === 'xcrun' && args?.[0] === 'simctl')
+      return Promise.resolve({ exitCode: 0, stdout: '', stderr: '', duration: 100 })
+    if (cmd === 'xcrun')
+      return Promise.resolve({ exitCode: 1, stdout: '', stderr: '', duration: 100 })
+    if (cmd === 'maestro')
+      return Promise.resolve({ exitCode: 0, stdout: '', stderr: '', duration: 500 })
+    if (cmd === 'xcodebuild')
+      return Promise.resolve({
+        exitCode: 0,
+        stdout: "Test Case '-[AppTests.T testA]' passed (0.1 seconds).",
+        stderr: '',
+        duration: 1000,
+      })
+    if (cmd === 'xcodegen')
+      return Promise.resolve({ exitCode: 0, stdout: '', stderr: '', duration: 100 })
     if (cmd === 'rm') return Promise.resolve({ exitCode: 0, stdout: '', stderr: '', duration: 10 })
     return Promise.resolve({ exitCode: 0, stdout: '', stderr: '', duration: 0 })
   })
@@ -61,7 +96,8 @@ function mockGlob(swiftFile?: string) {
     if (pattern.includes('**/*.kt')) return Promise.resolve([])
     if (pattern.includes('.yaml')) return Promise.resolve(['.maestro/home.yaml'])
     if (pattern.includes('.ips')) return Promise.resolve([])
-    if (pattern.includes('Debug-iphonesimulator') || pattern.includes('DerivedData')) return Promise.resolve(['/app/build/Build/Products/Debug-iphonesimulator/App.app'])
+    if (pattern.includes('Debug-iphonesimulator') || pattern.includes('DerivedData'))
+      return Promise.resolve(['/app/build/Build/Products/Debug-iphonesimulator/App.app'])
     if (pattern.includes('.xml')) return Promise.resolve(['/tmp/report/maestro-results.xml'])
     if (pattern.includes('.swift')) return Promise.resolve(['Tests/Test.swift'])
     if (pattern.includes('.xcodeproj')) return Promise.resolve(['/app/App.xcodeproj'])

@@ -7,7 +7,11 @@ function makeAppContext(screenNames: string[]): AppContext {
   return {
     platform: 'swiftui',
     inventory: [
-      ...screenNames.map(name => ({ name, type: 'screen' as const, filePath: `Sources/Views/${name}View.swift` })),
+      ...screenNames.map((name) => ({
+        name,
+        type: 'screen' as const,
+        filePath: `Sources/Views/${name}View.swift`,
+      })),
     ],
     navGraph: [],
     entryPoint: null,
@@ -49,7 +53,10 @@ describe('decidePenFileStrategy', () => {
 })
 
 describe('generatePreBuildSummary', () => {
-  const makeTokens = (colors: Record<string, string> = {}, spacing: Record<string, number> = {}): DesignTokens => ({
+  const makeTokens = (
+    colors: Record<string, string> = {},
+    spacing: Record<string, number> = {},
+  ): DesignTokens => ({
     colors,
     typography: {},
     spacing,
@@ -85,8 +92,12 @@ describe('generatePreBuildSummary', () => {
 
   it('returns designStrategy matching the passed penStrategy', () => {
     const appContext = makeAppContext(['Home'])
-    expect(generatePreBuildSummary('Add screen', appContext, 'new', null).designStrategy).toBe('new')
-    expect(generatePreBuildSummary('Add screen', appContext, 'extend', null).designStrategy).toBe('extend')
+    expect(generatePreBuildSummary('Add screen', appContext, 'new', null).designStrategy).toBe(
+      'new',
+    )
+    expect(generatePreBuildSummary('Add screen', appContext, 'extend', null).designStrategy).toBe(
+      'extend',
+    )
   })
 
   it('returns tokenCount as sum of colors + spacing keys from DesignTokens', () => {
@@ -97,7 +108,12 @@ describe('generatePreBuildSummary', () => {
 
   it('returns testFilesToGenerate with one entry per new screen', () => {
     const appContext = makeAppContext(['Home'])
-    const result = generatePreBuildSummary('Add a Dashboard screen and Settings page', appContext, 'new', null)
+    const result = generatePreBuildSummary(
+      'Add a Dashboard screen and Settings page',
+      appContext,
+      'new',
+      null,
+    )
     expect(result.testFilesToGenerate.length).toBe(result.newScreens.length)
   })
 
@@ -144,7 +160,13 @@ describe('generatePreBuildSummary with modificationPlan', () => {
   it('uses modification plan items for modifiedFiles when plan is non-empty', () => {
     const plan: ModificationPlan = {
       items: [
-        { filePath: 'Sources/ContentView.swift', screenName: 'ContentView', changeDescription: 'Add tab', changeType: 'navigation', fileContent: '...' },
+        {
+          filePath: 'Sources/ContentView.swift',
+          screenName: 'ContentView',
+          changeDescription: 'Add tab',
+          changeType: 'navigation',
+          fileContent: '...',
+        },
       ],
     }
     const summary = generatePreBuildSummary('add settings', appContext, 'new', null, plan)
@@ -153,7 +175,13 @@ describe('generatePreBuildSummary with modificationPlan', () => {
 
   it('falls back to navGraph heuristic when modificationPlan is empty', () => {
     const plan: ModificationPlan = { items: [] }
-    const summary = generatePreBuildSummary('add settings tab', appContextWithTabs, 'new', null, plan)
+    const summary = generatePreBuildSummary(
+      'add settings tab',
+      appContextWithTabs,
+      'new',
+      null,
+      plan,
+    )
     // Should use the existing heuristic (entry point file from navGraph)
     expect(summary.modifiedFiles.length).toBeGreaterThanOrEqual(0) // depends on appContext fixture
   })
@@ -167,11 +195,29 @@ describe('generatePreBuildSummary with modificationPlan', () => {
   it('overrides navGraph heuristic when modificationPlan has items', () => {
     const plan: ModificationPlan = {
       items: [
-        { filePath: 'Sources/SettingsView.swift', screenName: 'Settings', changeDescription: 'Add toggle', changeType: 'layout', fileContent: 'struct SettingsView {}' },
-        { filePath: 'Sources/HomeView.swift', screenName: 'Home', changeDescription: 'Update nav', changeType: 'navigation', fileContent: 'struct HomeView {}' },
+        {
+          filePath: 'Sources/SettingsView.swift',
+          screenName: 'Settings',
+          changeDescription: 'Add toggle',
+          changeType: 'layout',
+          fileContent: 'struct SettingsView {}',
+        },
+        {
+          filePath: 'Sources/HomeView.swift',
+          screenName: 'Home',
+          changeDescription: 'Update nav',
+          changeType: 'navigation',
+          fileContent: 'struct HomeView {}',
+        },
       ],
     }
-    const summary = generatePreBuildSummary('update settings and home', appContextWithTabs, 'new', null, plan)
+    const summary = generatePreBuildSummary(
+      'update settings and home',
+      appContextWithTabs,
+      'new',
+      null,
+      plan,
+    )
     expect(summary.modifiedFiles).toEqual(['Sources/SettingsView.swift', 'Sources/HomeView.swift'])
     // Should NOT contain the navGraph heuristic file
     expect(summary.modifiedFiles).not.toContain('Sources/Views/ContentView.swift')

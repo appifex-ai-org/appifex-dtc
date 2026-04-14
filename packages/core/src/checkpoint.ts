@@ -34,18 +34,22 @@ export class Checkpoint {
    *  last, silently breaking resume on add-feature runs. Requires SQLite JSON1
    *  (already required by `lastCompletedPhase`). */
   savePhase<P extends PhaseId>(runId: string, phase: P, data: CheckpointData[P]): void {
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       INSERT INTO phases (run_id, phase, data) VALUES (?, ?, ?)
       ON CONFLICT (run_id, phase) DO UPDATE SET
         data = json_patch(phases.data, excluded.data),
         updated_at = datetime('now')
-    `).run(runId, phase, JSON.stringify(data))
+    `,
+      )
+      .run(runId, phase, JSON.stringify(data))
   }
 
   getPhase(runId: string, phase: PhaseId): unknown | null {
-    const row = this.db.prepare(
-      'SELECT data FROM phases WHERE run_id = ? AND phase = ?'
-    ).get(runId, phase) as { data: string } | undefined
+    const row = this.db
+      .prepare('SELECT data FROM phases WHERE run_id = ? AND phase = ?')
+      .get(runId, phase) as { data: string } | undefined
     if (!row) return null
     try {
       return JSON.parse(row.data)
@@ -58,19 +62,23 @@ export class Checkpoint {
   }
 
   completedPhases(runId: string): PhaseId[] {
-    const rows = this.db.prepare(
-      'SELECT phase FROM phases WHERE run_id = ? ORDER BY rowid'
-    ).all(runId) as Array<{ phase: PhaseId }>
-    return rows.map(r => r.phase)
+    const rows = this.db
+      .prepare('SELECT phase FROM phases WHERE run_id = ? ORDER BY rowid')
+      .all(runId) as Array<{ phase: PhaseId }>
+    return rows.map((r) => r.phase)
   }
 
   /** Phase 13 (D-16, criterion #4): returns the highest-rowid completed phase for a run, or null. */
   lastCompletedPhase(runId: string): PhaseId | null {
-    const row = this.db.prepare(`
+    const row = this.db
+      .prepare(
+        `
       SELECT phase FROM phases
       WHERE run_id = ? AND json_extract(data, '$.status') = 'completed'
       ORDER BY rowid DESC LIMIT 1
-    `).get(runId) as { phase: PhaseId } | undefined
+    `,
+      )
+      .get(runId) as { phase: PhaseId } | undefined
     return row?.phase ?? null
   }
 

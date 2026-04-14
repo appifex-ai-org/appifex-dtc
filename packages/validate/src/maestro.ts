@@ -23,16 +23,27 @@ export interface MaestroResult {
   hierarchy?: string
 }
 
-async function findSimulatorAndApp(runner: Runner, projectDir: string): Promise<{ simId: string; appPath: string; appId: string } | null> {
+async function findSimulatorAndApp(
+  runner: Runner,
+  projectDir: string,
+): Promise<{ simId: string; appPath: string; appId: string } | null> {
   // Find the built .app in project build dir or DerivedData
-  const derivedDataApps = await runner.glob(`${projectDir}/build/Build/Products/Debug-iphonesimulator/*.app`)
-  const defaultApps = await runner.glob(`${process.env.HOME}/Library/Developer/Xcode/DerivedData/App-*/Build/Products/Debug-iphonesimulator/*.app`)
+  const derivedDataApps = await runner.glob(
+    `${projectDir}/build/Build/Products/Debug-iphonesimulator/*.app`,
+  )
+  const defaultApps = await runner.glob(
+    `${process.env.HOME}/Library/Developer/Xcode/DerivedData/App-*/Build/Products/Debug-iphonesimulator/*.app`,
+  )
   const appPath = derivedDataApps[0] ?? defaultApps[0]
 
   if (!appPath) return null
 
   // Read bundle ID from Info.plist
-  const plistResult = await runner.exec('defaults', ['read', `${appPath}/Info`, 'CFBundleIdentifier'])
+  const plistResult = await runner.exec('defaults', [
+    'read',
+    `${appPath}/Info`,
+    'CFBundleIdentifier',
+  ])
   const appId = plistResult.exitCode === 0 ? plistResult.stdout.trim() : 'com.dtc.App'
 
   const simId = await findOrBootSimulator(runner)
@@ -50,9 +61,20 @@ export async function runMaestro(runner: Runner, opts: MaestroOpts): Promise<Mae
   // Check Maestro is installed, auto-install if missing
   const maestroCheck = await runner.exec('which', ['maestro'])
   if (maestroCheck.exitCode !== 0) {
-    const install = await runner.exec('bash', ['-c', 'curl -Ls "https://get.maestro.mobile.dev" | bash'], { timeout: 120_000 })
+    const install = await runner.exec(
+      'bash',
+      ['-c', 'curl -Ls "https://get.maestro.mobile.dev" | bash'],
+      { timeout: 120_000 },
+    )
     if (install.exitCode !== 0) {
-      return { total: 0, passed: 0, failed: 0, results: [], error: 'Maestro auto-install failed — install manually: curl -Ls "https://get.maestro.mobile.dev" | bash' }
+      return {
+        total: 0,
+        passed: 0,
+        failed: 0,
+        results: [],
+        error:
+          'Maestro auto-install failed — install manually: curl -Ls "https://get.maestro.mobile.dev" | bash',
+      }
     }
     // Add to PATH for this session
     const home = process.env.HOME ?? ''
@@ -76,7 +98,13 @@ export async function runMaestro(runner: Runner, opts: MaestroOpts): Promise<Mae
     // Kotlin Compose: install APK on Android emulator
     const apkGlob = await runner.glob(`${opts.projectDir}/app/build/outputs/apk/debug/*.apk`)
     if (apkGlob.length === 0) {
-      return { total: 0, passed: 0, failed: 0, results: [], error: 'No debug APK found. Run buildKotlin() first.' }
+      return {
+        total: 0,
+        passed: 0,
+        failed: 0,
+        results: [],
+        error: 'No debug APK found. Run buildKotlin() first.',
+      }
     }
     // Infer applicationId from app/build.gradle.kts; fall back to default
     const gradleFile = `${opts.projectDir}/app/build.gradle.kts`
@@ -90,16 +118,37 @@ export async function runMaestro(runner: Runner, opts: MaestroOpts): Promise<Mae
     // Ensure an Android emulator is running
     const emulatorSerial = await findOrBootEmulator(runner)
     if (!emulatorSerial) {
-      return { total: 0, passed: 0, failed: 0, results: [], error: 'No Android emulator found and unable to boot one. Create an AVD or connect a device.' }
+      return {
+        total: 0,
+        passed: 0,
+        failed: 0,
+        results: [],
+        error:
+          'No Android emulator found and unable to boot one. Create an AVD or connect a device.',
+      }
     }
     await runner.exec('adb', ['-s', emulatorSerial, 'install', '-r', apkGlob[0]])
-    await runner.exec('adb', ['-s', emulatorSerial, 'shell', 'am', 'start', '-n', `${appId}/.MainActivity`])
-    await new Promise(r => setTimeout(r, 3000))
+    await runner.exec('adb', [
+      '-s',
+      emulatorSerial,
+      'shell',
+      'am',
+      'start',
+      '-n',
+      `${appId}/.MainActivity`,
+    ])
+    await new Promise((r) => setTimeout(r, 3000))
   } else if (!appId) {
     // SwiftUI: find built .app and install on simulator
     const found = await findSimulatorAndApp(runner, opts.projectDir)
     if (!found) {
-      return { total: 0, passed: 0, failed: 0, results: [], error: 'Could not find built .app or available simulator. Build the app first.' }
+      return {
+        total: 0,
+        passed: 0,
+        failed: 0,
+        results: [],
+        error: 'Could not find built .app or available simulator. Build the app first.',
+      }
     }
     appId = found.appId
     simId = found.simId
@@ -111,24 +160,30 @@ export async function runMaestro(runner: Runner, opts: MaestroOpts): Promise<Mae
     await runner.exec('xcrun', ['simctl', 'launch', simId, appId])
 
     // Wait for app to start
-    await new Promise(r => setTimeout(r, 2000))
+    await new Promise((r) => setTimeout(r, 2000))
   }
 
   await runner.exec('mkdir', ['-p', opts.reportDir])
   const junitPath = `${opts.reportDir}/maestro-results.xml`
   const maestroTimeout = opts.timeoutMs ?? 300_000 // 5 minutes default
-  const result = await runner.exec('maestro', [
-    'test',
-    opts.flowDir,
-    '--format', 'junit',
-    '--output', junitPath,
-    ...(appId ? ['-e', `APP_ID=${appId}`] : []),
-    ...(simId ? ['--udid', simId] : []),
-  ], {
-    cwd: opts.projectDir,
-    env: { APP_ID: appId },
-    timeout: maestroTimeout,
-  })
+  const result = await runner.exec(
+    'maestro',
+    [
+      'test',
+      opts.flowDir,
+      '--format',
+      'junit',
+      '--output',
+      junitPath,
+      ...(appId ? ['-e', `APP_ID=${appId}`] : []),
+      ...(simId ? ['--udid', simId] : []),
+    ],
+    {
+      cwd: opts.projectDir,
+      env: { APP_ID: appId },
+      timeout: maestroTimeout,
+    },
+  )
 
   // If Maestro was killed by timeout, report it cleanly
   if (result.exitCode === 124) {
@@ -137,8 +192,18 @@ export async function runMaestro(runner: Runner, opts: MaestroOpts): Promise<Mae
       await runner.exec('xcrun', ['simctl', 'terminate', simId, appId]).catch(() => {})
     }
     return {
-      total: flows.length, passed: 0, failed: flows.length,
-      results: [{ flowName: 'maestro-timeout', passed: false, duration: maestroTimeout, error: `Maestro timed out after ${Math.round(maestroTimeout / 1000)}s — possible memory leak. Try running fewer flows or restarting the simulator.`, assertions: [] }],
+      total: flows.length,
+      passed: 0,
+      failed: flows.length,
+      results: [
+        {
+          flowName: 'maestro-timeout',
+          passed: false,
+          duration: maestroTimeout,
+          error: `Maestro timed out after ${Math.round(maestroTimeout / 1000)}s — possible memory leak. Try running fewer flows or restarting the simulator.`,
+          assertions: [],
+        },
+      ],
       error: `Maestro timed out after ${Math.round(maestroTimeout / 1000)}s`,
     }
   }
@@ -153,12 +218,28 @@ export async function runMaestro(runner: Runner, opts: MaestroOpts): Promise<Mae
     // No JUNIT results — if we detected a crash, report it
     if (crashInfo) {
       return {
-        total: 1, passed: 0, failed: 1,
-        results: [{ flowName: 'runtime-crash', passed: false, duration: 0, error: crashInfo, assertions: [] }],
+        total: 1,
+        passed: 0,
+        failed: 1,
+        results: [
+          {
+            flowName: 'runtime-crash',
+            passed: false,
+            duration: 0,
+            error: crashInfo,
+            assertions: [],
+          },
+        ],
         error: crashInfo,
       }
     }
-    return { total: 0, passed: 0, failed: 0, results: [], error: result.stderr || 'No JUNIT results found' }
+    return {
+      total: 0,
+      passed: 0,
+      failed: 0,
+      results: [],
+      error: result.stderr || 'No JUNIT results found',
+    }
   }
 
   // Parse all JUNIT files
@@ -178,7 +259,13 @@ export async function runMaestro(runner: Runner, opts: MaestroOpts): Promise<Mae
 
   // Append crash info to results if we also got JUNIT data
   if (crashInfo) {
-    allResults.push({ flowName: 'runtime-crash', passed: false, duration: 0, error: crashInfo, assertions: [] })
+    allResults.push({
+      flowName: 'runtime-crash',
+      passed: false,
+      duration: 0,
+      error: crashInfo,
+      assertions: [],
+    })
     failed++
     total++
   }
@@ -212,7 +299,7 @@ async function detectRuntimeCrash(
   try {
     // Match any .ips crash log — not just "App-*"
     const crashLogsAfter = await runner.glob(`${crashDir}/*.ips`)
-    const newCrashLogs = crashLogsAfter.filter(f => !crashLogsBefore.includes(f))
+    const newCrashLogs = crashLogsAfter.filter((f) => !crashLogsBefore.includes(f))
     if (newCrashLogs.length === 0) return null
 
     // Parse the most recent crash log
@@ -222,8 +309,7 @@ async function detectRuntimeCrash(
     // If we know the app ID, verify this crash is from our app
     if (appId) {
       // JSON .ips files have "bundleID" field; text format has "Identifier:"
-      const isOurApp = content.includes(appId) ||
-        content.includes(appId.split('.').pop() ?? '')  // match app name portion
+      const isOurApp = content.includes(appId) || content.includes(appId.split('.').pop() ?? '') // match app name portion
       if (!isOurApp) return null
     }
 
@@ -245,7 +331,9 @@ async function detectRuntimeCrash(
       ].filter(Boolean)
 
       if (parts.length > 1) return parts.join(' | ')
-    } catch { /* not JSON — try text format below */ }
+    } catch {
+      /* not JSON — try text format below */
+    }
 
     // Legacy text .ips format
     const exceptionMatch = content.match(/Exception Type:\s*(.+)/)

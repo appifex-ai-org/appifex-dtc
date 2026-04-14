@@ -29,9 +29,19 @@ export interface ComponentSpec {
 }
 
 export type ComponentType =
-  | 'view' | 'text' | 'image' | 'button' | 'input'
-  | 'list' | 'card' | 'icon' | 'tab-bar' | 'navigation-bar'
-  | 'scroll-view' | 'modal' | 'custom'
+  | 'view'
+  | 'text'
+  | 'image'
+  | 'button'
+  | 'input'
+  | 'list'
+  | 'card'
+  | 'icon'
+  | 'tab-bar'
+  | 'navigation-bar'
+  | 'scroll-view'
+  | 'modal'
+  | 'custom'
 
 export interface StyleSpec {
   width?: string | number

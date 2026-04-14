@@ -51,11 +51,7 @@ export class PencilAdapter {
   }
 
   async iterate(design: IterateDesignOpts): Promise<DesignResult> {
-    const args = [
-      '--in', design.inputPath,
-      '--out', design.outputPath,
-      '--prompt', design.prompt,
-    ]
+    const args = ['--in', design.inputPath, '--out', design.outputPath, '--prompt', design.prompt]
     if (design.exportPath) {
       args.push('--export', design.exportPath)
     }

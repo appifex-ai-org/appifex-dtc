@@ -11,7 +11,11 @@ const SUPPORTED_PLATFORMS = new Set<string>(['swiftui', 'kotlin-compose', 'react
 
 function validatePlatform(platform: string): Platform {
   if (!SUPPORTED_PLATFORMS.has(platform)) {
-    console.error(chalk.red(`Error: unsupported platform "${platform}". Supported: swiftui, kotlin-compose, react`))
+    console.error(
+      chalk.red(
+        `Error: unsupported platform "${platform}". Supported: swiftui, kotlin-compose, react`,
+      ),
+    )
     process.exit(1)
   }
   return platform as Platform
@@ -39,7 +43,9 @@ export function resolveResumeSessionId(
 function validateBaasProvider(value: string): import('@appifex/core').BaasProvider {
   const VALID = new Set(['firebase', 'supabase', 'mock'])
   if (!VALID.has(value)) {
-    console.error(chalk.red(`Error: invalid --baas-provider "${value}". Must be: firebase, supabase, mock`))
+    console.error(
+      chalk.red(`Error: invalid --baas-provider "${value}". Must be: firebase, supabase, mock`),
+    )
     process.exit(1)
   }
   return value as import('@appifex/core').BaasProvider
@@ -146,7 +152,11 @@ async function main() {
       const baasProviderFlag = args.flags['baas-provider'] as string | undefined
 
       if (!prompt && !resumeRaw && !designFile) {
-        console.error(chalk.red('Error: --prompt is required for `dtc run` (or use --design <file.pen|file.zip> or --resume <session-id>)'))
+        console.error(
+          chalk.red(
+            'Error: --prompt is required for `dtc run` (or use --design <file.pen|file.zip> or --resume <session-id>)',
+          ),
+        )
         process.exit(1)
       }
 
@@ -156,7 +166,11 @@ async function main() {
         const ctx = await loadRunContext(outputDir)
         if (!ctx) {
           // D-11: exact error message
-          console.error(chalk.red(`No existing project found at ${outputDir}. Run \`dtc run\` first to create a project, then use \`--add-feature\` to add to it.`))
+          console.error(
+            chalk.red(
+              `No existing project found at ${outputDir}. Run \`dtc run\` first to create a project, then use \`--add-feature\` to add to it.`,
+            ),
+          )
           process.exit(1)
         }
       }
@@ -176,15 +190,19 @@ async function main() {
 
       // Auto-detect run mode: --resume → resume, --mode → explicit, else fresh
       const VALID_MODES = ['fresh', 'resume', 'add-feature', 'refactor'] as const
-      if (modeFlag && !VALID_MODES.includes(modeFlag as typeof VALID_MODES[number])) {
-        console.error(chalk.red(`Error: invalid --mode "${modeFlag}". Must be one of: ${VALID_MODES.join(', ')}`))
+      if (modeFlag && !VALID_MODES.includes(modeFlag as (typeof VALID_MODES)[number])) {
+        console.error(
+          chalk.red(
+            `Error: invalid --mode "${modeFlag}". Must be one of: ${VALID_MODES.join(', ')}`,
+          ),
+        )
         process.exit(1)
       }
       // D-08: --add-feature takes precedence over --mode
       const runMode = addFeature
-        ? 'add-feature' as const
-        : (modeFlag as import('@appifex/core').RunMode | undefined
-          ?? (resume ? 'resume' as const : undefined))
+        ? ('add-feature' as const)
+        : ((modeFlag as import('@appifex/core').RunMode | undefined) ??
+          (resume ? ('resume' as const) : undefined))
 
       // Preflight: fail fast if critical tools are missing
       {
@@ -201,7 +219,9 @@ async function main() {
       }
 
       await renderRunApp({
-        prompt: prompt ?? (designFile ? 'Build the app matching the provided design' : 'Resume previous session'),
+        prompt:
+          prompt ??
+          (designFile ? 'Build the app matching the provided design' : 'Resume previous session'),
         platform: platform as Platform,
         outputDir,
         designFile,
@@ -244,7 +264,9 @@ async function main() {
           outputPath: out,
           previewPath: args.flags.export as string,
         })
-        console.log(result.success ? chalk.green('✓ Design updated') : chalk.red(`✗ ${result.error}`))
+        console.log(
+          result.success ? chalk.green('✓ Design updated') : chalk.red(`✗ ${result.error}`),
+        )
         if (!result.success) process.exit(1)
       } else {
         const result = await adapter.create({
@@ -253,7 +275,9 @@ async function main() {
           outputPath: out,
           previewPath: args.flags.export as string,
         })
-        console.log(result.success ? chalk.green('✓ Design created') : chalk.red(`✗ ${result.error}`))
+        console.log(
+          result.success ? chalk.green('✓ Design created') : chalk.red(`✗ ${result.error}`),
+        )
         if (!result.success) process.exit(1)
       }
       break
@@ -266,7 +290,10 @@ async function main() {
       if (args.subcommand === 'extract') {
         const input = args.positional[0]
         const out = args.flags.out as string
-        if (!input || !out) { console.error(chalk.red('Usage: dtc spec extract <file> --out <path>')); process.exit(1) }
+        if (!input || !out) {
+          console.error(chalk.red('Usage: dtc spec extract <file> --out <path>'))
+          process.exit(1)
+        }
         const spec = extractSpec(readFileSync(input, 'utf-8'))
         writeFileSync(out, JSON.stringify(spec, null, 2))
         console.log(chalk.green(`✓ Spec extracted: ${spec.screens.length} screens`))
@@ -274,13 +301,22 @@ async function main() {
         const input = args.positional[0]
         const platform = args.flags.platform as string
         const out = args.flags.out as string
-        if (!input || !platform || !out) { console.error(chalk.red('Usage: dtc spec translate <file> --platform <p> --out <path>')); process.exit(1) }
+        if (!input || !platform || !out) {
+          console.error(chalk.red('Usage: dtc spec translate <file> --platform <p> --out <path>'))
+          process.exit(1)
+        }
         const spec = JSON.parse(readFileSync(input, 'utf-8'))
         const translated = translateSpec(spec, platform as Platform)
         writeFileSync(out, JSON.stringify(translated, null, 2))
-        console.log(chalk.green(`✓ Spec translated for ${platform}: ${translated.screens.length} screens`))
+        console.log(
+          chalk.green(`✓ Spec translated for ${platform}: ${translated.screens.length} screens`),
+        )
       } else {
-        console.error(chalk.red(`Unknown subcommand: dtc spec ${args.subcommand ?? ''}\nUsage: dtc spec extract|translate`))
+        console.error(
+          chalk.red(
+            `Unknown subcommand: dtc spec ${args.subcommand ?? ''}\nUsage: dtc spec extract|translate`,
+          ),
+        )
         process.exit(1)
       }
       break
@@ -295,7 +331,10 @@ async function main() {
       if (args.subcommand === 'ui') {
         const input = args.positional[0]
         const out = args.flags.out as string
-        if (!input || !out) { console.error(chalk.red('Usage: dtc test-gen ui <spec> --out <dir>')); process.exit(1) }
+        if (!input || !out) {
+          console.error(chalk.red('Usage: dtc test-gen ui <spec> --out <dir>'))
+          process.exit(1)
+        }
         const spec = JSON.parse(readFileSync(input, 'utf-8'))
         const flows = generateUITests(spec)
         mkdirSync(out, { recursive: true })
@@ -307,7 +346,12 @@ async function main() {
         const input = args.positional[0]
         const platform = args.flags.platform as string
         const out = args.flags.out as string
-        if (!input || !platform || !out) { console.error(chalk.red('Usage: dtc test-gen unit <requirements> --platform <p> --out <dir>')); process.exit(1) }
+        if (!input || !platform || !out) {
+          console.error(
+            chalk.red('Usage: dtc test-gen unit <requirements> --platform <p> --out <dir>'),
+          )
+          process.exit(1)
+        }
         const requirements = readFileSync(input, 'utf-8').split('\n').filter(Boolean)
         const files = generateUnitTests(requirements, platform as Platform)
         mkdirSync(out, { recursive: true })
@@ -317,7 +361,11 @@ async function main() {
         const total = files.reduce((s, f) => s + f.testCount, 0)
         console.log(chalk.green(`✓ ${files.length} test files, ${total} tests generated`))
       } else {
-        console.error(chalk.red(`Unknown subcommand: dtc test-gen ${args.subcommand ?? ''}\nUsage: dtc test-gen ui|unit`))
+        console.error(
+          chalk.red(
+            `Unknown subcommand: dtc test-gen ${args.subcommand ?? ''}\nUsage: dtc test-gen ui|unit`,
+          ),
+        )
         process.exit(1)
       }
       break
@@ -326,7 +374,10 @@ async function main() {
     case 'build': {
       const platform = args.flags.platform as string
       const project = args.flags.project as string
-      if (!platform || !project) { console.error(chalk.red('Usage: dtc build --platform <p> --project <dir>')); process.exit(1) }
+      if (!platform || !project) {
+        console.error(chalk.red('Usage: dtc build --platform <p> --project <dir>'))
+        process.exit(1)
+      }
       validatePlatform(platform)
       const { createRunner } = await import('@appifex/runner')
       const { loadConfig } = await import('@appifex/core')
@@ -336,10 +387,18 @@ async function main() {
 
       const config = await loadConfig(join(homedir(), '.dtc'))
       const runner = createRunner(config.runner, { cwd: project })
-      const result = platform === 'kotlin-compose'
-        ? await buildKotlin(runner, { projectDir: project })
-        : await buildSwift(runner, { projectDir: project, scheme: args.flags.scheme as string ?? 'App' })
-      console.log(result.success ? chalk.green(`✓ Build succeeded (${(result.duration / 1000).toFixed(1)}s)`) : chalk.red(`✗ ${result.error}`))
+      const result =
+        platform === 'kotlin-compose'
+          ? await buildKotlin(runner, { projectDir: project })
+          : await buildSwift(runner, {
+              projectDir: project,
+              scheme: (args.flags.scheme as string) ?? 'App',
+            })
+      console.log(
+        result.success
+          ? chalk.green(`✓ Build succeeded (${(result.duration / 1000).toFixed(1)}s)`)
+          : chalk.red(`✗ ${result.error}`),
+      )
       process.exit(result.success ? 0 : 1)
       break
     }
@@ -347,7 +406,10 @@ async function main() {
     case 'validate': {
       const platform = args.flags.platform as string
       const project = args.flags.project as string
-      if (!platform || !project) { console.error(chalk.red('Usage: dtc validate --all --platform <p> --project <dir>')); process.exit(1) }
+      if (!platform || !project) {
+        console.error(chalk.red('Usage: dtc validate --all --platform <p> --project <dir>'))
+        process.exit(1)
+      }
       validatePlatform(platform)
       const { createRunner } = await import('@appifex/runner')
       const { loadConfig } = await import('@appifex/core')
@@ -364,9 +426,17 @@ async function main() {
         testDir: (args.flags.tests as string) ?? join(project, '__tests__'),
         reportDir: join(project, '.dtc-report'),
       })
-      console.log(`UI:   ${result.ui.passed}/${result.ui.total}  ${result.ui.failed === 0 ? chalk.green('✓') : chalk.red(`✗ ${result.ui.failed} failing`)}`)
-      console.log(`Unit: ${result.unit.passed}/${result.unit.total}  ${result.unit.failed === 0 ? chalk.green('✓') : chalk.red(`✗ ${result.unit.failed} failing`)}`)
-      console.log(result.allPassed ? chalk.green('\n✅ ALL TESTS PASSING') : chalk.red('\n⛔ SOME TESTS FAILING'))
+      console.log(
+        `UI:   ${result.ui.passed}/${result.ui.total}  ${result.ui.failed === 0 ? chalk.green('✓') : chalk.red(`✗ ${result.ui.failed} failing`)}`,
+      )
+      console.log(
+        `Unit: ${result.unit.passed}/${result.unit.total}  ${result.unit.failed === 0 ? chalk.green('✓') : chalk.red(`✗ ${result.unit.failed} failing`)}`,
+      )
+      console.log(
+        result.allPassed
+          ? chalk.green('\n✅ ALL TESTS PASSING')
+          : chalk.red('\n⛔ SOME TESTS FAILING'),
+      )
       process.exit(result.allPassed ? 0 : 1)
       break
     }
@@ -374,7 +444,12 @@ async function main() {
     case 'security': {
       const project = args.flags.project as string
       const platform = args.flags.platform as string | undefined
-      if (!project) { console.error(chalk.red('Usage: dtc security --project <dir> [--platform <p>] [--config <rule>]')); process.exit(1) }
+      if (!project) {
+        console.error(
+          chalk.red('Usage: dtc security --project <dir> [--platform <p>] [--config <rule>]'),
+        )
+        process.exit(1)
+      }
       const { createRunner } = await import('@appifex/runner')
       const { loadConfig } = await import('@appifex/core')
       const { runSemgrep } = await import('@appifex/validate')
@@ -403,9 +478,12 @@ async function main() {
 
       console.log(chalk.yellow(`\n⚠  ${result.findings.length} finding(s):\n`))
       for (const f of result.findings) {
-        const sev = f.severity === 'ERROR' ? chalk.red(f.severity)
-          : f.severity === 'WARNING' ? chalk.yellow(f.severity)
-          : chalk.dim(f.severity)
+        const sev =
+          f.severity === 'ERROR'
+            ? chalk.red(f.severity)
+            : f.severity === 'WARNING'
+              ? chalk.yellow(f.severity)
+              : chalk.dim(f.severity)
         console.log(`  ${sev}  ${chalk.cyan(f.file)}:${f.line}`)
         console.log(`  ${chalk.dim(f.ruleId)}`)
         console.log(`  ${f.message}\n`)
@@ -419,7 +497,10 @@ async function main() {
       const spec = args.flags.spec as string
       const platform = args.flags.platform as string
       const out = args.flags.out as string
-      if (!spec || !platform || !out) { console.error(chalk.red('Usage: dtc codegen --spec <file> --platform <p> --out <dir>')); process.exit(1) }
+      if (!spec || !platform || !out) {
+        console.error(chalk.red('Usage: dtc codegen --spec <file> --platform <p> --out <dir>'))
+        process.exit(1)
+      }
       const { createRunner } = await import('@appifex/runner')
       const { loadConfig } = await import('@appifex/core')
       const { ClaudeAdapter, createDefaultGenerateFn } = await import('@appifex/codegen')
@@ -429,16 +510,26 @@ async function main() {
 
       const config = await loadConfig(join(homedir(), '.dtc'))
       const runner = createRunner(config.runner, { cwd: out })
-      const generateFn = createDefaultGenerateFn({ apiKey: config.llm.apiKey ?? '', model: config.llm.model })
+      const generateFn = createDefaultGenerateFn({
+        apiKey: config.llm.apiKey ?? '',
+        model: config.llm.model,
+      })
       const codegen = new ClaudeAdapter({ generateFn })
       const platformSpec = JSON.parse(readFileSync(spec, 'utf-8'))
-      const result = await codegen.generateAndWrite({
-        spec: platformSpec,
-        uiTestPaths: (args.flags.tests as string)?.split(',') ?? [],
-        unitTestPaths: (args.flags['unit-tests'] as string)?.split(',') ?? [],
-        outputDir: out,
-      }, runner)
-      console.log(result.success ? chalk.green(`✓ ${result.files.length} files generated`) : chalk.red(`✗ ${result.error}`))
+      const result = await codegen.generateAndWrite(
+        {
+          spec: platformSpec,
+          uiTestPaths: (args.flags.tests as string)?.split(',') ?? [],
+          unitTestPaths: (args.flags['unit-tests'] as string)?.split(',') ?? [],
+          outputDir: out,
+        },
+        runner,
+      )
+      console.log(
+        result.success
+          ? chalk.green(`✓ ${result.files.length} files generated`)
+          : chalk.red(`✗ ${result.error}`),
+      )
       if (!result.success) process.exit(1)
       break
     }
@@ -447,10 +538,14 @@ async function main() {
       const specPath = args.flags.spec as string
       const project = args.flags.project as string
       const platform = args.flags.platform as string
-      if (!specPath || !project || !platform) { console.error(chalk.red('Usage: dtc fix --spec <file> --project <dir> --platform <p>')); process.exit(1) }
+      if (!specPath || !project || !platform) {
+        console.error(chalk.red('Usage: dtc fix --spec <file> --project <dir> --platform <p>'))
+        process.exit(1)
+      }
       validatePlatform(platform)
       const { createRunner } = await import('@appifex/runner')
-      const { loadConfig, createFileSkillProvider, createBundledSkillProvider } = await import('@appifex/core')
+      const { loadConfig, createFileSkillProvider, createBundledSkillProvider } =
+        await import('@appifex/core')
       const { fixLoop, createDefaultFixFn } = await import('@appifex/fix')
       const { validateAll } = await import('@appifex/validate')
       const { buildSwift, buildKotlin } = await import('@appifex/build')
@@ -459,19 +554,29 @@ async function main() {
 
       const config = await loadConfig(join(homedir(), '.dtc'))
       const runner = createRunner(config.runner, { cwd: project })
-      const skillProvider = config.skillsDir ? createFileSkillProvider(config.skillsDir) : createBundledSkillProvider()
+      const skillProvider = config.skillsDir
+        ? createFileSkillProvider(config.skillsDir)
+        : createBundledSkillProvider()
       const skills = await skillProvider.load(platform as Platform)
-      const fixFn = createDefaultFixFn({ apiKey: config.llm.apiKey ?? '', runner, projectDir: project, model: config.llm.model, skillPrompt: skills.fixPrompt })
-      const buildFn = async () => platform === 'kotlin-compose'
-        ? buildKotlin(runner, { projectDir: project })
-        : buildSwift(runner, { projectDir: project, scheme: 'App' })
-      const validateFn = async () => validateAll(runner, {
-        platform: platform as Platform,
+      const fixFn = createDefaultFixFn({
+        apiKey: config.llm.apiKey ?? '',
+        runner,
         projectDir: project,
-        flowDir: (args.flags.flows as string) ?? join(project, '.maestro'),
-        testDir: (args.flags['unit-tests'] as string) ?? join(project, '__tests__'),
-        reportDir: join(project, '.dtc-report'),
+        model: config.llm.model,
+        skillPrompt: skills.fixPrompt,
       })
+      const buildFn = async () =>
+        platform === 'kotlin-compose'
+          ? buildKotlin(runner, { projectDir: project })
+          : buildSwift(runner, { projectDir: project, scheme: 'App' })
+      const validateFn = async () =>
+        validateAll(runner, {
+          platform: platform as Platform,
+          projectDir: project,
+          flowDir: (args.flags.flows as string) ?? join(project, '.maestro'),
+          testDir: (args.flags['unit-tests'] as string) ?? join(project, '__tests__'),
+          reportDir: join(project, '.dtc-report'),
+        })
 
       // Get initial validation to feed into fix loop
       const initialValidation = await validateFn()
@@ -479,11 +584,23 @@ async function main() {
         console.log(chalk.green('✅ All tests already passing — nothing to fix'))
         break
       }
-      console.log(chalk.yellow(`${initialValidation.ui.failed + initialValidation.unit.failed} failing tests — starting fix loop`))
-      const result = await fixLoop(initialValidation, { fixFn, buildFn, validateFn, maxAttempts: 5, tokenBudget: 200_000 })
-      console.log(result.status === 'all_green'
-        ? chalk.green(`✅ ALL GREEN — ${result.attempts.length} attempt(s)`)
-        : chalk.red(`⛔ ${result.status} after ${result.attempts.length} attempt(s)`))
+      console.log(
+        chalk.yellow(
+          `${initialValidation.ui.failed + initialValidation.unit.failed} failing tests — starting fix loop`,
+        ),
+      )
+      const result = await fixLoop(initialValidation, {
+        fixFn,
+        buildFn,
+        validateFn,
+        maxAttempts: 5,
+        tokenBudget: 200_000,
+      })
+      console.log(
+        result.status === 'all_green'
+          ? chalk.green(`✅ ALL GREEN — ${result.attempts.length} attempt(s)`)
+          : chalk.red(`⛔ ${result.status} after ${result.attempts.length} attempt(s)`),
+      )
       process.exit(result.status === 'all_green' ? 0 : 1)
       break
     }
@@ -517,25 +634,38 @@ async function main() {
             `${project}/build.gradle`,
             `${project}/android/app/build.gradle.kts`,
             `${project}/android/app/build.gradle`,
-          ].some(p => existsSync(p))
+          ].some((p) => existsSync(p))
           detectedPlatform = hasAndroid ? 'android' : 'ios'
         } else {
-          console.error(chalk.red('Usage: dtc provision submit --project <dir> [--scheme <name>]\n       dtc provision submit --ipa <path>\n       dtc provision submit --aab <path>'))
+          console.error(
+            chalk.red(
+              'Usage: dtc provision submit --project <dir> [--scheme <name>]\n       dtc provision submit --ipa <path>\n       dtc provision submit --aab <path>',
+            ),
+          )
           process.exit(1)
         }
 
         if (detectedPlatform === 'android') {
           // ── Android: Build AAB + Submit to Play Console ──
-          if (!config.android) { console.error(chalk.red('Google Play Console not configured. Run `dtc setup` first.')); process.exit(1) }
+          if (!config.android) {
+            console.error(chalk.red('Google Play Console not configured. Run `dtc setup` first.'))
+            process.exit(1)
+          }
           if (!config.android.serviceAccountKeyPath || !config.android.packageName) {
-            console.error(chalk.red('Google Play Console credentials incomplete. Run `dtc setup` first.'))
+            console.error(
+              chalk.red('Google Play Console credentials incomplete. Run `dtc setup` first.'),
+            )
             process.exit(1)
           }
 
           let aabPath = aabFlag
           if (!aabPath) {
             if (!project) {
-              console.error(chalk.red('Usage: dtc provision submit --project <dir>\n       dtc provision submit --aab <path>'))
+              console.error(
+                chalk.red(
+                  'Usage: dtc provision submit --project <dir>\n       dtc provision submit --aab <path>',
+                ),
+              )
               process.exit(1)
             }
             if (!config.android.keystorePath) {
@@ -557,32 +687,56 @@ async function main() {
               process.exit(1)
             }
             aabPath = bundleResult.aabPath!
-            console.log(chalk.green(`✓ AAB built: ${aabPath} (${(bundleResult.duration / 1000).toFixed(1)}s)`))
+            console.log(
+              chalk.green(
+                `✓ AAB built: ${aabPath} (${(bundleResult.duration / 1000).toFixed(1)}s)`,
+              ),
+            )
           }
 
-          const playClient = new PlayConsoleClient({ serviceAccountKeyPath: config.android.serviceAccountKeyPath })
+          const playClient = new PlayConsoleClient({
+            serviceAccountKeyPath: config.android.serviceAccountKeyPath,
+          })
           const track = config.android.playTrack ?? 'internal'
           console.log(chalk.dim(`🚀 Submitting to Play Console (${track} track)...`))
-          const result = await playClient.submitToTrack({ packageName: config.android.packageName, aabPath, track })
-          console.log(result.success ? chalk.green(`✓ Submitted to Play Console: ${result.output}`) : chalk.red(`✗ ${result.error}`))
+          const result = await playClient.submitToTrack({
+            packageName: config.android.packageName,
+            aabPath,
+            track,
+          })
+          console.log(
+            result.success
+              ? chalk.green(`✓ Submitted to Play Console: ${result.output}`)
+              : chalk.red(`✗ ${result.error}`),
+          )
           if (!result.success) process.exit(1)
-
         } else {
           // ── iOS: Archive + Submit to TestFlight ──
-          if (!config.apple) { console.error(chalk.red('Apple TestFlight not configured. Run `dtc setup` first.')); process.exit(1) }
+          if (!config.apple) {
+            console.error(chalk.red('Apple TestFlight not configured. Run `dtc setup` first.'))
+            process.exit(1)
+          }
           if (!config.apple.ascKeyId || !config.apple.ascIssuerId || !config.apple.ascKeyPath) {
-            console.error(chalk.red('Apple TestFlight credentials incomplete. Run `dtc setup` first.'))
+            console.error(
+              chalk.red('Apple TestFlight credentials incomplete. Run `dtc setup` first.'),
+            )
             process.exit(1)
           }
           if (!config.apple.ascAppId) {
-            console.error(chalk.red('App Store Connect App ID not configured. Run `dtc setup` to add it.'))
+            console.error(
+              chalk.red('App Store Connect App ID not configured. Run `dtc setup` to add it.'),
+            )
             process.exit(1)
           }
 
           let ipaPath = ipaFlag
           if (!ipaPath) {
             if (!project) {
-              console.error(chalk.red('Usage: dtc provision submit --project <dir> [--scheme <name>]\n       dtc provision submit --ipa <path>'))
+              console.error(
+                chalk.red(
+                  'Usage: dtc provision submit --project <dir> [--scheme <name>]\n       dtc provision submit --ipa <path>',
+                ),
+              )
               process.exit(1)
             }
             const runner = createRunner(config.runner, { cwd: project })
@@ -592,14 +746,19 @@ async function main() {
               scheme: args.flags.scheme as string | undefined,
               teamId: config.apple.teamId,
               bundleId: config.apple.bundleId,
-              exportMethod: (args.flags.method as 'app-store' | 'ad-hoc' | 'development') ?? 'app-store',
+              exportMethod:
+                (args.flags.method as 'app-store' | 'ad-hoc' | 'development') ?? 'app-store',
             })
             if (!archiveResult.success) {
               console.error(chalk.red(`✗ Archive failed: ${archiveResult.error}`))
               process.exit(1)
             }
             ipaPath = archiveResult.ipaPath!
-            console.log(chalk.green(`✓ Archive succeeded: ${ipaPath} (${(archiveResult.duration / 1000).toFixed(1)}s)`))
+            console.log(
+              chalk.green(
+                `✓ Archive succeeded: ${ipaPath} (${(archiveResult.duration / 1000).toFixed(1)}s)`,
+              ),
+            )
           }
 
           const runner = createRunner(config.runner)
@@ -609,12 +768,24 @@ async function main() {
             keyPath: config.apple.ascKeyPath,
           })
           console.log(chalk.dim('🚀 Submitting to TestFlight...'))
-          const result = await asc.submitTestFlight({ appId: config.apple.ascAppId, ipaPath, group: config.apple.ascTestFlightGroup })
-          console.log(result.success ? chalk.green('✓ Submitted to TestFlight') : chalk.red(`✗ ${result.error}`))
+          const result = await asc.submitTestFlight({
+            appId: config.apple.ascAppId,
+            ipaPath,
+            group: config.apple.ascTestFlightGroup,
+          })
+          console.log(
+            result.success
+              ? chalk.green('✓ Submitted to TestFlight')
+              : chalk.red(`✗ ${result.error}`),
+          )
           if (!result.success) process.exit(1)
         }
       } else {
-        console.error(chalk.red('Usage: dtc provision submit --project <dir> [--scheme <name>]\n       dtc provision submit --ipa <path>\n       dtc provision submit --aab <path>'))
+        console.error(
+          chalk.red(
+            'Usage: dtc provision submit --project <dir> [--scheme <name>]\n       dtc provision submit --ipa <path>\n       dtc provision submit --aab <path>',
+          ),
+        )
         process.exit(1)
       }
       break
@@ -622,7 +793,14 @@ async function main() {
 
     case 'deliver': {
       const project = args.flags.project as string
-      if (!project) { console.error(chalk.red('Usage: dtc deliver --project <dir> [--remote-url <url>] [--branch <name>] [--auto-merge] [--skip-pr] [--skip-push]')); process.exit(1) }
+      if (!project) {
+        console.error(
+          chalk.red(
+            'Usage: dtc deliver --project <dir> [--remote-url <url>] [--branch <name>] [--auto-merge] [--skip-pr] [--skip-push]',
+          ),
+        )
+        process.exit(1)
+      }
       const { createRunner } = await import('@appifex/runner')
       const { loadConfig } = await import('@appifex/core')
       const { deliver } = await import('@appifex/deliver')
@@ -632,7 +810,8 @@ async function main() {
       const config = await loadConfig(join(homedir(), '.dtc'))
       const runner = createRunner(config.runner, { cwd: project })
       const deliverConfig = config.deliver ?? {}
-      const autoMerge = 'auto-merge' in args.flags ? args.flags['auto-merge'] === true : !!deliverConfig.autoMerge
+      const autoMerge =
+        'auto-merge' in args.flags ? args.flags['auto-merge'] === true : !!deliverConfig.autoMerge
       const result = await deliver(runner, {
         projectDir: project,
         branch: args.flags.branch as string | undefined,
@@ -640,7 +819,8 @@ async function main() {
         remoteUrl: (args.flags['remote-url'] as string) ?? deliverConfig.remoteUrl,
         repo: deliverConfig.repo,
         skipPr: 'skip-pr' in args.flags ? args.flags['skip-pr'] === true : !!deliverConfig.skipPr,
-        skipPush: 'skip-push' in args.flags ? args.flags['skip-push'] === true : !!deliverConfig.skipPush,
+        skipPush:
+          'skip-push' in args.flags ? args.flags['skip-push'] === true : !!deliverConfig.skipPush,
         git: { userName: deliverConfig.userName, userEmail: deliverConfig.userEmail },
         summary: args.flags.message as string | undefined,
         autoMerge,
@@ -657,11 +837,21 @@ async function main() {
         await saveConfig(join(homedir(), '.dtc'), config)
       }
       if (result.pr?.merged) {
-        console.log(chalk.green(`✓ Committed ${result.commitHash.slice(0, 7)} → PR #${result.pr.number} auto-merged (${result.pr.mergeMethod})`))
+        console.log(
+          chalk.green(
+            `✓ Committed ${result.commitHash.slice(0, 7)} → PR #${result.pr.number} auto-merged (${result.pr.mergeMethod})`,
+          ),
+        )
       } else if (result.pr) {
-        console.log(chalk.green(`✓ Committed ${result.commitHash.slice(0, 7)} → PR #${result.pr.number}: ${result.pr.url}`))
+        console.log(
+          chalk.green(
+            `✓ Committed ${result.commitHash.slice(0, 7)} → PR #${result.pr.number}: ${result.pr.url}`,
+          ),
+        )
       } else if (result.pushed) {
-        console.log(chalk.green(`✓ Committed ${result.commitHash.slice(0, 7)} → pushed to ${result.branch}`))
+        console.log(
+          chalk.green(`✓ Committed ${result.commitHash.slice(0, 7)} → pushed to ${result.branch}`),
+        )
       } else {
         console.log(chalk.green(`✓ Committed ${result.commitHash.slice(0, 7)} (local only)`))
       }
@@ -682,7 +872,7 @@ async function main() {
   }
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error(chalk.red(err.message))
   process.exit(1)
 })

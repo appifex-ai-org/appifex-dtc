@@ -13,14 +13,46 @@ export interface PrecheckResult {
 }
 
 const DEPRECATED_PATTERNS: Array<{ pattern: RegExp; message: string; fix: string }> = [
-  { pattern: /\bNavigationView\b/, message: 'NavigationView is deprecated in iOS 16+', fix: 'Replace with NavigationStack' },
-  { pattern: /\bObservableObject\b/, message: 'ObservableObject is deprecated — use @Observable (iOS 17+)', fix: 'Replace with @MainActor @Observable final class' },
-  { pattern: /\b@Published\b/, message: '@Published is deprecated with @Observable', fix: 'Remove @Published — @Observable tracks mutations automatically' },
-  { pattern: /\b@StateObject\b/, message: '@StateObject is deprecated with @Observable', fix: 'Replace with @State' },
-  { pattern: /\b@ObservedObject\b/, message: '@ObservedObject is deprecated with @Observable', fix: 'Pass directly or use @Bindable' },
-  { pattern: /\b@EnvironmentObject\b/, message: '@EnvironmentObject is deprecated with @Observable', fix: 'Replace with @Environment(MyType.self)' },
-  { pattern: /\.foregroundColor\(/, message: 'foregroundColor() is deprecated', fix: 'Replace with .foregroundStyle()' },
-  { pattern: /\.cornerRadius\(/, message: 'cornerRadius() is deprecated', fix: 'Replace with .clipShape(.rect(cornerRadius: N))' },
+  {
+    pattern: /\bNavigationView\b/,
+    message: 'NavigationView is deprecated in iOS 16+',
+    fix: 'Replace with NavigationStack',
+  },
+  {
+    pattern: /\bObservableObject\b/,
+    message: 'ObservableObject is deprecated — use @Observable (iOS 17+)',
+    fix: 'Replace with @MainActor @Observable final class',
+  },
+  {
+    pattern: /\b@Published\b/,
+    message: '@Published is deprecated with @Observable',
+    fix: 'Remove @Published — @Observable tracks mutations automatically',
+  },
+  {
+    pattern: /\b@StateObject\b/,
+    message: '@StateObject is deprecated with @Observable',
+    fix: 'Replace with @State',
+  },
+  {
+    pattern: /\b@ObservedObject\b/,
+    message: '@ObservedObject is deprecated with @Observable',
+    fix: 'Pass directly or use @Bindable',
+  },
+  {
+    pattern: /\b@EnvironmentObject\b/,
+    message: '@EnvironmentObject is deprecated with @Observable',
+    fix: 'Replace with @Environment(MyType.self)',
+  },
+  {
+    pattern: /\.foregroundColor\(/,
+    message: 'foregroundColor() is deprecated',
+    fix: 'Replace with .foregroundStyle()',
+  },
+  {
+    pattern: /\.cornerRadius\(/,
+    message: 'cornerRadius() is deprecated',
+    fix: 'Replace with .clipShape(.rect(cornerRadius: N))',
+  },
 ]
 
 /**
@@ -32,18 +64,31 @@ export async function swiftPrecheck(runner: Runner, projectDir: string): Promise
 
   const swiftFiles = await runner.glob(`${projectDir}/Sources/**/*.swift`)
   if (swiftFiles.length === 0) {
-    return { issues: [{ file: 'Sources/', line: 0, message: 'No Swift files found in Sources/', fix: 'Codegen may have failed' }], passed: false }
+    return {
+      issues: [
+        {
+          file: 'Sources/',
+          line: 0,
+          message: 'No Swift files found in Sources/',
+          fix: 'Codegen may have failed',
+        },
+      ],
+      passed: false,
+    }
   }
 
   // Track all type declarations to detect duplicates
   const typeDeclarations = new Map<string, { file: string; line: number }[]>()
-  const typeRegex = /^\s*(?:public\s+|internal\s+|private\s+|fileprivate\s+)?(?:final\s+)?(?:struct|class|enum|protocol|actor)\s+(\w+)/
+  const typeRegex =
+    /^\s*(?:public\s+|internal\s+|private\s+|fileprivate\s+)?(?:final\s+)?(?:struct|class|enum|protocol|actor)\s+(\w+)/
 
   for (const filePath of swiftFiles) {
     let content: string
     try {
       content = await runner.readFile(filePath)
-    } catch { continue }
+    } catch {
+      continue
+    }
 
     const shortPath = filePath.replace(`${projectDir}/`, '')
     const lines = content.split('\n')
@@ -78,7 +123,10 @@ export async function swiftPrecheck(runner: Runner, projectDir: string): Promise
         issues.push({
           file: loc.file,
           line: loc.line,
-          message: `Duplicate declaration of '${typeName}' (also in ${locations.filter(l => l !== loc).map(l => l.file).join(', ')})`,
+          message: `Duplicate declaration of '${typeName}' (also in ${locations
+            .filter((l) => l !== loc)
+            .map((l) => l.file)
+            .join(', ')})`,
           fix: `Remove one of the duplicate '${typeName}' declarations — keep only one definition`,
         })
       }
@@ -91,7 +139,11 @@ export async function swiftPrecheck(runner: Runner, projectDir: string): Promise
 /**
  * Auto-fix deprecated APIs in place. Returns the number of files modified.
  */
-export async function swiftAutofix(runner: Runner, projectDir: string, issues: PrecheckIssue[]): Promise<number> {
+export async function swiftAutofix(
+  runner: Runner,
+  projectDir: string,
+  issues: PrecheckIssue[],
+): Promise<number> {
   const fileIssues = new Map<string, PrecheckIssue[]>()
   for (const issue of issues) {
     if (!fileIssues.has(issue.file)) fileIssues.set(issue.file, [])
@@ -105,7 +157,9 @@ export async function swiftAutofix(runner: Runner, projectDir: string, issues: P
     let content: string
     try {
       content = await runner.readFile(fullPath)
-    } catch { continue }
+    } catch {
+      continue
+    }
 
     let modified = content
 

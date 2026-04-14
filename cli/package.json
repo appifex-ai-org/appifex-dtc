@@ -4,12 +4,24 @@
   "description": "CLI for the Design-to-Code toolkit",
   "license": "MIT",
   "type": "module",
-  "bin": { "dtc": "./dist/entry.js" },
-  "exports": { ".": { "import": "./dist/pipeline.js", "types": "./dist/pipeline.d.ts" } },
+  "bin": {
+    "dtc": "./dist/entry.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/pipeline.js",
+      "types": "./dist/pipeline.d.ts"
+    }
+  },
   "main": "./dist/pipeline.js",
   "types": "./dist/pipeline.d.ts",
-  "files": ["dist"],
-  "scripts": { "build": "tsc && chmod +x dist/entry.js", "clean": "rm -rf dist" },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc && chmod +x dist/entry.js",
+    "clean": "rm -rf dist"
+  },
   "dependencies": {
     "@appifex/agent": "workspace:*",
     "@appifex/core": "workspace:*",

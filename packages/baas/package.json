@@ -3,11 +3,22 @@
   "version": "0.1.0",
   "license": "MIT",
   "type": "module",
-  "exports": { ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" } },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
-  "scripts": { "build": "tsc && cp -r src/templates dist/templates", "clean": "rm -rf dist", "test": "vitest run" },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc && cp -r src/templates dist/templates",
+    "clean": "rm -rf dist",
+    "test": "vitest run"
+  },
   "dependencies": {
     "@appifex/core": "workspace:*",
     "@appifex/mock": "workspace:*",

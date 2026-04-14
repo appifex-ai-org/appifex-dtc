@@ -23,8 +23,14 @@ import type { PreBuildSummary } from '../src/pipeline.js'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const pipelineSrc = readFileSync(join(__dirname, '../src/pipeline.ts'), 'utf-8')
 const formatSrc = readFileSync(join(__dirname, '../src/views/format.ts'), 'utf-8')
-const codegenTypesSrc = readFileSync(join(__dirname, '../../packages/codegen/src/types.ts'), 'utf-8')
-const defaultGenerateSrc = readFileSync(join(__dirname, '../../packages/codegen/src/default-generate.ts'), 'utf-8')
+const codegenTypesSrc = readFileSync(
+  join(__dirname, '../../packages/codegen/src/types.ts'),
+  'utf-8',
+)
+const defaultGenerateSrc = readFileSync(
+  join(__dirname, '../../packages/codegen/src/default-generate.ts'),
+  'utf-8',
+)
 
 function makeMinimalSummary(overrides: Partial<PreBuildSummary> = {}): PreBuildSummary {
   return {
@@ -90,7 +96,7 @@ describe('baas_schema phase block in pipeline.ts', () => {
 
 describe('format.ts baas_schema support', () => {
   it('PHASE_LABELS contains baas_schema', () => {
-    expect(formatSrc).toContain("baas_schema")
+    expect(formatSrc).toContain('baas_schema')
     expect(formatSrc).toContain("'Schema'")
   })
 

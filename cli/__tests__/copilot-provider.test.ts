@@ -16,7 +16,13 @@ function mockRunner(): Runner {
     writeFile: vi.fn().mockResolvedValue(undefined),
     exists: vi.fn().mockResolvedValue(true),
     glob: vi.fn().mockResolvedValue(['/app/src/Home.tsx']),
-    capabilities: { hasMaestro: false, hasXcode: false, hasNode: true, hasSemgrep: false, platform: 'darwin' },
+    capabilities: {
+      hasMaestro: false,
+      hasXcode: false,
+      hasNode: true,
+      hasSemgrep: false,
+      platform: 'darwin',
+    },
   }
 }
 
@@ -41,7 +47,16 @@ function mockCopilotClient(session: ReturnType<typeof mockCopilotSession>) {
 const sampleInput: CodegenInput = {
   spec: {
     platform: 'swiftui',
-    screens: [{ id: 's1', name: 'Home', componentName: 'HomeScreen', description: 'Main', components: [], testIds: {} }],
+    screens: [
+      {
+        id: 's1',
+        name: 'Home',
+        componentName: 'HomeScreen',
+        description: 'Main',
+        components: [],
+        testIds: {},
+      },
+    ],
     designTokens: { colors: {}, typography: {}, spacing: {}, borderRadius: {} },
     imports: ['SwiftUI'],
   },
@@ -51,9 +66,20 @@ const sampleInput: CodegenInput = {
 }
 
 const failingValidation: ValidationResult = {
-  ui: { total: 2, passed: 1, failed: 1, results: [
-    { flowName: 'home', passed: false, duration: 100, error: 'button not visible', assertions: [] },
-  ]},
+  ui: {
+    total: 2,
+    passed: 1,
+    failed: 1,
+    results: [
+      {
+        flowName: 'home',
+        passed: false,
+        duration: 100,
+        error: 'button not visible',
+        assertions: [],
+      },
+    ],
+  },
   unit: { total: 1, passed: 1, failed: 0, failures: [] },
   allPassed: false,
 }

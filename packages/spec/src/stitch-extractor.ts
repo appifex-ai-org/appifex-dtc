@@ -27,7 +27,11 @@ export function parseDesignMd(markdown: string): DesignTokens {
       parseTypography(body, typography)
     } else if (lower.includes('spacing')) {
       parseNumericEntries(body, spacing)
-    } else if (lower.includes('component') || lower.includes('border') || lower.includes('radius')) {
+    } else if (
+      lower.includes('component') ||
+      lower.includes('border') ||
+      lower.includes('radius')
+    ) {
       parseNumericEntries(body, borderRadius)
     }
   }
@@ -128,7 +132,7 @@ export async function extractSpecFromStitch(
   let enhancedPrompt = opts.prompt
   if (opts.htmlContents.length > 0) {
     const htmlSection = opts.htmlContents
-      .map(h => `### ${h.name}\n\`\`\`html\n${h.html}\n\`\`\``)
+      .map((h) => `### ${h.name}\n\`\`\`html\n${h.html}\n\`\`\``)
       .join('\n\n')
     enhancedPrompt = `${opts.prompt}\n\n## HTML Source from Stitch Export\n${htmlSection}`
   }

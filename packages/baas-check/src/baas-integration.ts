@@ -1,6 +1,12 @@
 import { relative, extname, basename } from 'node:path'
 import { createHash } from 'node:crypto'
-import type { Runner, BaasContext, Platform, BaasIntegrationViolation, BaasIntegrationResult } from '@appifex/core'
+import type {
+  Runner,
+  BaasContext,
+  Platform,
+  BaasIntegrationViolation,
+  BaasIntegrationResult,
+} from '@appifex/core'
 import { stripComments } from './comment-strip.js'
 import * as swiftFirebase from './patterns/swift-firebase.js'
 import * as kotlinFirebase from './patterns/kotlin-firebase.js'
@@ -73,9 +79,15 @@ export async function checkBaasIntegration(
     const patterns = patternSetFromPath(file)
 
     // DET-01: Missing import check (uses raw content — imports are at top, not in comments)
-    const hasRequiredImport = patterns.REQUIRED_IMPORTS.some(p => p.test(rawContent))
+    const hasRequiredImport = patterns.REQUIRED_IMPORTS.some((p) => p.test(rawContent))
     if (!hasRequiredImport) {
-      const importList = patterns.REQUIRED_IMPORTS.map(p => p.source.replace(/\\s\+/g, ' ').replace(/\\/g, '').replace(/\\\./g, '.').replace(/\\\b/g, '')).join(' or ')
+      const importList = patterns.REQUIRED_IMPORTS.map((p) =>
+        p.source
+          .replace(/\\s\+/g, ' ')
+          .replace(/\\/g, '')
+          .replace(/\\\./g, '.')
+          .replace(/\\\b/g, ''),
+      ).join(' or ')
       violations.push({
         file: relPath,
         platform,
@@ -97,9 +109,10 @@ export async function checkBaasIntegration(
 
     if (facadeMatch !== null) {
       // Facade signal found — check if real auth call exists in stripped content
-      const hasRealAuth = patterns.REAL_AUTH_CALLS.some(p => p.test(strippedContent))
+      const hasRealAuth = patterns.REAL_AUTH_CALLS.some((p) => p.test(strippedContent))
       if (!hasRealAuth) {
-        const realCallExamples = platform === 'swiftui' ? 'Auth.auth()' : 'FirebaseAuth.getInstance()'
+        const realCallExamples =
+          platform === 'swiftui' ? 'Auth.auth()' : 'FirebaseAuth.getInstance()'
         violations.push({
           file: relPath,
           platform,
@@ -111,9 +124,10 @@ export async function checkBaasIntegration(
       }
     } else if (hasRequiredImport) {
       // No facade signal AND has required import — check for missing SDK call
-      const hasRealAuth = patterns.REAL_AUTH_CALLS.some(p => p.test(strippedContent))
+      const hasRealAuth = patterns.REAL_AUTH_CALLS.some((p) => p.test(strippedContent))
       if (!hasRealAuth) {
-        const realCallExamples = platform === 'swiftui' ? 'Auth.auth()' : 'FirebaseAuth.getInstance()'
+        const realCallExamples =
+          platform === 'swiftui' ? 'Auth.auth()' : 'FirebaseAuth.getInstance()'
         violations.push({
           file: relPath,
           platform,
@@ -145,7 +159,8 @@ export async function checkBaasIntegration(
           platform,
           type: 'template_overwritten',
           expected: 'File content should match pre-generated template hash',
-          remediation: 'BaaS auth template was overwritten during code generation — restore from template',
+          remediation:
+            'BaaS auth template was overwritten during code generation — restore from template',
         })
       }
     }

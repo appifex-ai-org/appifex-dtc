@@ -21,9 +21,15 @@ function mockRunner(files: Record<string, string> = {}): Runner {
       else if (pattern.endsWith('.kt')) ext = '.kt'
       else if (pattern.endsWith('.tsx')) ext = '.tsx'
       else ext = ''
-      return Promise.resolve(Object.keys(files).filter(f => f.endsWith(ext)))
+      return Promise.resolve(Object.keys(files).filter((f) => f.endsWith(ext)))
     }),
-    capabilities: { hasMaestro: false, hasXcode: false, hasNode: true, hasSemgrep: false, platform: 'darwin' },
+    capabilities: {
+      hasMaestro: false,
+      hasXcode: false,
+      hasNode: true,
+      hasSemgrep: false,
+      platform: 'darwin',
+    },
   } as Runner
 }
 
@@ -228,9 +234,9 @@ describe('checkMockLayer', () => {
         // MockAuthManager.swift is absent
       })
       const result = await checkMockLayer(runner, '/project', {})
-      const violations = result.violations.filter(v => v.type === 'MISSING_MOCK')
+      const violations = result.violations.filter((v) => v.type === 'MISSING_MOCK')
       expect(violations.length).toBeGreaterThan(0)
-      const authViolation = violations.find(v => v.file.includes('MockAuthManager'))
+      const authViolation = violations.find((v) => v.file.includes('MockAuthManager'))
       expect(authViolation).toBeDefined()
       expect(authViolation!.platform).toBe('swiftui')
       expect(authViolation!.entity).toBeUndefined()
@@ -243,9 +249,9 @@ describe('checkMockLayer', () => {
         // MockUserRepository.kt is absent
       })
       const result = await checkMockLayer(runner, '/project', {})
-      const violations = result.violations.filter(v => v.type === 'MISSING_MOCK')
+      const violations = result.violations.filter((v) => v.type === 'MISSING_MOCK')
       expect(violations.length).toBeGreaterThan(0)
-      const repoViolation = violations.find(v => v.entity === 'User')
+      const repoViolation = violations.find((v) => v.entity === 'User')
       expect(repoViolation).toBeDefined()
       expect(repoViolation!.platform).toBe('kotlin-compose')
     })
@@ -256,8 +262,8 @@ describe('checkMockLayer', () => {
         // MockDataService.tsx absent — mandatory for React (D-02)
       })
       const result = await checkMockLayer(runner, '/project', {})
-      const violations = result.violations.filter(v => v.type === 'MISSING_MOCK')
-      const dsViolation = violations.find(v => v.file.includes('MockDataService'))
+      const violations = result.violations.filter((v) => v.type === 'MISSING_MOCK')
+      const dsViolation = violations.find((v) => v.file.includes('MockDataService'))
       expect(dsViolation).toBeDefined()
       expect(dsViolation!.platform).toBe('react')
     })
@@ -268,7 +274,7 @@ describe('checkMockLayer', () => {
         // No MockDataService.kt — should NOT be flagged
       })
       const result = await checkMockLayer(runner, '/project', {})
-      const dsViolation = result.violations.find(v => v.file.includes('MockDataService'))
+      const dsViolation = result.violations.find((v) => v.file.includes('MockDataService'))
       expect(dsViolation).toBeUndefined()
     })
   })
@@ -290,10 +296,10 @@ final class MockAuthManager: ObservableObject, AuthManaging {
         '/project/Sources/Auth/MockAuthManager.swift': swiftAuthManagerMissingSignIn,
       })
       const result = await checkMockLayer(runner, '/project', {})
-      const missing = result.violations.filter(v => v.type === 'MISSING_METHOD')
+      const missing = result.violations.filter((v) => v.type === 'MISSING_METHOD')
       expect(missing.length).toBeGreaterThanOrEqual(5) // signIn + 5 others from contract
-      expect(missing.map(v => v.method)).toContain('signIn')
-      expect(missing.map(v => v.method)).toContain('sendPasswordReset')
+      expect(missing.map((v) => v.method)).toContain('signIn')
+      expect(missing.map((v) => v.method)).toContain('sendPasswordReset')
     })
 
     it('Kotlin: MockAuthManager.kt missing signIn returns MISSING_METHOD', async () => {
@@ -312,10 +318,10 @@ object MockAuthManager : AuthManagerInterface {
         '/project/app/auth/MockAuthManager.kt': kotlinMissingSignIn,
       })
       const result = await checkMockLayer(runner, '/project', {})
-      const missing = result.violations.filter(v => v.type === 'MISSING_METHOD')
+      const missing = result.violations.filter((v) => v.type === 'MISSING_METHOD')
       expect(missing.length).toBeGreaterThanOrEqual(5) // signIn + 5 others from contract
-      expect(missing.map(v => v.method)).toContain('signIn')
-      expect(missing.map(v => v.method)).toContain('sendPasswordReset')
+      expect(missing.map((v) => v.method)).toContain('signIn')
+      expect(missing.map((v) => v.method)).toContain('sendPasswordReset')
     })
   })
 
@@ -336,9 +342,9 @@ object MockAuthManager : AuthManagerInterface {
         '/project/app/auth/MockAuthManager.kt': kotlinWrongParams,
       })
       const result = await checkMockLayer(runner, '/project', {})
-      const violations = result.violations.filter(v => v.type === 'SIGNATURE_MISMATCH')
+      const violations = result.violations.filter((v) => v.type === 'SIGNATURE_MISMATCH')
       expect(violations.length).toBeGreaterThan(0)
-      const mismatch = violations.find(v => v.method === 'signIn')
+      const mismatch = violations.find((v) => v.method === 'signIn')
       expect(mismatch).toBeDefined()
       expect(mismatch!.platform).toBe('kotlin-compose')
       expect(mismatch!.expected).toBeDefined()
@@ -363,7 +369,9 @@ class ProductRepository: ProductRepositoryProtocol {
         // MockProductRepository.swift is missing
       })
       const result = await checkMockLayer(runner, '/project', {})
-      const productMissing = result.violations.find(v => v.entity === 'Product' && v.type === 'MISSING_MOCK')
+      const productMissing = result.violations.find(
+        (v) => v.entity === 'Product' && v.type === 'MISSING_MOCK',
+      )
       expect(productMissing).toBeDefined()
       expect(productMissing!.platform).toBe('swiftui')
     })
@@ -418,7 +426,7 @@ class SomeClass {
 `
     const methods = extractSwiftProtocolMethods(source, 'AuthManaging')
     expect(methods).toHaveLength(2) // signIn and signOut
-    const signIn = methods.find(m => m.name === 'signIn')
+    const signIn = methods.find((m) => m.name === 'signIn')
     expect(signIn).toBeDefined()
     expect(signIn!.params).toEqual(['email: String', 'password: String'])
   })
@@ -459,7 +467,7 @@ class MockImpl : AuthManagerInterface {
 `
     const methods = extractKotlinInterfaceMethods(source, 'AuthManagerInterface')
     expect(methods.length).toBeGreaterThan(0)
-    const signIn = methods.find(m => m.name === 'signIn')
+    const signIn = methods.find((m) => m.name === 'signIn')
     expect(signIn).toBeDefined()
     expect(signIn!.params).toEqual(['email: String', 'password: String'])
   })
@@ -485,7 +493,7 @@ export interface AuthContextValue {
 }
 `
     const methods = extractTsInterfaceMethods(source, 'AuthContextValue')
-    const signIn = methods.find(m => m.name === 'signIn')
+    const signIn = methods.find((m) => m.name === 'signIn')
     expect(signIn).toBeDefined()
     expect(signIn!.params).toEqual(['email: string', 'password: string'])
   })
@@ -519,12 +527,12 @@ final class MockAuthManager: ObservableObject, AuthManaging {
       '/project/Sources/Auth/MockAuthManager.swift': swiftMinimal,
     })
     const result = await checkMockLayer(runner, '/project', {})
-    const missing = result.violations.filter(v => v.type === 'MISSING_METHOD')
+    const missing = result.violations.filter((v) => v.type === 'MISSING_METHOD')
     expect(missing.length).toBe(5) // signUp, sendPasswordReset, confirmPasswordReset, fetchEntities, simulateError
-    expect(missing.map(v => v.method)).toContain('sendPasswordReset')
-    expect(missing.map(v => v.method)).toContain('fetchEntities')
-    expect(missing.map(v => v.method)).not.toContain('signIn') // signIn IS present
-    expect(missing.map(v => v.method)).not.toContain('signOut') // signOut IS present
+    expect(missing.map((v) => v.method)).toContain('sendPasswordReset')
+    expect(missing.map((v) => v.method)).toContain('fetchEntities')
+    expect(missing.map((v) => v.method)).not.toContain('signIn') // signIn IS present
+    expect(missing.map((v) => v.method)).not.toContain('signOut') // signOut IS present
   })
 
   it('Kotlin: missing contract methods produce MISSING_METHOD for each', async () => {
@@ -542,10 +550,10 @@ object MockAuthManager : AuthManagerInterface {
       '/project/app/auth/MockAuthManager.kt': ktMinimal,
     })
     const result = await checkMockLayer(runner, '/project', {})
-    const missing = result.violations.filter(v => v.type === 'MISSING_METHOD')
+    const missing = result.violations.filter((v) => v.type === 'MISSING_METHOD')
     expect(missing.length).toBe(5)
-    expect(missing.map(v => v.method)).toContain('confirmPasswordReset')
-    expect(missing.map(v => v.method)).toContain('simulateError')
+    expect(missing.map((v) => v.method)).toContain('confirmPasswordReset')
+    expect(missing.map((v) => v.method)).toContain('simulateError')
   })
 
   it('React: missing contract methods produce MISSING_METHOD for each', async () => {
@@ -562,12 +570,13 @@ export function MockAuthProvider({ children }: { children: React.ReactNode }) {
 `
     const runner = mockRunner({
       '/project/src/MockAuthManager.tsx': reactMinimal,
-      '/project/src/MockDataService.tsx': 'export function MockDataServiceProvider() { return null }',
+      '/project/src/MockDataService.tsx':
+        'export function MockDataServiceProvider() { return null }',
     })
     const result = await checkMockLayer(runner, '/project', {})
-    const missing = result.violations.filter(v => v.type === 'MISSING_METHOD')
+    const missing = result.violations.filter((v) => v.type === 'MISSING_METHOD')
     expect(missing.length).toBe(5)
-    expect(missing.map(v => v.method)).toContain('signUp')
-    expect(missing.map(v => v.method)).toContain('fetchEntities')
+    expect(missing.map((v) => v.method)).toContain('signUp')
+    expect(missing.map((v) => v.method)).toContain('fetchEntities')
   })
 })

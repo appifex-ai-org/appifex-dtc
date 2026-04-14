@@ -20,11 +20,16 @@ export class ClaudeCodeAgent implements AgentAdapter {
     const args = [
       '--print',
       '--verbose',
-      '--input-format', 'stream-json',
-      '--output-format', 'stream-json',
-      '--model', opts.model ?? 'claude-sonnet-4-6',
-      '--max-budget-usd', String(opts.maxBudgetUsd ?? 10),
-      '--allowedTools', 'Edit,Write,Read,Bash,Glob,Grep,mcp__pencil__get_screenshot,mcp__pencil__batch_get,mcp__pencil__export_nodes,mcp__pencil__get_variables',
+      '--input-format',
+      'stream-json',
+      '--output-format',
+      'stream-json',
+      '--model',
+      opts.model ?? 'claude-sonnet-4-6',
+      '--max-budget-usd',
+      String(opts.maxBudgetUsd ?? 10),
+      '--allowedTools',
+      'Edit,Write,Read,Bash,Glob,Grep,mcp__pencil__get_screenshot,mcp__pencil__batch_get,mcp__pencil__export_nodes,mcp__pencil__get_variables',
     ]
 
     // Resume a previous session instead of starting fresh
@@ -51,9 +56,12 @@ export class ClaudeCodeAgent implements AgentAdapter {
         if (relPath.startsWith('..')) throw new Error('Design image path escapes working directory')
         const imageData = readFileSync(imagePath).toString('base64')
         const ext = opts.designImagePath.split('.').pop()?.toLowerCase()
-        const mediaType = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
-          : ext === 'webp' ? 'image/webp'
-          : 'image/png'
+        const mediaType =
+          ext === 'jpg' || ext === 'jpeg'
+            ? 'image/jpeg'
+            : ext === 'webp'
+              ? 'image/webp'
+              : 'image/png'
 
         content.push({
           type: 'image',
@@ -63,7 +71,9 @@ export class ClaudeCodeAgent implements AgentAdapter {
             data: imageData,
           },
         })
-      } catch { /* image read failed, continue without it */ }
+      } catch {
+        /* image read failed, continue without it */
+      }
     }
 
     // For resume, send a continuation prompt

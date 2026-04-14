@@ -15,11 +15,23 @@ function makeContext(overrides: Partial<RunContext> = {}): RunContext {
     timestamp: 1712100000000,
     phases: {
       design: { status: 'completed', summary: 'Design created (2 iterations)' },
-      spec: { status: 'completed', summary: '3 screens, 12 components', detail: { screenCount: 3, componentCount: 12 } },
-      test_gen: { status: 'completed', summary: '4 UI flows, 8 unit tests', artifacts: { flowDir: '.maestro', testDir: '__tests__' } },
+      spec: {
+        status: 'completed',
+        summary: '3 screens, 12 components',
+        detail: { screenCount: 3, componentCount: 12 },
+      },
+      test_gen: {
+        status: 'completed',
+        summary: '4 UI flows, 8 unit tests',
+        artifacts: { flowDir: '.maestro', testDir: '__tests__' },
+      },
       codegen: { status: 'completed', summary: 'Agent: claude — 15 files generated' },
       build: { status: 'completed', summary: 'swiftui build succeeded' },
-      validate: { status: 'completed', summary: 'UI 4/4  Unit 8/8', detail: { ui: { passed: 4, total: 4 }, unit: { passed: 8, total: 8 }, allPassed: true } },
+      validate: {
+        status: 'completed',
+        summary: 'UI 4/4  Unit 8/8',
+        detail: { ui: { passed: 4, total: 4 }, unit: { passed: 8, total: 8 }, allPassed: true },
+      },
     },
     filesGenerated: ['Sources/App.swift', 'Sources/Views/HomeView.swift'],
     agentSessionId: 'session-xyz',
@@ -113,7 +125,10 @@ describe('RunContext', () => {
     const { writeFile, mkdir } = await import('node:fs/promises')
     const dtcDir = join(dir, '.dtc')
     await mkdir(dtcDir, { recursive: true })
-    await writeFile(join(dtcDir, 'run-context.json'), JSON.stringify({ runId: 123, platform: null, phases: 'wrong' }))
+    await writeFile(
+      join(dtcDir, 'run-context.json'),
+      JSON.stringify({ runId: 123, platform: null, phases: 'wrong' }),
+    )
 
     const loaded = await loadRunContext(dir)
     expect(loaded).toBeNull()

@@ -5,4 +5,13 @@ export type { PrecheckIssue, PrecheckResult } from './swift-precheck.js'
 export { buildKotlin, bundleKotlin, patchBuildGradle } from './kotlin.js'
 export type { KotlinBuildOpts } from './kotlin.js'
 export { findBestEmulator, findOrBootEmulator } from './emulator.js'
-export type { BuildOpts, SwiftBuildOpts, BuildResult, BuildError, ArchiveOpts, ArchiveResult, BundleOpts, BundleResult } from './types.js'
+export type {
+  BuildOpts,
+  SwiftBuildOpts,
+  BuildResult,
+  BuildError,
+  ArchiveOpts,
+  ArchiveResult,
+  BundleOpts,
+  BundleResult,
+} from './types.js'

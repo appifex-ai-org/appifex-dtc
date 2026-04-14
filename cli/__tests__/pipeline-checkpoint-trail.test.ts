@@ -13,24 +13,40 @@
 import { describe, it, expect } from 'vitest'
 import { Checkpoint } from '@appifex/core'
 import { join } from 'node:path'
-import { runFullAddFeaturePipeline, runAddFeaturePipelineWithFailure } from './helpers/phase-13-harness.js'
+import {
+  runFullAddFeaturePipeline,
+  runAddFeaturePipelineWithFailure,
+} from './helpers/phase-13-harness.js'
 
 describe('Phase 13: add-feature checkpoint trail', () => {
   it('writes a row for every PHASE_ORDER member after a full add-feature run', async () => {
     const { runId, dtcDir } = await runFullAddFeaturePipeline()
     const ckpt = new Checkpoint(join(dtcDir, 'checkpoint.db'))
     const rows = ckpt.completedPhases(runId)
-    expect(rows).toEqual(expect.arrayContaining([
-      'analysis','design','spec','design_delta','test_gen','codegen',
-      'test_regen','build','validate','security','fix','deliver','report',
-    ]))
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        'analysis',
+        'design',
+        'spec',
+        'design_delta',
+        'test_gen',
+        'codegen',
+        'test_regen',
+        'build',
+        'validate',
+        'security',
+        'fix',
+        'deliver',
+        'report',
+      ]),
+    )
     ckpt.close()
   })
 
   it('writes {failed} row at failing phase and preserves completed priors', async () => {
     const { runId, dtcDir } = await runAddFeaturePipelineWithFailure('codegen')
     const ckpt = new Checkpoint(join(dtcDir, 'checkpoint.db'))
-    expect(ckpt.lastCompletedPhase(runId)).toBe('test_gen')  // phase before codegen
+    expect(ckpt.lastCompletedPhase(runId)).toBe('test_gen') // phase before codegen
     const codegenRow = ckpt.getPhase(runId, 'codegen') as any
     expect(codegenRow.status).toBe('failed')
     expect(typeof codegenRow.error).toBe('string')
@@ -91,7 +107,7 @@ describe('Phase 13: add-feature checkpoint trail', () => {
     expect(row.snapshotPath).toMatch(/snapshots\/.+-preAgent\.json$/)
     expect(row.snapshotSha256).toMatch(/^[a-f0-9]{64}$/)
     expect(typeof row.fileCount).toBe('number')
-    expect(row.files).toBeUndefined()  // content MUST NOT be duplicated
+    expect(row.files).toBeUndefined() // content MUST NOT be duplicated
     ckpt.close()
   })
 })

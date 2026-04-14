@@ -20,7 +20,15 @@ describe('parseArgs', () => {
   })
 
   it('parses "spec translate" with --platform', () => {
-    const result = parseArgs(['spec', 'translate', 'spec.json', '--platform', 'swiftui', '--out', 'spec.swift.json'])
+    const result = parseArgs([
+      'spec',
+      'translate',
+      'spec.json',
+      '--platform',
+      'swiftui',
+      '--out',
+      'spec.swift.json',
+    ])
 
     expect(result.command).toBe('spec')
     expect(result.subcommand).toBe('translate')
@@ -36,7 +44,15 @@ describe('parseArgs', () => {
   })
 
   it('parses "test-gen unit" command', () => {
-    const result = parseArgs(['test-gen', 'unit', 'requirements.md', '--platform', 'swiftui', '--out', '__tests__/'])
+    const result = parseArgs([
+      'test-gen',
+      'unit',
+      'requirements.md',
+      '--platform',
+      'swiftui',
+      '--out',
+      '__tests__/',
+    ])
 
     expect(result.command).toBe('test-gen')
     expect(result.subcommand).toBe('unit')
@@ -59,7 +75,17 @@ describe('parseArgs', () => {
   })
 
   it('parses "fix" with multiple flags', () => {
-    const result = parseArgs(['fix', '--spec', 'spec.json', '--flows', '.maestro/', '--unit-tests', '__tests__/', '--project', './app/'])
+    const result = parseArgs([
+      'fix',
+      '--spec',
+      'spec.json',
+      '--flows',
+      '.maestro/',
+      '--unit-tests',
+      '__tests__/',
+      '--project',
+      './app/',
+    ])
 
     expect(result.command).toBe('fix')
     expect(result.flags.spec).toBe('spec.json')
@@ -87,7 +113,15 @@ describe('parseArgs', () => {
   })
 
   it('parses "run" with --mode add-feature', () => {
-    const result = parseArgs(['run', '--prompt', 'Add dark mode', '--out', './app', '--mode', 'add-feature'])
+    const result = parseArgs([
+      'run',
+      '--prompt',
+      'Add dark mode',
+      '--out',
+      './app',
+      '--mode',
+      'add-feature',
+    ])
 
     expect(result.command).toBe('run')
     expect(result.flags.prompt).toBe('Add dark mode')
@@ -105,7 +139,14 @@ describe('parseArgs', () => {
 
   describe('--add-feature flag', () => {
     it('parses --add-feature as a boolean flag', () => {
-      const result = parseArgs(['run', '--prompt', 'Add settings', '--out', './app', '--add-feature'])
+      const result = parseArgs([
+        'run',
+        '--prompt',
+        'Add settings',
+        '--out',
+        './app',
+        '--add-feature',
+      ])
 
       expect(result.command).toBe('run')
       expect(result.flags['add-feature']).toBe(true)
@@ -113,14 +154,30 @@ describe('parseArgs', () => {
     })
 
     it('--add-feature flag does not consume next argument as value', () => {
-      const result = parseArgs(['run', '--add-feature', '--prompt', 'Add settings', '--out', './app'])
+      const result = parseArgs([
+        'run',
+        '--add-feature',
+        '--prompt',
+        'Add settings',
+        '--out',
+        './app',
+      ])
 
       expect(result.flags['add-feature']).toBe(true)
       expect(result.flags.prompt).toBe('Add settings')
     })
 
     it('--add-feature takes precedence over --mode when both provided', () => {
-      const result = parseArgs(['run', '--prompt', 'Add settings', '--out', './app', '--add-feature', '--mode', 'fresh'])
+      const result = parseArgs([
+        'run',
+        '--prompt',
+        'Add settings',
+        '--out',
+        './app',
+        '--add-feature',
+        '--mode',
+        'fresh',
+      ])
 
       // Both flags are parsed — entry.ts will give --add-feature precedence
       expect(result.flags['add-feature']).toBe(true)
@@ -131,9 +188,20 @@ describe('parseArgs', () => {
 
 describe('COMMANDS', () => {
   it('lists all available commands', () => {
-    expect(COMMANDS).toEqual(expect.arrayContaining([
-      'design', 'spec', 'test-gen', 'codegen', 'build',
-      'validate', 'fix', 'provision', 'report', 'setup', 'run',
-    ]))
+    expect(COMMANDS).toEqual(
+      expect.arrayContaining([
+        'design',
+        'spec',
+        'test-gen',
+        'codegen',
+        'build',
+        'validate',
+        'fix',
+        'provision',
+        'report',
+        'setup',
+        'run',
+      ]),
+    )
   })
 })
