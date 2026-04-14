@@ -1,0 +1,52 @@
+package repositories
+
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
+
+interface <%= it.entity.name %>Repository {
+    suspend fun create(item: <%= it.entity.name %>): <%= it.entity.name %>
+    suspend fun getById(id: String): <%= it.entity.name %>?
+    suspend fun list(): List<<%= it.entity.name %>>
+    suspend fun update(item: <%= it.entity.name %>): <%= it.entity.name %>
+    suspend fun delete(id: String)
+}
+
+class Firestore<%= it.entity.name %>Repository : <%= it.entity.name %>Repository {
+    private val db = FirebaseFirestore.getInstance()
+    private val collection = "<%= it.entity.name.toLowerCase() %>s"
+
+    override suspend fun create(item: <%= it.entity.name %>): <%= it.entity.name %> {
+        val data = hashMapOf(
+<% for (const field of it.entity.fields) { %>
+            "<%= field.name %>" to item.<%= field.name %>,
+<% } %>
+        )
+        val ref = db.collection(collection).add(data).await()
+        return item.copy(id = ref.id)
+    }
+
+    override suspend fun getById(id: String): <%= it.entity.name %>? {
+        val doc = db.collection(collection).document(id).get().await()
+        return if (doc.exists()) doc.toObject(<%= it.entity.name %>::class.java) else null
+    }
+
+    override suspend fun list(): List<<%= it.entity.name %>> {
+        val snapshot = db.collection(collection).get().await()
+        return snapshot.documents.mapNotNull { it.toObject(<%= it.entity.name %>::class.java) }
+    }
+
+    override suspend fun update(item: <%= it.entity.name %>): <%= it.entity.name %> {
+        val id = item.id ?: throw IllegalArgumentException("Item must have an id")
+        val data = hashMapOf(
+<% for (const field of it.entity.fields) { %>
+            "<%= field.name %>" to item.<%= field.name %>,
+<% } %>
+        )
+        db.collection(collection).document(id).set(data).await()
+        return item
+    }
+
+    override suspend fun delete(id: String) {
+        db.collection(collection).document(id).delete().await()
+    }
+}

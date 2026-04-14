@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+<% for (const entity of it.schema.entities) { %>
+    match /<%= entity.name.toLowerCase() %>s/{docId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.ownerId;
+
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.ownerId
+<% for (const field of entity.fields) { %>
+<% if (field.required) { %>
+        && request.resource.data.<%= field.name %> != null
+<% } %>
+<% if (field.type === 'string') { %>
+        && request.resource.data.<%= field.name %> is string
+<% if (field.required) { %>
+        && request.resource.data.<%= field.name %>.size() <= 500
+<% } %>
+<% } else if (field.type === 'number') { %>
+        && request.resource.data.<%= field.name %> is number
+<% } else if (field.type === 'boolean') { %>
+        && request.resource.data.<%= field.name %> is bool
+<% } %>
+<% } %>
+        ;
+
+      allow update: if request.auth != null && request.auth.uid == resource.data.ownerId;
+
+      allow delete: if request.auth != null && request.auth.uid == resource.data.ownerId;
+    }
+<% } %>
+  }
+}

@@ -1,0 +1,6 @@
+export { fixLoop } from './fix-loop.js'
+export type { FixLoopOpts, FixFnResult } from './fix-loop.js'
+export { createDefaultFixFn } from './default-fix.js'
+export type { DefaultFixOpts } from './default-fix.js'
+export { createClaudeCliFixFn } from './claude-cli-fix.js'
+export type { ClaudeCliFixOpts } from './claude-cli-fix.js'

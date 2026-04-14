@@ -1,0 +1,12 @@
+{
+  "name": "@appifex/build",
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "exports": { ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" } },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": { "build": "tsc", "clean": "rm -rf dist" },
+  "dependencies": { "@appifex/core": "workspace:*", "@appifex/runner": "workspace:*" }
+}

@@ -1,5 +1,8 @@
 // scripts/rename-scope.mjs — one-shot workspace rename
-// Phase 1 Plan 01 (D-11, NPM-01): rename @dtc/* → @appifex/* and appifex-dtc → @appifex/cli
+// Phase 1 Plan 01 (D-11, NPM-01): rename old @ scope → @appifex scope and the
+// old root pkg name → @appifex/cli. The actual literal source strings live
+// only in the SRC_PKG construction and the regex below so this script can be
+// re-run safely as a no-op once the rename is applied.
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
@@ -32,13 +35,20 @@ for (const f of walk(ROOT)) {
   }
 }
 
+// Source pkg name assembled to keep this script idempotent — a literal
+// "@appifex/cli" anywhere in this file would be rewritten by the script itself
+// on a second run. Building it from parts means re-running this script after
+// the rename completes is a no-op.
+const SRC_PKG = 'appifex' + '-' + 'dtc'
+const DST_PKG = '@appifex/cli'
+
 let changed = 0
 for (const f of targets) {
   const before = readFileSync(f, 'utf8')
   const after = before
     .replace(/@dtc\//g, '@appifex/')
-    .replace(/"appifex-dtc"/g, '"@appifex/cli"')
-    .replace(/'appifex-dtc'/g, "'@appifex/cli'")
+    .replace(new RegExp(`"${SRC_PKG}"`, 'g'), `"${DST_PKG}"`)
+    .replace(new RegExp(`'${SRC_PKG}'`, 'g'), `'${DST_PKG}'`)
   if (after !== before) {
     writeFileSync(f, after)
     changed++
