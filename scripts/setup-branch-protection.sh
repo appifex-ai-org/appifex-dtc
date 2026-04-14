@@ -107,10 +107,8 @@ REQUIRED_CONTEXTS=(
   "publish-dry-run"
   "commitlint"
   "gitleaks"
-  # "e2e-build" — DEFERRED to Phase 2. The tiny-mock pipeline currently dies at
-  # baas-schema because it shells out to `claude --print` which needs network +
-  # LLM credentials that CI does not have. Re-add this context once either a
-  # --mock-llm mode ships or ANTHROPIC_API_KEY is wired in as a repo secret.
+  "e2e-build"  # Plan 01-10 (GATE-02): enabled by fixture-replay (DTC_LLM_MODE=fixture).
+               # Runs hermetically for all PRs (internal + fork) — no secret gating required.
   # "Changesets/Version Packages" — DEFERRED. The release.yml workflow only runs
   # on push-to-main (not PRs), so this context will never emit on a PR unless
   # the Changesets GitHub App (https://github.com/apps/changeset-bot) is
