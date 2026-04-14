@@ -1,0 +1,69 @@
+# Phase 1 Plan 05 (NPM-01, REL-01): Release pipeline for @appifex/* packages.
+# On merge to main, the Changesets action either opens a Version Packages PR
+# (aggregating outstanding .changeset/*.md bumps) or, if such a PR just merged,
+# publishes every @appifex/* package to npm under --access public using
+# NPM_TOKEN. Releases are also tagged + a GitHub Release is drafted.
+name: release
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  release:
+    name: Version or Publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          HUSKY: '0'
+          LEFTHOOK: '0'
+
+      - name: Build
+        run: pnpm build
+
+      - name: Create Release PR or Publish
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          # When there are unreleased changesets, opens / updates "Version Packages" PR.
+          # When that PR just merged (changesets consumed), runs `pnpm release` to publish.
+          version: pnpm version-packages
+          publish: pnpm release
+          commit: 'chore(release): version packages'
+          title: 'chore(release): version packages'
+          createGithubReleases: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
