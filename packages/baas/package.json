@@ -39,6 +39,15 @@
     "directory": "packages/baas"
   },
   "publishConfig": {
-    "access": "public"
-  }
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "appifex",
+    "dtc",
+    "baas",
+    "firebase",
+    "supabase"
+  ],
+  "description": "BaaS integration (Firebase/Supabase/Mock) templates and schema inference"
 }

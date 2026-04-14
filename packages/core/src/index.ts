@@ -31,3 +31,5 @@ export {
   type SnapshotSidecarPayload,
   type SnapshotSidecarMetadata,
 } from './snapshot-sidecar.js'
+export { isFixtureMode, loadFixture, FixtureModeError } from './llm-fixture.js'
+export type { FixtureResponse } from './llm-fixture.js'

@@ -1,3 +1,4 @@
+import { isFixtureMode, loadFixture } from '@appifex/core'
 import type { Runner } from '@appifex/core'
 
 function extractJson(text: string): string {
@@ -152,6 +153,8 @@ export function createDefaultFixFn(
   const createMessage: CreateMessageFn =
     opts.createMessage ??
     (async (params) => {
+      // Phase 1 Plan 01-10 (GATE-02): fixture-replay short-circuit.
+      if (isFixtureMode()) return loadFixture('fix')
       const Anthropic = (await import('@anthropic-ai/sdk')).default
       const client = new Anthropic({ apiKey: opts.apiKey })
       // Use streaming to avoid timeout on long-running requests

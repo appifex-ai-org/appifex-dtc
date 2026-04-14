@@ -32,6 +32,15 @@
     "directory": "packages/test-gen"
   },
   "publishConfig": {
-    "access": "public"
-  }
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "appifex",
+    "dtc",
+    "test-gen",
+    "maestro",
+    "xctest"
+  ],
+  "description": "Test generation (Maestro UI flows + XCTest/Gradle unit tests) for the appifex-dtc pipeline"
 }

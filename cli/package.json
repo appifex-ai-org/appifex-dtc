@@ -61,6 +61,14 @@
     "directory": "cli"
   },
   "publishConfig": {
-    "access": "public"
-  }
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "appifex",
+    "dtc",
+    "cli",
+    "codegen",
+    "swiftui"
+  ]
 }

@@ -30,6 +30,15 @@
     "directory": "packages/mock"
   },
   "publishConfig": {
-    "access": "public"
-  }
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "appifex",
+    "dtc",
+    "mock",
+    "fixtures",
+    "data-service"
+  ],
+  "description": "Mock data-service layer for the appifex-dtc pipeline"
 }

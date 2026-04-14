@@ -33,6 +33,14 @@
     "directory": "packages/runner"
   },
   "publishConfig": {
-    "access": "public"
-  }
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "appifex",
+    "dtc",
+    "runner",
+    "e2b",
+    "local-runner"
+  ]
 }

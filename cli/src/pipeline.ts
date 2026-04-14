@@ -12,6 +12,8 @@ import {
   writePreAgentSnapshotSidecar,
   PHASE_ORDER,
   assessBaasAppropriateness,
+  isFixtureMode,
+  loadFixture,
   type AgentConfigType,
   type AppContext,
   type BackendContext,
@@ -684,6 +686,29 @@ export async function runPipeline(
 
   // Helper: build an LLM message function from config
   async function buildCreateMessageFn(cfg: DtcConfig) {
+    // Phase 1 Plan 01-10 (GATE-02): fixture-replay short-circuit.
+    // When DTC_LLM_MODE=fixture, ignore provider config and return a cassette-backed
+    // createMessage. Key is routed by the prompt shape:
+    //   - includes "backend data architect" or "\"entities\"" → baas-schema
+    //   - includes "Fix the following errors" or "===FIX:" → fix
+    //   - otherwise → codegen
+    if (isFixtureMode()) {
+      return async (params: {
+        model: string
+        max_tokens: number
+        messages: Array<{ role: string; content: any }>
+      }) => {
+        const flat = params.messages
+          .map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)))
+          .join('\n')
+        let key = 'codegen'
+        if (flat.includes('backend data architect') || flat.includes('"entities"'))
+          key = 'baas-schema'
+        else if (flat.includes('Fix the following errors') || flat.includes('===FIX:')) key = 'fix'
+        return loadFixture(key)
+      }
+    }
+
     // Claude CLI — shell out to `claude --print` for text-only LLM calls
     if (cfg.llm.provider === 'claude-cli') {
       const { spawn } = await import('node:child_process')

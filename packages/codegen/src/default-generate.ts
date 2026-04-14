@@ -1,3 +1,4 @@
+import { isFixtureMode, loadFixture } from '@appifex/core'
 import type { CodegenInput, CodegenResult, GeneratedFile } from './types.js'
 
 function parseMarkdownFiles(text: string, platform: string): GeneratedFile[] {
@@ -225,6 +226,8 @@ export function createDefaultGenerateFn(
   const createMessage: CreateMessageFn =
     opts.createMessage ??
     (async (params) => {
+      // Phase 1 Plan 01-10 (GATE-02): fixture-replay short-circuit.
+      if (isFixtureMode()) return loadFixture('codegen')
       const Anthropic = (await import('@anthropic-ai/sdk')).default
       const client = new Anthropic({ apiKey: opts.apiKey })
       // Use streaming to avoid timeout on long-running requests
