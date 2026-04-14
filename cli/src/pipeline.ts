@@ -1276,7 +1276,7 @@ export async function runPipeline(
         // Bake assumptions into prompt
         effectivePrompt = [
           effectivePrompt,
-          ...assumptionResult.assumptions.map((a) => a.description),
+          ...assumptionResult.assumptions.map((a: { description: string }) => a.description),
         ].join('. ')
       } else {
         // D-10 / Pitfall 5: Non-interactive mode — auto-proceed with assumptions
@@ -1294,7 +1294,7 @@ export async function runPipeline(
         })
         effectivePrompt = [
           effectivePrompt,
-          ...assumptionResult.assumptions.map((a) => a.description),
+          ...assumptionResult.assumptions.map((a: { description: string }) => a.description),
         ].join('. ')
       }
     }

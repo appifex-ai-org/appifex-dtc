@@ -29,6 +29,8 @@ export default defineConfig({
       '@appifex/baas': resolve(__dirname, 'packages/baas/src/index.ts'),
       '@appifex/baas-check': resolve(__dirname, 'packages/baas-check/src/index.ts'),
       '@appifex/mock-check': resolve(__dirname, 'packages/mock-check/src/index.ts'),
+      '@appifex/mock': resolve(__dirname, 'packages/mock/src/index.ts'),
+      '@appifex/mcp-server': resolve(__dirname, 'packages/mcp-server/src/index.ts'),
       '@appifex/cli': resolve(__dirname, 'cli/src/pipeline.ts'),
     },
   },

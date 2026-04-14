@@ -5,7 +5,7 @@
   "description": "Composable toolkit for UI/UX-driven mobile app development",
   "license": "MIT",
   "scripts": {
-    "build": "pnpm --filter @appifex/core run build && pnpm --filter @appifex/runner run build && pnpm --filter '!@appifex/core' --filter '!@appifex/runner' --filter '!@appifex/cli' --filter '!@appifex/mcp-server' -r run build && pnpm --filter @appifex/cli run build && pnpm --filter @appifex/mcp-server run build",
+    "build": "pnpm --filter @appifex/core run build && pnpm --filter @appifex/runner run build && pnpm --filter '!@appifex/core' --filter '!@appifex/runner' --filter '!@appifex/cli' --filter '!@appifex/mcp-server' -r run build && pnpm --filter @appifex/mcp-server run build && pnpm --filter @appifex/cli run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:related": "vitest related --run",
