@@ -7,17 +7,35 @@
     "build": "pnpm --filter @appifex/core run build && pnpm --filter @appifex/runner run build && pnpm --filter '!@appifex/core' --filter '!@appifex/runner' --filter '!@appifex/cli' --filter '!@appifex/mcp-server' -r run build && pnpm --filter @appifex/cli run build && pnpm --filter @appifex/mcp-server run build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "tsc --noEmit",
+    "test:related": "vitest related --run",
+    "typecheck": "tsc --noEmit && pnpm -r exec tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test",
     "clean": "pnpm -r run clean",
     "setup": "node scripts/build-and-link.mjs"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
+    "@eslint/js": "^9.39.4",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import-x": "^4.16.2",
+    "globals": "^15.15.0",
+    "prettier": "^3.8.2",
     "typescript": "^5.7.0",
-    "vitest": "^4.0.0",
-    "@types/node": "^22.0.0"
+    "typescript-eslint": "^8.58.2",
+    "vitest": "^4.0.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["better-sqlite3"]
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
   },
   "engines": {
     "node": ">=22.0.0",
