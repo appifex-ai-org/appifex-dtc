@@ -49,5 +49,18 @@
   },
   "devDependencies": {
     "@types/react": "^18.3.0"
+  },
+  "author": "Appifex",
+  "homepage": "https://github.com/appifex/appifex-dtc#readme",
+  "bugs": {
+    "url": "https://github.com/appifex/appifex-dtc/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/appifex/appifex-dtc.git",
+    "directory": "cli"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -18,5 +18,18 @@
     "build": "tsc",
     "clean": "rm -rf dist"
   },
-  "dependencies": {}
+  "dependencies": {},
+  "author": "Appifex",
+  "homepage": "https://github.com/appifex/appifex-dtc#readme",
+  "bugs": {
+    "url": "https://github.com/appifex/appifex-dtc/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/appifex/appifex-dtc.git",
+    "directory": "packages/mock"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }

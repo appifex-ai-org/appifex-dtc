@@ -23,5 +23,18 @@
     "@appifex/runner": "workspace:*",
     "@appifex/validate": "workspace:*",
     "@anthropic-ai/sdk": "^0.52.0"
+  },
+  "author": "Appifex",
+  "homepage": "https://github.com/appifex/appifex-dtc#readme",
+  "bugs": {
+    "url": "https://github.com/appifex/appifex-dtc/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/appifex/appifex-dtc.git",
+    "directory": "packages/fix"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
