@@ -71,3 +71,22 @@ jobs:
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Phase 1 Plan 08 (NPM-01): verify every workspace package publishes cleanly to npm.
+  # Catches tarball-shape regressions (missing dist/, bad files allowlist, invalid exports)
+  # that the fast vitest publish-metadata guard cannot see.
+  publish-dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: 'https://registry.npmjs.org'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Verify every workspace package publishes cleanly
+        run: pnpm publish --dry-run -r --no-git-checks
