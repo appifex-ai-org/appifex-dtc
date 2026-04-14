@@ -1,0 +1,30 @@
+# Source: github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
+# Phase 1 Plan 04 (REPO-02): secret scanning config
+title = "appifex-dtc gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Ignore test fixtures, compiled output, and known false-positive variable references"
+paths = [
+  '''cli/__tests__/__fixtures__/.*''',
+  '''packages/.*/__tests__/.*''',
+  '''.*\.test\.ts''',
+  '''sidecar/dist/.*''',
+  '''.*/dist/.*''',
+  '''pnpm-lock\.yaml''',
+  '''fixtures/.*''',
+  '''\.planning/.*'''
+]
+# False-positive suppression: the generic-api-key rule entropy-flags TypeScript
+# property references like `apiKey: opts.e2bApiKey` (no hardcoded secret — it's
+# a variable reference to a runtime-injected credential from ~/.dtc/config.json).
+# Phase 1 Plan 04 baseline scan identified this pattern in
+# packages/runner/src/create-runner.ts; documented in 01-04-SUMMARY.md.
+regexTarget = "match"
+regexes = [
+  '''apiKey:\s*opts\.[a-zA-Z_][a-zA-Z0-9_]*''',
+  '''apiKey:\s*config\.[a-zA-Z_][a-zA-Z0-9_]*''',
+  '''apiKey:\s*process\.env\.[A-Z_][A-Z0-9_]*'''
+]

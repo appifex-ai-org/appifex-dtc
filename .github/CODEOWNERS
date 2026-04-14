@@ -1,0 +1,15 @@
+# Solo maintainer until a maintainers team is created on the appifex-ai-org GitHub org.
+# To migrate to a team later: replace `@rayliu-factory` with `@appifex-ai-org/<team>`
+# and re-run `scripts/setup-branch-protection.sh`.
+
+# Default owner
+* @rayliu-factory
+
+# CI/release-critical paths
+/.github/ @rayliu-factory
+/.changeset/ @rayliu-factory
+/lefthook.yml @rayliu-factory
+/eslint.config.js @rayliu-factory
+/.gitleaks.toml @rayliu-factory
+/package.json @rayliu-factory
+/pnpm-lock.yaml @rayliu-factory

@@ -1,0 +1,11 @@
+# Phase 1 Plan 07 (GATE-02, D-08): Maestro golden flow for tiny-mock fixture
+appId: com.appifex.tinymock
+---
+- launchApp
+- assertVisible: 'Sign In'
+- tapOn: 'Email'
+- inputText: 'demo@example.com'
+- tapOn: 'Password'
+- inputText: 'demo-password'
+- tapOn: 'Sign In'
+- assertVisible: 'Items'

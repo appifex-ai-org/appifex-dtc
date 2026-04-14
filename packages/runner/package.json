@@ -1,0 +1,38 @@
+{
+  "name": "@appifex/runner",
+  "version": "0.1.0",
+  "description": "Execution environment abstraction (local/E2B/Mac Runner) for the DTC toolkit",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@appifex/core": "workspace:*"
+  },
+  "author": "Appifex",
+  "homepage": "https://github.com/appifex-ai-org/appifex-dtc#readme",
+  "bugs": {
+    "url": "https://github.com/appifex-ai-org/appifex-dtc/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/appifex-ai-org/appifex-dtc.git",
+    "directory": "packages/runner"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

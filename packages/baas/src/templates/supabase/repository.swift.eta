@@ -1,0 +1,72 @@
+import Foundation
+
+protocol <%= it.entity.name %>Repository {
+    func create(_ item: <%= it.entity.name %>) async throws -> <%= it.entity.name %>
+    func getById(_ id: String) async throws -> <%= it.entity.name %>?
+    func list() async throws -> [<%= it.entity.name %>]
+    func update(_ item: <%= it.entity.name %>) async throws -> <%= it.entity.name %>
+    func delete(_ id: String) async throws
+}
+
+import Supabase
+
+final class Supabase<%= it.entity.name %>Repository: <%= it.entity.name %>Repository {
+    private let supabase: SupabaseClient
+    private let table: String = "<%= it.entity.name.toLowerCase() %>s"
+
+    init(supabase: SupabaseClient) {
+        self.supabase = supabase
+    }
+
+    func create(_ item: <%= it.entity.name %>) async throws -> <%= it.entity.name %> {
+        let response: <%= it.entity.name %> = try await supabase
+            .from(table)
+            .insert(item)
+            .select()
+            .single()
+            .execute()
+            .value
+        return response
+    }
+
+    func getById(_ id: String) async throws -> <%= it.entity.name %>? {
+        let response: <%= it.entity.name %>? = try await supabase
+            .from(table)
+            .select()
+            .eq("id", value: id)
+            .single()
+            .execute()
+            .value
+        return response
+    }
+
+    func list() async throws -> [<%= it.entity.name %>] {
+        let response: [<%= it.entity.name %>] = try await supabase
+            .from(table)
+            .select()
+            .execute()
+            .value
+        return response
+    }
+
+    func update(_ item: <%= it.entity.name %>) async throws -> <%= it.entity.name %> {
+        guard let id = item.id else { throw NSError(domain: "Repository", code: 400) }
+        let response: <%= it.entity.name %> = try await supabase
+            .from(table)
+            .update(item)
+            .eq("id", value: id)
+            .select()
+            .single()
+            .execute()
+            .value
+        return response
+    }
+
+    func delete(_ id: String) async throws {
+        try await supabase
+            .from(table)
+            .delete()
+            .eq("id", value: id)
+            .execute()
+    }
+}

@@ -1,0 +1,21 @@
+<% for (const entity of it.schema.entities) { %>
+<% const tableName = entity.name.toLowerCase() + 's' %>
+ALTER TABLE <%= tableName %> ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "<%= tableName %>_select_policy"
+  ON <%= tableName %> FOR SELECT
+  USING ((select auth.uid()) = user_id);
+
+CREATE POLICY "<%= tableName %>_insert_policy"
+  ON <%= tableName %> FOR INSERT
+  WITH CHECK ((select auth.uid()) = user_id);
+
+CREATE POLICY "<%= tableName %>_update_policy"
+  ON <%= tableName %> FOR UPDATE
+  USING ((select auth.uid()) = user_id);
+
+CREATE POLICY "<%= tableName %>_delete_policy"
+  ON <%= tableName %> FOR DELETE
+  USING ((select auth.uid()) = user_id);
+
+<% } %>

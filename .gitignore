@@ -1,0 +1,9 @@
+.planning/
+node_modules/
+dist/
+.dtc/
+.dtc-debug/
+.dtc-report/
+*.log
+.DS_Store
+.claude/

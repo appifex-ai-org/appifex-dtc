@@ -1,0 +1,11 @@
+PLACEHOLDER — not a real .pen file.
+
+This file is intentionally an empty placeholder. The Pencil MCP offline-capability
+spike (Phase 1 Plan 07, Task 1) was assumed by orchestrator decision to fall back
+to outcome (c) without running the live network-disabled test. The committed,
+hand-written `design-ir.json` sidecar is the authoritative source for the
+tiny-mock fixture; CI uses `--design-ir fixtures/tiny-mock/design-ir.json`
+exclusively.
+
+To replace this placeholder with a real .pen file in the future, follow the
+"How to regenerate" steps in README.md (requires Pencil MCP availability).

@@ -1,0 +1,66 @@
+{
+  "name": "@appifex/cli",
+  "version": "0.1.0",
+  "description": "CLI for the Design-to-Code toolkit",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "dtc": "./dist/entry.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/pipeline.js",
+      "types": "./dist/pipeline.d.ts"
+    }
+  },
+  "main": "./dist/pipeline.js",
+  "types": "./dist/pipeline.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc && chmod +x dist/entry.js",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@appifex/agent": "workspace:*",
+    "@appifex/core": "workspace:*",
+    "@appifex/runner": "workspace:*",
+    "@appifex/design": "workspace:*",
+    "@appifex/spec": "workspace:*",
+    "@appifex/test-gen": "workspace:*",
+    "@appifex/codegen": "workspace:*",
+    "@appifex/build": "workspace:*",
+    "@appifex/validate": "workspace:*",
+    "@appifex/fix": "workspace:*",
+    "@appifex/provision": "workspace:*",
+    "@appifex/report": "workspace:*",
+    "@appifex/analysis": "workspace:*",
+    "@appifex/deliver": "workspace:*",
+    "@appifex/baas": "workspace:*",
+    "@appifex/mcp-server": "workspace:*",
+    "ink": "^5.2.0",
+    "ink-spinner": "^5.0.0",
+    "react": "^18.3.0",
+    "@clack/prompts": "^0.10.0",
+    "chalk": "^5.4.0",
+    "@github/copilot-sdk": "^0.2.0",
+    "@anthropic-ai/sdk": "^0.52.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0"
+  },
+  "author": "Appifex",
+  "homepage": "https://github.com/appifex-ai-org/appifex-dtc#readme",
+  "bugs": {
+    "url": "https://github.com/appifex-ai-org/appifex-dtc/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/appifex-ai-org/appifex-dtc.git",
+    "directory": "cli"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
