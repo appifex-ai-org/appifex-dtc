@@ -36,9 +36,75 @@ pnpm check        # lint + format:check + typecheck + test
 
 The pre-commit hook (`lefthook`) runs gitleaks, ESLint, Prettier, and `vitest related` on staged files automatically.
 
-## Commit signing
+## Signed commits (required)
 
-Branch protection requires signed commits. Configure GPG ([guide](https://docs.github.com/en/authentication/managing-commit-signature-verification)) or SSH signing.
+Branch protection requires signed commits. Set up either GPG or SSH signing once:
+
+### Option A — GPG
+
+```bash
+# Generate a key (if you don't have one)
+gpg --full-generate-key
+# List, grab the long ID
+gpg --list-secret-keys --keyid-format=long
+# Configure git
+git config --global user.signingkey <KEY_ID>
+git config --global commit.gpgsign true
+# Publish the key to GitHub
+gpg --armor --export <KEY_ID> | pbcopy  # paste at https://github.com/settings/gpg/new
+```
+
+### Option B — SSH (simpler on macOS)
+
+```bash
+git config --global gpg.format ssh
+git config --global user.signingkey ~/.ssh/id_ed25519.pub
+git config --global commit.gpgsign true
+# Add the public key at https://github.com/settings/ssh/new with type "Signing Key"
+```
+
+Verify: `git commit --allow-empty -m "test: signing works"` then `git log --show-signature -1` must print `Good signature`.
+
+See the [GitHub guide](https://docs.github.com/en/authentication/managing-commit-signature-verification) for more.
+
+## Branch protection setup
+
+Branch protection on `main` and `develop` is reproducible via [`scripts/setup-branch-protection.sh`](scripts/setup-branch-protection.sh). **Only a repo admin needs to run this** — contributors do not.
+
+What the script does (idempotent, safe to re-run):
+
+1. Creates the `develop` branch on origin if missing (must exist BEFORE protection lands, per a GitHub API ordering quirk).
+2. Applies the D-14 ruleset to both `main` and `develop`:
+   - Required status checks: `lint`, `typecheck`, `test`, `publish-dry-run`, `commitlint`, `gitleaks`, `e2e-build`, `Changesets/Version Packages`
+   - ≥1 code-owner approving review (CODEOWNERS-enforced)
+   - Linear history (squash/rebase only, no merge commits)
+   - Signed commits required
+   - No force-pushes, no branch deletion
+   - `enforce_admins: false` — solo-founder UI override retained as a true-emergency escape hatch
+3. Locks repo-level merge settings: disables merge commits, enables squash + rebase, deletes branches on merge.
+
+**When to run it:**
+
+- Once, on initial repo setup (the v1 open-source release).
+- Whenever the set of required CI checks changes (edit `REQUIRED_CONTEXTS` in the script first).
+- After any manual drift in the GitHub UI that you want to put back under version control.
+
+**Usage:**
+
+```bash
+# From a clean working tree, as a repo admin authenticated via `gh auth login`:
+OWNER=appifex REPO=appifex-dtc ./scripts/setup-branch-protection.sh
+```
+
+> **CODEOWNERS caveat:** `.github/CODEOWNERS` references `@appifex/maintainers` — a placeholder team. If that team does not exist on the `appifex` GitHub org, `require_code_owner_reviews` silently fails open (unresolved owners are treated as no owner). The script prints a warning by default; pass `CODEOWNERS_TEAM_CHECK=1` to abort instead. Either create the team or edit CODEOWNERS to point at a real handle (e.g. `@rayliu`) before relying on the review gate.
+
+**Verifying protection is live:**
+
+```bash
+gh api repos/appifex/appifex-dtc/branches/main/protection    | jq '{required_status_checks, required_pull_request_reviews, required_linear_history, required_signatures, enforce_admins, allow_force_pushes}'
+gh api repos/appifex/appifex-dtc/branches/develop/protection | jq '{required_status_checks, required_pull_request_reviews, required_linear_history, required_signatures, enforce_admins, allow_force_pushes}'
+git ls-remote --heads origin develop
+```
 
 ## Releases
 
