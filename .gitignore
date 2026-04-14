@@ -6,3 +6,4 @@ dist/
 .dtc-report/
 *.log
 .DS_Store
+.claude/
