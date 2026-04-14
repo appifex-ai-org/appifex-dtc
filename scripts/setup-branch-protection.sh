@@ -7,7 +7,7 @@
 #      protection lands, `git push -u origin develop` would be rejected.
 #   2. Applies a single, identical branch-protection ruleset to BOTH `main` and `develop`:
 #         - Required status checks: lint, typecheck, test, publish-dry-run, commitlint,
-#           gitleaks, e2e-build, "Changesets/Version Packages"
+#           gitleaks, e2e-build, changeset-check
 #         - ≥1 code-owner approving review (CODEOWNERS-enforced)
 #         - Linear history (squash/rebase only, no merge commits)
 #         - Signed commits required (GPG or SSH)
@@ -28,10 +28,9 @@
 # Idempotent: PUT replaces the protection state, so re-running is safe.
 #
 # NOTE on check-context names: the strings under required_status_checks.contexts
-# MUST exactly match the names GitHub records for each check run. If branch
-# protection rejects a PR with "expected check never ran" — especially for
-# "Changesets/Version Packages" whose name has historically drifted between
-# changesets/action major versions — open a scratch PR, run
+# MUST exactly match the job names GitHub records for each check run. If branch
+# protection rejects a PR with "expected check never ran", open a scratch PR,
+# run
 #   gh pr checks <PR-number> --json name,bucket | jq -r '.[].name'
 # to read the actually-emitted names, update REQUIRED_CONTEXTS below, and re-run.
 #
@@ -109,10 +108,10 @@ REQUIRED_CONTEXTS=(
   "gitleaks"
   "e2e-build"  # Plan 01-10 (GATE-02): enabled by fixture-replay (DTC_LLM_MODE=fixture).
                # Runs hermetically for all PRs (internal + fork) — no secret gating required.
-  # "Changesets/Version Packages" — DEFERRED. The release.yml workflow only runs
-  # on push-to-main (not PRs), so this context will never emit on a PR unless
-  # the Changesets GitHub App (https://github.com/apps/changeset-bot) is
-  # installed on the repo. Install it, then re-add this context.
+  "changeset-check"  # Plan 01-11 (GATE-04): in-repo PR-time changeset-presence check
+                     # (see .github/workflows/ci.yml). Chosen over the Changesets GitHub
+                     # App so enforcement stays entirely in-repo with no third-party surface.
+                     # Docs-only PRs satisfy it via `pnpm exec changeset --empty`.
 )
 
 # Build the contexts JSON array from the bash array (jq handles quoting).
