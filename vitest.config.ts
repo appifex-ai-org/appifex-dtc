@@ -3,7 +3,11 @@ import { resolve } from 'node:path'
 
 export default defineConfig({
   test: {
-    include: ['packages/**/__tests__/**/*.test.ts', 'cli/__tests__/**/*.test.ts'],
+    include: [
+      'packages/**/__tests__/**/*.test.ts',
+      'packages/__tests__/**/*.test.ts',
+      'cli/__tests__/**/*.test.ts',
+    ],
     testTimeout: 10_000,
   },
   resolve: {
