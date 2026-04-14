@@ -3,7 +3,10 @@ import { LocalRunner } from './local-runner.js'
 import { E2BRunner } from './e2b-runner.js'
 import { RemoteRunner } from './remote-runner.js'
 
-export function createRunner(config: RunnerConfig, opts?: { cwd?: string; e2bApiKey?: string }): Runner {
+export function createRunner(
+  config: RunnerConfig,
+  opts?: { cwd?: string; e2bApiKey?: string },
+): Runner {
   switch (config.type) {
     case 'local':
       return new LocalRunner(opts?.cwd ?? process.cwd())

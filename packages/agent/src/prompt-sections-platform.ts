@@ -59,7 +59,9 @@ export function inlineMaestroFlows(flowDir: string): string | null {
   if (!existsSync(flowDir)) return null
 
   const parts: string[] = []
-  for (const file of readdirSync(flowDir).filter(f => f.endsWith('.yaml') || f.endsWith('.yml'))) {
+  for (const file of readdirSync(flowDir).filter(
+    (f) => f.endsWith('.yaml') || f.endsWith('.yml'),
+  )) {
     const content = readFileSync(join(flowDir, file), 'utf-8')
     parts.push(`### ${file}\n\`\`\`yaml\n${content}\n\`\`\``)
   }
@@ -69,14 +71,20 @@ export function inlineMaestroFlows(flowDir: string): string | null {
 
 // ── Skills ──
 
-export function buildSkillsSection(skillsDir: string, platform: Platform, projectDir: string): string {
+export function buildSkillsSection(
+  skillsDir: string,
+  platform: Platform,
+  projectDir: string,
+): string {
   const relSkills = relative(projectDir, skillsDir)
-  const rows = [
-    `| Before writing code | \`${relSkills}/${platform}/codegen/01-architecture.md\` |`,
-  ]
+  const rows = [`| Before writing code | \`${relSkills}/${platform}/codegen/01-architecture.md\` |`]
   if (platform === 'swiftui') {
-    rows.push(`| Complex app (3+ screens, multiple data sources) | \`${relSkills}/${platform}/codegen/09-clean-architecture.md\` |`)
-    rows.push(`| Writing unit tests / mock patterns | \`${relSkills}/${platform}/codegen/10-testing-patterns.md\` |`)
+    rows.push(
+      `| Complex app (3+ screens, multiple data sources) | \`${relSkills}/${platform}/codegen/09-clean-architecture.md\` |`,
+    )
+    rows.push(
+      `| Writing unit tests / mock patterns | \`${relSkills}/${platform}/codegen/10-testing-patterns.md\` |`,
+    )
   }
   rows.push(
     `| Deprecated API errors | \`${relSkills}/${platform}/codegen/02-deprecated-apis.md\` |`,

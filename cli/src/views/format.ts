@@ -190,14 +190,16 @@ export function formatPreBuildSummary(summary: import('../pipeline.js').PreBuild
   // BaaS recommendation (D-08: surfaced as a line in pre-build summary)
   if (summary.baasRecommendation) {
     const tier = summary.baasRecommendation.tier
-    const tierColor = tier === 'appropriate' ? chalk.green
-      : tier === 'caveats' ? chalk.yellow
-      : chalk.red
+    const tierColor =
+      tier === 'appropriate' ? chalk.green : tier === 'caveats' ? chalk.yellow : chalk.red
     lines.push(tierColor(`BaaS: ${summary.baasRecommendation.reason}`))
     lines.push('')
   }
 
-  lines.push(chalk.dim('Design:') + ` ${summary.designStrategy === 'new' ? 'create new .pen file' : 'extend existing .pen file'}`)
+  lines.push(
+    chalk.dim('Design:') +
+      ` ${summary.designStrategy === 'new' ? 'create new .pen file' : 'extend existing .pen file'}`,
+  )
   if (summary.tokenCount > 0) {
     lines.push(chalk.dim('Design tokens loaded:') + ` ${summary.tokenCount}`)
   }

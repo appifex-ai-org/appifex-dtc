@@ -50,7 +50,9 @@ describe('snapshot-sidecar reader', () => {
 
   test('reader rejects missing file', async () => {
     const missingPath = join(dir, 'does-not-exist.json')
-    await expect(readPreAgentSnapshotSidecar(missingPath)).rejects.toBeInstanceOf(SidecarCorruptError)
+    await expect(readPreAgentSnapshotSidecar(missingPath)).rejects.toBeInstanceOf(
+      SidecarCorruptError,
+    )
   })
 
   test('reader rejects invalid JSON', async () => {
@@ -67,24 +69,34 @@ describe('snapshot-sidecar reader', () => {
 
   test('reader rejects absolute path in files', async () => {
     const badPath = join(dir, 'abs-path.json')
-    await writeFile(badPath, JSON.stringify({
-      files: { '/etc/passwd': 'root:x:0:0:root:/root:/bin/bash' },
-      sha256PerFile: { '/etc/passwd': createHash('sha256').update('root:x:0:0:root:/root:/bin/bash').digest('hex') },
-      writtenAt: new Date().toISOString(),
-    }))
+    await writeFile(
+      badPath,
+      JSON.stringify({
+        files: { '/etc/passwd': 'root:x:0:0:root:/root:/bin/bash' },
+        sha256PerFile: {
+          '/etc/passwd': createHash('sha256')
+            .update('root:x:0:0:root:/root:/bin/bash')
+            .digest('hex'),
+        },
+        writtenAt: new Date().toISOString(),
+      }),
+    )
     await expect(readPreAgentSnapshotSidecar(badPath)).rejects.toThrow('unsafe path')
   })
 
   test('reader rejects .. traversal in sha256PerFile', async () => {
     const badPath = join(dir, 'traversal.json')
-    await writeFile(badPath, JSON.stringify({
-      files: { 'safe.ts': 'content' },
-      sha256PerFile: {
-        'safe.ts': createHash('sha256').update('content').digest('hex'),
-        '../../etc/passwd': 'deadbeef',
-      },
-      writtenAt: new Date().toISOString(),
-    }))
+    await writeFile(
+      badPath,
+      JSON.stringify({
+        files: { 'safe.ts': 'content' },
+        sha256PerFile: {
+          'safe.ts': createHash('sha256').update('content').digest('hex'),
+          '../../etc/passwd': 'deadbeef',
+        },
+        writtenAt: new Date().toISOString(),
+      }),
+    )
     await expect(readPreAgentSnapshotSidecar(badPath)).rejects.toThrow('unsafe path')
   })
 
@@ -100,15 +112,21 @@ describe('snapshot-sidecar reader', () => {
   })
 
   test('RunContextBuilder.setModificationPlan persists into build() output', () => {
-    const builder = new RunContextBuilder({ prompt: 'test', platform: 'swiftui', mode: 'add-feature' })
+    const builder = new RunContextBuilder({
+      prompt: 'test',
+      platform: 'swiftui',
+      mode: 'add-feature',
+    })
     builder.setModificationPlan({
-      items: [{
-        filePath: 'src/HomeView.swift',
-        screenName: 'HomeView',
-        changeDescription: 'Add dark mode support',
-        changeType: 'other',
-        fileContent: 'struct HomeView: View {}',
-      }],
+      items: [
+        {
+          filePath: 'src/HomeView.swift',
+          screenName: 'HomeView',
+          changeDescription: 'Add dark mode support',
+          changeType: 'other',
+          fileContent: 'struct HomeView: View {}',
+        },
+      ],
     })
     const result = builder.build('completed')
     expect(result.modificationPlan).toBeDefined()
@@ -121,7 +139,11 @@ describe('snapshot-sidecar reader', () => {
   })
 
   test('WR-02: buildContextSummary renders test_regen phase', () => {
-    const builder = new RunContextBuilder({ prompt: 'test', platform: 'swiftui', mode: 'add-feature' })
+    const builder = new RunContextBuilder({
+      prompt: 'test',
+      platform: 'swiftui',
+      mode: 'add-feature',
+    })
     builder.recordPhase('test_regen', 'completed', 'test-regen-summary-text')
     const ctx = builder.build('completed')
     const summary = buildContextSummary(ctx)

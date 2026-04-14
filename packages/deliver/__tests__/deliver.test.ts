@@ -8,7 +8,13 @@ function createMockRunner(responses?: Record<string, ExecResult>): Runner {
   const execHistory: Array<{ command: string; args: string[] }> = []
 
   return {
-    capabilities: { hasMaestro: false, hasXcode: false, hasNode: true, hasSemgrep: false, platform: 'darwin' },
+    capabilities: {
+      hasMaestro: false,
+      hasXcode: false,
+      hasNode: true,
+      hasSemgrep: false,
+      platform: 'darwin',
+    },
     async exec(command: string, args: string[]) {
       execHistory.push({ command, args })
       const key = `${command} ${args.join(' ')}`
@@ -33,10 +39,16 @@ function createMockRunner(responses?: Record<string, ExecResult>): Runner {
       }
       return defaultResult
     },
-    async readFile() { return '' },
+    async readFile() {
+      return ''
+    },
     async writeFile() {},
-    async exists() { return true },
-    async glob() { return [] },
+    async exists() {
+      return true
+    },
+    async glob() {
+      return []
+    },
   }
 }
 
@@ -82,7 +94,7 @@ describe('deliver', () => {
       skipPush: true,
     })
 
-    const initCall = calls.find(c => c[0] === 'git' && c[1] === 'init')
+    const initCall = calls.find((c) => c[0] === 'git' && c[1] === 'init')
     expect(initCall).toBeTruthy()
   })
 
@@ -90,7 +102,12 @@ describe('deliver', () => {
     const calls: string[][] = []
     const runner = createMockRunner({
       'which gh': { exitCode: 0, stdout: '/usr/local/bin/gh', stderr: '', duration: 5 },
-      'gh pr create': { exitCode: 0, stdout: 'https://github.com/owner/repo/pull/42', stderr: '', duration: 100 },
+      'gh pr create': {
+        exitCode: 0,
+        stdout: 'https://github.com/owner/repo/pull/42',
+        stderr: '',
+        duration: 100,
+      },
       'gh pr merge': { exitCode: 0, stdout: 'Merged', stderr: '', duration: 100 },
       'ls-remote': { exitCode: 0, stdout: 'abc123\trefs/heads/main', stderr: '', duration: 10 },
     })
@@ -111,7 +128,7 @@ describe('deliver', () => {
     expect(result.pr).toBeDefined()
     expect(result.pr!.merged).toBe(true)
     expect(result.pr!.mergeMethod).toBe('squash')
-    const mergeCall = calls.find(c => c[0] === 'gh' && c[1] === 'pr' && c[2] === 'merge')
+    const mergeCall = calls.find((c) => c[0] === 'gh' && c[1] === 'pr' && c[2] === 'merge')
     expect(mergeCall).toBeTruthy()
     expect(mergeCall).toContain('--squash')
   })
@@ -120,7 +137,12 @@ describe('deliver', () => {
     const calls: string[][] = []
     const runner = createMockRunner({
       'which gh': { exitCode: 0, stdout: '/usr/local/bin/gh', stderr: '', duration: 5 },
-      'gh pr create': { exitCode: 0, stdout: 'https://github.com/owner/repo/pull/43', stderr: '', duration: 100 },
+      'gh pr create': {
+        exitCode: 0,
+        stdout: 'https://github.com/owner/repo/pull/43',
+        stderr: '',
+        duration: 100,
+      },
       'ls-remote': { exitCode: 0, stdout: 'abc123\trefs/heads/main', stderr: '', duration: 10 },
     })
     const origExec = runner.exec.bind(runner)
@@ -138,7 +160,7 @@ describe('deliver', () => {
 
     expect(result.pr).toBeDefined()
     expect(result.pr!.merged).toBe(false)
-    const mergeCall = calls.find(c => c[0] === 'gh' && c[1] === 'pr' && c[2] === 'merge')
+    const mergeCall = calls.find((c) => c[0] === 'gh' && c[1] === 'pr' && c[2] === 'merge')
     expect(mergeCall).toBeUndefined()
   })
 
@@ -157,7 +179,9 @@ describe('deliver', () => {
       skipPush: true,
     })
 
-    const branchCall = calls.find(c => c[0] === 'git' && c[1] === 'checkout' && c[2] === '-b' && c[3] === 'feat/my-app')
+    const branchCall = calls.find(
+      (c) => c[0] === 'git' && c[1] === 'checkout' && c[2] === '-b' && c[3] === 'feat/my-app',
+    )
     expect(branchCall).toBeTruthy()
   })
 })

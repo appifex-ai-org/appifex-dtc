@@ -8,10 +8,17 @@ const SAMPLE_PEN = JSON.stringify({
   version: '1',
   children: [
     {
-      type: 'frame', name: 'Home', width: 390, height: 844,
+      type: 'frame',
+      name: 'Home',
+      width: 390,
+      height: 844,
       children: [
         { type: 'text', name: 'Title', content: 'Welcome', fontSize: 24, fontWeight: 'bold' },
-        { type: 'button', name: 'Start Button', children: [{ type: 'text', name: 'Label', content: 'Get Started' }] },
+        {
+          type: 'button',
+          name: 'Start Button',
+          children: [{ type: 'text', name: 'Label', content: 'Get Started' }],
+        },
       ],
     },
   ],
@@ -54,7 +61,10 @@ describe('dtc_spec_translate handler', () => {
     const extractResult = await handleSpecExtract({ filePath: penPath })
     const spec = JSON.parse(extractResult.text)
 
-    const result = await handleSpecTranslate({ specJson: JSON.stringify(spec), platform: 'swiftui' })
+    const result = await handleSpecTranslate({
+      specJson: JSON.stringify(spec),
+      platform: 'swiftui',
+    })
 
     expect(result.isError).toBe(false)
     const platformSpec = JSON.parse(result.text)

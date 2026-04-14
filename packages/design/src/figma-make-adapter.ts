@@ -1,4 +1,10 @@
-import type { DesignToolAdapter, DesignToolCreateOpts, DesignToolIterateOpts, DesignToolResult, Runner } from '@appifex/core'
+import type {
+  DesignToolAdapter,
+  DesignToolCreateOpts,
+  DesignToolIterateOpts,
+  DesignToolResult,
+  Runner,
+} from '@appifex/core'
 import { join } from 'node:path'
 
 export interface FigmaDesignContext {
@@ -33,7 +39,9 @@ export class FigmaMakeAdapter implements DesignToolAdapter {
   private async getClient(): Promise<FigmaMcpClientLike> {
     if (this.opts.mcpClient) return this.opts.mcpClient
     if (!this.opts.figmaToken) {
-      throw new Error('Figma token is required — run `dtc setup` and select Figma Make, or set FIGMA_TOKEN')
+      throw new Error(
+        'Figma token is required — run `dtc setup` and select Figma Make, or set FIGMA_TOKEN',
+      )
     }
     const { FigmaRestClient } = await import('./figma-rest-client.js')
     return new FigmaRestClient({ token: this.opts.figmaToken })
@@ -51,7 +59,11 @@ export class FigmaMakeAdapter implements DesignToolAdapter {
     }
 
     if (!this.fileUrl) {
-      return { ...base, error: 'Figma file URL is required — set figmaFileUrl in config or provide via --design flag' }
+      return {
+        ...base,
+        error:
+          'Figma file URL is required — set figmaFileUrl in config or provide via --design flag',
+      }
     }
 
     return this.readDesign(this.fileUrl, figmaDir, opts.previewPath, base)
@@ -99,7 +111,7 @@ export class FigmaMakeAdapter implements DesignToolAdapter {
     let context: FigmaDesignContext
     let screenshot: Buffer
     try {
-      [context, screenshot] = await Promise.all([
+      ;[context, screenshot] = await Promise.all([
         client.getDesignContext({ fileUrl }),
         client.getScreenshot({ fileUrl }),
       ])

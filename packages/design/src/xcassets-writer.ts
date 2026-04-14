@@ -23,14 +23,20 @@ export async function writeImageAssets(
     const filename = `${asset.name}${ext}`
     const imagesetDir = join(assetDir, `${asset.name}.imageset`)
 
-    const contentsJson = JSON.stringify({
-      images: [{
-        filename,
-        idiom: 'universal',
-        scale: `${asset.scale ?? 2}x`,
-      }],
-      info: { author: 'xcode', version: 1 },
-    }, null, 2)
+    const contentsJson = JSON.stringify(
+      {
+        images: [
+          {
+            filename,
+            idiom: 'universal',
+            scale: `${asset.scale ?? 2}x`,
+          },
+        ],
+        info: { author: 'xcode', version: 1 },
+      },
+      null,
+      2,
+    )
 
     await runner.writeFile(join(imagesetDir, 'Contents.json'), contentsJson)
     // Use cp for binary image data — runner.readFile returns string which corrupts binary

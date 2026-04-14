@@ -124,7 +124,8 @@ describe('scanProject', () => {
   // Test 10: relative file paths
   it('returns relative file paths (not absolute)', async () => {
     const runner = createMockRunner({
-      '/project/Views/HomeView.swift': 'struct HomeView: View { var body: some View { Text("Hi") } }',
+      '/project/Views/HomeView.swift':
+        'struct HomeView: View { var body: some View { Text("Hi") } }',
     })
     const result = await scanProject('/project', 'swiftui', runner)
     expect(result).toHaveLength(1)
@@ -135,7 +136,8 @@ describe('scanProject', () => {
   // Test 11: correct name extraction
   it('extracts the correct name from the struct/class/fun declaration', async () => {
     const runner = createMockRunner({
-      '/project/SettingsView.swift': 'import SwiftUI\n\nstruct SettingsView: View {\n  var body: some View { Text("Settings") }\n}',
+      '/project/SettingsView.swift':
+        'import SwiftUI\n\nstruct SettingsView: View {\n  var body: some View { Text("Settings") }\n}',
     })
     const result = await scanProject('/project', 'swiftui', runner)
     expect(result).toHaveLength(1)
@@ -145,19 +147,23 @@ describe('scanProject', () => {
   // Test 13: classifies View struct with component suffix as component (not screen)
   it('classifies a View struct with component suffix (Row, Cell, Card, etc.) as component', async () => {
     const runner = createMockRunner({
-      '/project/TodoRow.swift': 'struct TodoRow: View { var body: some View { HStack { Text("item") } } }',
-      '/project/ProfileCard.swift': 'struct ProfileCard: View { var body: some View { VStack { Text("name") } } }',
-      '/project/StarIcon.swift': 'struct StarIcon: View { var body: some View { Image(systemName: "star") } }',
+      '/project/TodoRow.swift':
+        'struct TodoRow: View { var body: some View { HStack { Text("item") } } }',
+      '/project/ProfileCard.swift':
+        'struct ProfileCard: View { var body: some View { VStack { Text("name") } } }',
+      '/project/StarIcon.swift':
+        'struct StarIcon: View { var body: some View { Image(systemName: "star") } }',
     })
     const result = await scanProject('/project', 'swiftui', runner)
     expect(result).toHaveLength(3)
-    expect(result.every(e => e.type === 'component')).toBe(true)
+    expect(result.every((e) => e.type === 'component')).toBe(true)
   })
 
   // Test 14: classifies View struct with navigation markers as screen even with component-like name
   it('classifies a View struct with NavigationStack as screen regardless of name', async () => {
     const runner = createMockRunner({
-      '/project/MainTab.swift': 'struct MainTab: View { var body: some View { NavigationStack { List { } } } }',
+      '/project/MainTab.swift':
+        'struct MainTab: View { var body: some View { NavigationStack { List { } } } }',
     })
     const result = await scanProject('/project', 'swiftui', runner)
     expect(result).toHaveLength(1)
@@ -168,11 +174,12 @@ describe('scanProject', () => {
   it('classifies View struct like HomeView or ContentView as screen', async () => {
     const runner = createMockRunner({
       '/project/HomeView.swift': 'struct HomeView: View { var body: some View { Text("home") } }',
-      '/project/ContentView.swift': 'struct ContentView: View { var body: some View { Text("content") } }',
+      '/project/ContentView.swift':
+        'struct ContentView: View { var body: some View { Text("content") } }',
     })
     const result = await scanProject('/project', 'swiftui', runner)
     expect(result).toHaveLength(2)
-    expect(result.every(e => e.type === 'screen')).toBe(true)
+    expect(result.every((e) => e.type === 'screen')).toBe(true)
   })
 
   // Test 16: does not demote Kotlin composables (only SwiftUI refinement)
@@ -188,7 +195,8 @@ describe('scanProject', () => {
   // Test 12: skips comment lines when matching
   it('skips comment lines when matching', async () => {
     const runner = createMockRunner({
-      '/project/Commented.swift': '// struct FakeView: View { }\n/* struct AnotherView: View { } */\nclass APIService { }',
+      '/project/Commented.swift':
+        '// struct FakeView: View { }\n/* struct AnotherView: View { } */\nclass APIService { }',
     })
     const result = await scanProject('/project', 'swiftui', runner)
     expect(result).toHaveLength(1)

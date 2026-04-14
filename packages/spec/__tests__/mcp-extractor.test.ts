@@ -69,9 +69,7 @@ describe('extractSpecFromMcp', () => {
       name: 'Single Screen',
       width: 390,
       height: 844,
-      children: [
-        { type: 'text', name: 'Label', content: 'Hello' },
-      ],
+      children: [{ type: 'text', name: 'Label', content: 'Hello' }],
     }
     const variables = {}
 
@@ -120,9 +118,7 @@ describe('extractSpecFromMcp', () => {
             padding: [12, 16],
             justifyContent: 'space_between',
             alignItems: 'center',
-            children: [
-              { type: 'text', name: 'Label', content: 'Item' },
-            ],
+            children: [{ type: 'text', name: 'Label', content: 'Item' }],
           },
         ],
       },

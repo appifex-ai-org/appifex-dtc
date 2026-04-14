@@ -23,13 +23,15 @@ vi.mock('@modelcontextprotocol/sdk/client/index.js', () => {
 vi.mock('@modelcontextprotocol/sdk/client/stdio.js', () => {
   class MockStdioClientTransport {
     _opts: unknown
-    constructor(opts: unknown) { this._opts = opts }
+    constructor(opts: unknown) {
+      this._opts = opts
+    }
   }
   return { StdioClientTransport: MockStdioClientTransport }
 })
 
 async function getMocks() {
-  const mod = await import('@modelcontextprotocol/sdk/client/index.js') as Record<string, unknown>
+  const mod = (await import('@modelcontextprotocol/sdk/client/index.js')) as Record<string, unknown>
   return {
     callTool: mod.__mockCallTool as ReturnType<typeof vi.fn>,
     connect: mod.__mockConnect as ReturnType<typeof vi.fn>,
@@ -204,7 +206,9 @@ describe('PencilMcpClient', () => {
   it('throws when setVariables is called before connect', async () => {
     const client = new PencilMcpClient()
     await expect(
-      client.setVariables('/tmp/design.pen', { 'color-primary': { type: 'COLOR', value: '#FF0000' } })
+      client.setVariables('/tmp/design.pen', {
+        'color-primary': { type: 'COLOR', value: '#FF0000' },
+      }),
     ).rejects.toThrow('not connected')
   })
 

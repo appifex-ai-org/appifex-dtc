@@ -3,7 +3,6 @@ import { runPhase14Scenario } from './helpers/phase-14-harness.js'
 import { detectResumeEligibility, ResumeAbortError } from '../src/resume-bootstrap.js'
 
 describe('Phase 14: add-feature resume flow (QUALITY-03b + QUALITY-03c)', () => {
-
   // D-32 scenario 1: full run, SIGINT after codegen, resume completes successfully
   test('D-32 scenario 1: resume after codegen interrupt returns ResumeState with lastCompleted=codegen', async () => {
     const result = await runPhase14Scenario({
@@ -17,7 +16,9 @@ describe('Phase 14: add-feature resume flow (QUALITY-03b + QUALITY-03c)', () => 
     expect(result.resumeState).not.toBeNull()
     expect(result.resumeState!.lastCompletedPhase).toBe('codegen')
     expect(result.bannerLines).toHaveLength(1)
-    expect(result.bannerLines[0]).toBe('Resuming add-feature run from checkpoint (last completed: codegen)')
+    expect(result.bannerLines[0]).toBe(
+      'Resuming add-feature run from checkpoint (last completed: codegen)',
+    )
   })
 
   // D-32 scenario 2: resume with drifted source file aborts with D-17 error
@@ -156,17 +157,17 @@ describe('Phase 14: add-feature resume flow (QUALITY-03b + QUALITY-03c)', () => 
   // Extra: PROJECT.md non-negotiable — validate/fix/deliver/report always re-run
   test('D-09 pin: FORCE_RERUN_PHASES set contains validate, fix, deliver, report', async () => {
     // Static assertion against the module-level const.
-    const pipelineSource = await (await import('node:fs/promises')).readFile(
-      new URL('../src/pipeline.ts', import.meta.url).pathname, 'utf-8'
-    )
+    const pipelineSource = await (
+      await import('node:fs/promises')
+    ).readFile(new URL('../src/pipeline.ts', import.meta.url).pathname, 'utf-8')
     expect(pipelineSource).toContain("new Set(['validate', 'fix', 'deliver', 'report'])")
   })
 
   // Extra: PHASE_ORDER must be a static import (no require() allowed in ESM)
   test('ESM pin: pipeline.ts imports PHASE_ORDER statically from @appifex/core', async () => {
-    const pipelineSource = await (await import('node:fs/promises')).readFile(
-      new URL('../src/pipeline.ts', import.meta.url).pathname, 'utf-8'
-    )
+    const pipelineSource = await (
+      await import('node:fs/promises')
+    ).readFile(new URL('../src/pipeline.ts', import.meta.url).pathname, 'utf-8')
     expect(pipelineSource).toContain('PHASE_ORDER')
     expect(pipelineSource).not.toContain("require('@appifex/core')")
     expect(pipelineSource).not.toContain('require("@appifex/core")')
@@ -179,9 +180,9 @@ describe('Phase 14: add-feature resume flow (QUALITY-03b + QUALITY-03c)', () => 
   // harness does not expose pipeline-local variables (same technique as D-09 / ESM
   // pins above). If this assertion fails, ROADMAP SC #2 has regressed.
   test('gap-closure pin: pipeline.ts rehydrates designDelta from previousContext on resume', async () => {
-    const pipelineSource = await (await import('node:fs/promises')).readFile(
-      new URL('../src/pipeline.ts', import.meta.url).pathname, 'utf-8'
-    )
+    const pipelineSource = await (
+      await import('node:fs/promises')
+    ).readFile(new URL('../src/pipeline.ts', import.meta.url).pathname, 'utf-8')
     // The fix line itself — guarded assignment inside the design_delta skip branch.
     expect(pipelineSource).toContain('designDelta = previousContext.designDelta')
     // The updated emit message reflecting that rehydration happened.
@@ -193,5 +194,4 @@ describe('Phase 14: add-feature resume flow (QUALITY-03b + QUALITY-03c)', () => 
     // Sanity: the declaration site is unchanged (single `let designDelta` with DesignDeltaReport type).
     expect(pipelineSource).toContain('let designDelta: DesignDeltaReport | null = null')
   })
-
 })

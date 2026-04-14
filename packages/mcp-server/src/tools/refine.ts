@@ -15,8 +15,12 @@ import type { RefinementQuestion, AskResult, EnrichResult } from './refine-keywo
 import {
   hasKeywords,
   wordCount,
-  SCREEN_KEYWORDS, NAV_KEYWORDS, DATA_KEYWORDS,
-  AUTH_KEYWORDS, DESIGN_KEYWORDS, PLATFORM_KEYWORDS,
+  SCREEN_KEYWORDS,
+  NAV_KEYWORDS,
+  DATA_KEYWORDS,
+  AUTH_KEYWORDS,
+  DESIGN_KEYWORDS,
+  PLATFORM_KEYWORDS,
 } from './refine-keywords.js'
 
 // ── Ask mode: generate questions ──
@@ -45,7 +49,8 @@ function generateQuestions(prompt: string, platform?: string): AskResult {
   } else {
     questions.push({
       id: 'screens',
-      question: 'What screens or pages should the app have? (e.g., home, detail, settings, profile)',
+      question:
+        'What screens or pages should the app have? (e.g., home, detail, settings, profile)',
       category: 'Screens',
       required: true,
     })
@@ -59,7 +64,12 @@ function generateQuestions(prompt: string, platform?: string): AskResult {
       id: 'navigation',
       question: 'What navigation pattern should the app use?',
       category: 'Navigation',
-      options: ['Tab bar (bottom tabs)', 'Stack navigation (push/pop)', 'Drawer / sidebar', 'Simple (single screen)'],
+      options: [
+        'Tab bar (bottom tabs)',
+        'Stack navigation (push/pop)',
+        'Drawer / sidebar',
+        'Simple (single screen)',
+      ],
       required: true,
     })
   }
@@ -72,7 +82,11 @@ function generateQuestions(prompt: string, platform?: string): AskResult {
       id: 'data_model',
       question: 'How should the app store and manage data?',
       category: 'Data',
-      options: ['Local only (on-device storage)', 'Connects to a backend API', 'No persistence needed (static content)'],
+      options: [
+        'Local only (on-device storage)',
+        'Connects to a backend API',
+        'No persistence needed (static content)',
+      ],
       required: false,
     })
   }
@@ -85,7 +99,12 @@ function generateQuestions(prompt: string, platform?: string): AskResult {
       id: 'auth',
       question: 'Does the app need user authentication (login/signup)?',
       category: 'Features',
-      options: ['No authentication', 'Email/password', 'Social login (Google, Apple)', 'Biometric (Face ID / Touch ID)'],
+      options: [
+        'No authentication',
+        'Email/password',
+        'Social login (Google, Apple)',
+        'Biometric (Face ID / Touch ID)',
+      ],
       required: false,
     })
   } else {
@@ -100,7 +119,12 @@ function generateQuestions(prompt: string, platform?: string): AskResult {
       id: 'design_style',
       question: 'What visual style do you prefer?',
       category: 'Design',
-      options: ['Clean and minimal', 'Colorful and playful', 'Dark mode focused', 'Native platform style'],
+      options: [
+        'Clean and minimal',
+        'Colorful and playful',
+        'Dark mode focused',
+        'Native platform style',
+      ],
       required: false,
     })
   } else {
@@ -120,7 +144,11 @@ function generateQuestions(prompt: string, platform?: string): AskResult {
 
 // ── Enrich mode: compose detailed prompt ──
 
-function enrichPrompt(prompt: string, answers: Record<string, string>, platform?: string): EnrichResult {
+function enrichPrompt(
+  prompt: string,
+  answers: Record<string, string>,
+  platform?: string,
+): EnrichResult {
   const sections: string[] = []
 
   // Base description
@@ -159,7 +187,14 @@ function enrichPrompt(prompt: string, answers: Record<string, string>, platform?
   }
 
   // Pass through any extra answers the agent collected
-  const knownIds = new Set(['platform', 'screens', 'navigation', 'data_model', 'auth', 'design_style'])
+  const knownIds = new Set([
+    'platform',
+    'screens',
+    'navigation',
+    'data_model',
+    'auth',
+    'design_style',
+  ])
   for (const [key, value] of Object.entries(answers)) {
     const strValue = typeof value === 'string' ? value : String(value)
     if (!knownIds.has(key) && strValue.trim()) {
@@ -187,7 +222,8 @@ export async function handleRefinePrompt(args: {
 
     if (mode === 'ask') {
       const result = generateQuestions(args.prompt, args.platform)
-      result.hint = 'IMPORTANT: When presenting these questions to the user, you MUST include this note at the end: "Or just say \\"just build it\\" to skip all questions and build with sensible defaults."'
+      result.hint =
+        'IMPORTANT: When presenting these questions to the user, you MUST include this note at the end: "Or just say \\"just build it\\" to skip all questions and build with sensible defaults."'
       return { text: JSON.stringify(result, null, 2), isError: false }
     }
 

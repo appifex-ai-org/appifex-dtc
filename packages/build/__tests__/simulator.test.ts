@@ -7,12 +7,18 @@ function mockRunner(simctlOutput: object): Runner {
     exec: vi.fn().mockImplementation((_cmd: string, args: string[]) => {
       if (args.includes('booted')) {
         return Promise.resolve({
-          exitCode: 0, stdout: JSON.stringify({ devices: {} }), stderr: '', duration: 50,
+          exitCode: 0,
+          stdout: JSON.stringify({ devices: {} }),
+          stderr: '',
+          duration: 50,
         } as ExecResult)
       }
       if (args.includes('available')) {
         return Promise.resolve({
-          exitCode: 0, stdout: JSON.stringify(simctlOutput), stderr: '', duration: 50,
+          exitCode: 0,
+          stdout: JSON.stringify(simctlOutput),
+          stderr: '',
+          duration: 50,
         } as ExecResult)
       }
       // boot command
@@ -22,7 +28,13 @@ function mockRunner(simctlOutput: object): Runner {
     writeFile: vi.fn().mockResolvedValue(undefined),
     exists: vi.fn().mockResolvedValue(true),
     glob: vi.fn().mockResolvedValue([]),
-    capabilities: { hasMaestro: false, hasXcode: true, hasNode: true, hasSemgrep: false, platform: 'darwin' },
+    capabilities: {
+      hasMaestro: false,
+      hasXcode: true,
+      hasNode: true,
+      hasSemgrep: false,
+      platform: 'darwin',
+    },
   }
 }
 
@@ -140,14 +152,25 @@ describe('findOrBootBestSimulator', () => {
             stdout: JSON.stringify({
               devices: {
                 'com.apple.CoreSimulator.SimRuntime.iOS-26-2': [
-                  { name: 'iPhone 17 Pro', udid: 'uuid-17pro-booted', isAvailable: true, state: 'Booted' },
+                  {
+                    name: 'iPhone 17 Pro',
+                    udid: 'uuid-17pro-booted',
+                    isAvailable: true,
+                    state: 'Booted',
+                  },
                 ],
               },
             }),
-            stderr: '', duration: 50,
+            stderr: '',
+            duration: 50,
           } as ExecResult)
         }
-        return Promise.resolve({ exitCode: 0, stdout: '{}', stderr: '', duration: 50 } as ExecResult)
+        return Promise.resolve({
+          exitCode: 0,
+          stdout: '{}',
+          stderr: '',
+          duration: 50,
+        } as ExecResult)
       }),
     } as unknown as Runner
 

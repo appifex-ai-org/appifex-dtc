@@ -22,8 +22,12 @@ function makeContext(): RunContext {
 describe('dtc_load_context handler', () => {
   let dir: string
 
-  beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'dtc-mcp-ctx-')) })
-  afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'dtc-mcp-ctx-'))
+  })
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true })
+  })
 
   it('returns found: false when no context exists', async () => {
     const result = await handleLoadContext({ outputDir: dir })
@@ -45,8 +49,12 @@ describe('dtc_load_context handler', () => {
 describe('dtc_save_context handler', () => {
   let dir: string
 
-  beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'dtc-mcp-ctx-')) })
-  afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'dtc-mcp-ctx-'))
+  })
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true })
+  })
 
   it('saves a context and can be loaded back', async () => {
     const ctx = makeContext()

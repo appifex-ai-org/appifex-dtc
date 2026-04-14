@@ -1,6 +1,11 @@
 import type {
-  DesignSpec, Platform, PlatformSpec, PlatformScreenSpec,
-  PlatformComponentSpec, ComponentSpec, ScreenSpec,
+  DesignSpec,
+  Platform,
+  PlatformSpec,
+  PlatformScreenSpec,
+  PlatformComponentSpec,
+  ComponentSpec,
+  ScreenSpec,
 } from '@appifex/core'
 import { toSfSymbol } from './icon-mapping.js'
 
@@ -39,7 +44,7 @@ const KOTLIN_TYPE_MAP: Record<string, string> = {
 function toCamelCase(name: string): string {
   return name
     .replace(/[^a-zA-Z0-9]+(.)/g, (_, c) => c.toUpperCase())
-    .replace(/^[A-Z]/, c => c.toLowerCase())
+    .replace(/^[A-Z]/, (c) => c.toLowerCase())
 }
 
 function toPascalCase(name: string): string {
@@ -52,11 +57,9 @@ function translateComponent(
   platform: Platform,
   testIds: Record<string, string>,
 ): PlatformComponentSpec {
-  const typeMap = platform === 'kotlin-compose' ? KOTLIN_TYPE_MAP
-    : SWIFT_TYPE_MAP
-  const testId = platform === 'kotlin-compose'
-    ? comp.name.replace(/\s+/g, '_').toLowerCase()
-    : comp.name
+  const typeMap = platform === 'kotlin-compose' ? KOTLIN_TYPE_MAP : SWIFT_TYPE_MAP
+  const testId =
+    platform === 'kotlin-compose' ? comp.name.replace(/\s+/g, '_').toLowerCase() : comp.name
 
   testIds[comp.id] = testId
 
@@ -77,8 +80,8 @@ function translateComponent(
   // Map image fill mode to AppImage style for SwiftUI
   if (platform === 'swiftui' && (compProps.imageUrl || compProps.imageFillMode)) {
     const mode = compProps.imageFillMode as string | undefined
-    const w = typeof comp.style?.width === 'number' ? comp.style.width as number : undefined
-    const h = typeof comp.style?.height === 'number' ? comp.style.height as number : undefined
+    const w = typeof comp.style?.width === 'number' ? (comp.style.width as number) : undefined
+    const h = typeof comp.style?.height === 'number' ? (comp.style.height as number) : undefined
     props.appImageStyle = inferAppImageStyle(mode, w, h)
   }
 
@@ -102,7 +105,7 @@ function translateComponent(
     platformType: typeMap[comp.type] ?? typeMap.custom,
     name: comp.name,
     props,
-    children: comp.children?.map(c => translateComponent(c, platform, testIds)),
+    children: comp.children?.map((c) => translateComponent(c, platform, testIds)),
     style: comp.style as Record<string, unknown>,
     testId,
   }
@@ -112,9 +115,7 @@ function translateScreen(screen: ScreenSpec, platform: Platform): PlatformScreen
   const suffix = platform === 'swiftui' ? 'View' : 'Screen'
   const testIds: Record<string, string> = {}
 
-  const components = screen.components.map(c =>
-    translateComponent(c, platform, testIds),
-  )
+  const components = screen.components.map((c) => translateComponent(c, platform, testIds))
 
   return {
     id: screen.id,
@@ -130,7 +131,9 @@ export function generateSwiftModifiers(style: Record<string, unknown>): string[]
   const mods: string[] = []
 
   // Padding
-  const pad = style.padding as { top?: number; right?: number; bottom?: number; left?: number } | undefined
+  const pad = style.padding as
+    | { top?: number; right?: number; bottom?: number; left?: number }
+    | undefined
   if (pad) {
     if (pad.top === pad.bottom && pad.left === pad.right && pad.top === pad.left) {
       mods.push(`.padding(${pad.top})`)
@@ -159,13 +162,19 @@ export function generateSwiftModifiers(style: Record<string, unknown>): string[]
 
   // Border
   if (style.borderWidth && style.borderColor) {
-    mods.push(`.overlay(RoundedRectangle(cornerRadius: ${style.borderRadius ?? 0}, style: .continuous).stroke(Color("${style.borderColor}"), lineWidth: ${style.borderWidth}))`)
+    mods.push(
+      `.overlay(RoundedRectangle(cornerRadius: ${style.borderRadius ?? 0}, style: .continuous).stroke(Color("${style.borderColor}"), lineWidth: ${style.borderWidth}))`,
+    )
   }
 
   // Shadow
-  const shadow = style.shadow as { color: string; offsetX: number; offsetY: number; blur: number } | undefined
+  const shadow = style.shadow as
+    | { color: string; offsetX: number; offsetY: number; blur: number }
+    | undefined
   if (shadow) {
-    mods.push(`.shadow(color: Color("${shadow.color}").opacity(0.2), radius: ${shadow.blur}, x: ${shadow.offsetX}, y: ${shadow.offsetY})`)
+    mods.push(
+      `.shadow(color: Color("${shadow.color}").opacity(0.2), radius: ${shadow.blur}, x: ${shadow.offsetX}, y: ${shadow.offsetY})`,
+    )
   }
 
   // Opacity
@@ -180,7 +189,9 @@ export function generateComposeModifiers(style: Record<string, unknown>): string
   const mods: string[] = []
 
   // Padding
-  const pad = style.padding as { top?: number; right?: number; bottom?: number; left?: number } | undefined
+  const pad = style.padding as
+    | { top?: number; right?: number; bottom?: number; left?: number }
+    | undefined
   if (pad) {
     if (pad.top === pad.bottom && pad.left === pad.right && pad.top === pad.left) {
       mods.push(`.padding(${pad.top}.dp)`)
@@ -201,20 +212,27 @@ export function generateComposeModifiers(style: Record<string, unknown>): string
   else if (typeof style.height === 'number') mods.push(`.height(${style.height}.dp)`)
 
   // Background
-  if (style.backgroundColor) mods.push(`.background(Color(0xFF${(style.backgroundColor as string).replace('#', '')}))`)
+  if (style.backgroundColor)
+    mods.push(`.background(Color(0xFF${(style.backgroundColor as string).replace('#', '')}))`)
 
   // Corner radius
   if (style.borderRadius) mods.push(`.clip(RoundedCornerShape(${style.borderRadius}.dp))`)
 
   // Border
   if (style.borderWidth && style.borderColor) {
-    mods.push(`.border(${style.borderWidth}.dp, Color(0xFF${(style.borderColor as string).replace('#', '')}), RoundedCornerShape(${style.borderRadius ?? 0}.dp))`)
+    mods.push(
+      `.border(${style.borderWidth}.dp, Color(0xFF${(style.borderColor as string).replace('#', '')}), RoundedCornerShape(${style.borderRadius ?? 0}.dp))`,
+    )
   }
 
   // Shadow
-  const shadow = style.shadow as { color: string; offsetX: number; offsetY: number; blur: number } | undefined
+  const shadow = style.shadow as
+    | { color: string; offsetX: number; offsetY: number; blur: number }
+    | undefined
   if (shadow) {
-    mods.push(`.shadow(elevation = ${shadow.blur}.dp, shape = RoundedCornerShape(${style.borderRadius ?? 0}.dp))`)
+    mods.push(
+      `.shadow(elevation = ${shadow.blur}.dp, shape = RoundedCornerShape(${style.borderRadius ?? 0}.dp))`,
+    )
   }
 
   // Opacity
@@ -242,13 +260,19 @@ export function inferAppImageStyle(mode?: string, width?: number, height?: numbe
 }
 
 export function translateSpec(spec: DesignSpec, platform: Platform): PlatformSpec {
-  const imports = platform === 'kotlin-compose'
-    ? ['androidx.compose.material3', 'androidx.compose.foundation', 'androidx.compose.ui', 'androidx.navigation.compose']
-    : ['SwiftUI']
+  const imports =
+    platform === 'kotlin-compose'
+      ? [
+          'androidx.compose.material3',
+          'androidx.compose.foundation',
+          'androidx.compose.ui',
+          'androidx.navigation.compose',
+        ]
+      : ['SwiftUI']
 
   return {
     platform,
-    screens: spec.screens.map(s => translateScreen(s, platform)),
+    screens: spec.screens.map((s) => translateScreen(s, platform)),
     designTokens: spec.designTokens,
     imports,
   }

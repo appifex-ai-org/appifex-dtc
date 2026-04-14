@@ -16,7 +16,11 @@ describe('formatPhaseStatus', () => {
   })
 
   it('formats running phase with spinner-like indicator', () => {
-    const result = formatPhaseStatus({ id: 'codegen', status: 'running', message: 'Generating 14 files' })
+    const result = formatPhaseStatus({
+      id: 'codegen',
+      status: 'running',
+      message: 'Generating 14 files',
+    })
     expect(result).toContain('◐')
     expect(result).toContain('Codegen')
     expect(result).toContain('Generating 14 files')
@@ -29,7 +33,11 @@ describe('formatPhaseStatus', () => {
   })
 
   it('formats failed phase with X', () => {
-    const result = formatPhaseStatus({ id: 'validate', status: 'failed', message: 'UI 4/5 Unit 11/12' })
+    const result = formatPhaseStatus({
+      id: 'validate',
+      status: 'failed',
+      message: 'UI 4/5 Unit 11/12',
+    })
     expect(result).toContain('✗')
     expect(result).toContain('Validate')
   })
@@ -122,14 +130,22 @@ describe('PIPELINE_PHASES ordering', () => {
   })
 
   it('formatPhaseStatus renders a design_delta row with the Design delta label when running', () => {
-    const result = formatPhaseStatus({ id: 'design_delta', status: 'running', message: '0 added / 0 removed / 1 changed' })
+    const result = formatPhaseStatus({
+      id: 'design_delta',
+      status: 'running',
+      message: '0 added / 0 removed / 1 changed',
+    })
     expect(result).toContain('◐')
     expect(result).toContain('Design delta')
     expect(result).toContain('1 changed')
   })
 
   it('formatPhaseStatus renders a design_delta row with a check when completed', () => {
-    const result = formatPhaseStatus({ id: 'design_delta', status: 'completed', message: '2 added / 0 removed / 1 changed' })
+    const result = formatPhaseStatus({
+      id: 'design_delta',
+      status: 'completed',
+      message: '2 added / 0 removed / 1 changed',
+    })
     expect(result).toContain('✓')
     expect(result).toContain('Design delta')
   })

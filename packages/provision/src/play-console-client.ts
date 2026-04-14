@@ -68,10 +68,12 @@ export class PlayConsoleClient {
         track,
         requestBody: {
           track,
-          releases: [{
-            status,
-            versionCodes: [String(versionCode)],
-          }],
+          releases: [
+            {
+              status,
+              versionCodes: [String(versionCode)],
+            },
+          ],
         },
       })
 

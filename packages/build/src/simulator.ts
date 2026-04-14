@@ -31,11 +31,12 @@ function scoreIphoneModel(name: string): number {
   // Tier bonus
   let tierBonus = 0
   if (name.includes('Pro Max')) tierBonus = 2
-  else if (name.includes('Pro')) tierBonus = 3  // Pro preferred over Pro Max for standard screen size
+  else if (name.includes('Pro'))
+    tierBonus = 3 // Pro preferred over Pro Max for standard screen size
   else if (name.includes('Plus')) tierBonus = 0
   else if (name.includes('Air')) tierBonus = 0
   else if (name.includes('SE') || name.includes('16e')) tierBonus = -10
-  else tierBonus = 1  // regular iPhone (e.g., "iPhone 17")
+  else tierBonus = 1 // regular iPhone (e.g., "iPhone 17")
 
   return modelNum * 10 + tierBonus
 }
@@ -44,7 +45,9 @@ function scoreIphoneModel(name: string): number {
  * Find the best available iPhone simulator: latest iOS runtime, newest Pro model.
  * Returns { udid, name, runtime } or null.
  */
-export async function findBestSimulator(runner: Runner): Promise<{ udid: string; name: string; runtime: string } | null> {
+export async function findBestSimulator(
+  runner: Runner,
+): Promise<{ udid: string; name: string; runtime: string } | null> {
   const result = await runner.exec('xcrun', ['simctl', 'list', 'devices', 'available', '-j'])
   if (result.exitCode !== 0) return null
 
@@ -57,20 +60,22 @@ export async function findBestSimulator(runner: Runner): Promise<{ udid: string;
       .sort((a, b) => {
         const va = parseIosVersion(a[0])
         const vb = parseIosVersion(b[0])
-        return vb[0] - va[0] || vb[1] - va[1]  // highest version first
+        return vb[0] - va[0] || vb[1] - va[1] // highest version first
       })
 
     // From the latest runtime, pick the best iPhone
     for (const [runtime, devices] of iosRuntimes) {
       const iphones = devices
-        .filter(d => d.isAvailable && d.name.includes('iPhone'))
+        .filter((d) => d.isAvailable && d.name.includes('iPhone'))
         .sort((a, b) => scoreIphoneModel(b.name) - scoreIphoneModel(a.name))
 
       if (iphones.length > 0) {
         return { udid: iphones[0].udid, name: iphones[0].name, runtime }
       }
     }
-  } catch { /* fall through */ }
+  } catch {
+    /* fall through */
+  }
 
   return null
 }
@@ -108,7 +113,9 @@ export async function findOrBootBestSimulator(runner: Runner): Promise<string | 
         })
         return bootedIphones[0].udid
       }
-    } catch { /* fall through */ }
+    } catch {
+      /* fall through */
+    }
   }
 
   // No booted simulator — boot the best available
@@ -116,6 +123,6 @@ export async function findOrBootBestSimulator(runner: Runner): Promise<string | 
   if (!best) return null
 
   await runner.exec('xcrun', ['simctl', 'boot', best.udid])
-  await new Promise(r => setTimeout(r, 3000))
+  await new Promise((r) => setTimeout(r, 3000))
   return best.udid
 }

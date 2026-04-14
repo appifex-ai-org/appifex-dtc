@@ -9,7 +9,11 @@ function toKebab(name: string): string {
     .toLowerCase()
 }
 
-export function extractNavigation(frames: PenNode[], screens: ScreenSpec[], resolveColor: (val: unknown) => string): NavigationSpec | undefined {
+export function extractNavigation(
+  frames: PenNode[],
+  screens: ScreenSpec[],
+  resolveColor: (val: unknown) => string,
+): NavigationSpec | undefined {
   // Build a lookup from screen name keywords to screen IDs
   const screenIdLookup = new Map<string, string>()
   for (const screen of screens) {
@@ -22,13 +26,13 @@ export function extractNavigation(frames: PenNode[], screens: ScreenSpec[], reso
 
   // Look for a tab bar in any screen frame
   for (const frame of frames) {
-    const tabBar = findNode(frame, n => {
+    const tabBar = findNode(frame, (n) => {
       const name = (n.name ?? '').toLowerCase()
       return name.includes('tab bar') || name.includes('tabbar')
     })
     if (tabBar && tabBar.children && tabBar.children.length > 0) {
-      const routes = tabBar.children.map(tab => {
-        const labelNode = findNode(tab, n => n.type === 'text')
+      const routes = tabBar.children.map((tab) => {
+        const labelNode = findNode(tab, (n) => n.type === 'text')
         const label = labelNode?.content ?? tab.name ?? 'Tab'
         // Try to match tab label to an existing screen ID
         const matchedId = screenIdLookup.get(label.toLowerCase()) ?? `screen-${toKebab(label)}`
@@ -45,7 +49,7 @@ export function extractNavigation(frames: PenNode[], screens: ScreenSpec[], reso
   if (frames.length > 1) {
     return {
       type: 'stack' as const,
-      routes: screens.map(s => ({
+      routes: screens.map((s) => ({
         screenId: s.id,
         path: `/${toKebab(s.name)}`,
       })),
@@ -61,10 +65,18 @@ export function describeScreen(frame: PenNode): string {
 
   // Count component types
   const allNodes = flattenNodes(frame)
-  const texts = allNodes.filter(n => n.type === 'text')
-  const buttons = allNodes.filter(n => (n.name ?? '').toLowerCase().includes('btn') || (n.name ?? '').toLowerCase().includes('button'))
-  const inputs = allNodes.filter(n => (n.name ?? '').toLowerCase().includes('field') || (n.name ?? '').toLowerCase().includes('input'))
-  const lists = allNodes.filter(n => (n.name ?? '').toLowerCase().includes('list'))
+  const texts = allNodes.filter((n) => n.type === 'text')
+  const buttons = allNodes.filter(
+    (n) =>
+      (n.name ?? '').toLowerCase().includes('btn') ||
+      (n.name ?? '').toLowerCase().includes('button'),
+  )
+  const inputs = allNodes.filter(
+    (n) =>
+      (n.name ?? '').toLowerCase().includes('field') ||
+      (n.name ?? '').toLowerCase().includes('input'),
+  )
+  const lists = allNodes.filter((n) => (n.name ?? '').toLowerCase().includes('list'))
 
   parts.push(`Screen "${name}"`)
   if (buttons.length > 0) parts.push(`${buttons.length} button(s)`)
@@ -73,9 +85,9 @@ export function describeScreen(frame: PenNode): string {
 
   // Include key text content
   const keyTexts = texts
-    .filter(t => t.content && t.content.length > 2 && !t.content.match(/^\d+:\d+$/)) // skip time strings
+    .filter((t) => t.content && t.content.length > 2 && !t.content.match(/^\d+:\d+$/)) // skip time strings
     .slice(0, 3)
-    .map(t => `"${t.content}"`)
+    .map((t) => `"${t.content}"`)
   if (keyTexts.length > 0) parts.push(`contains: ${keyTexts.join(', ')}`)
 
   return parts.join(' — ')
@@ -83,7 +95,7 @@ export function describeScreen(frame: PenNode): string {
 
 export function findNode(node: PenNode, predicate: (n: PenNode) => boolean): PenNode | undefined {
   if (predicate(node)) return node
-  for (const child of (node.children ?? [])) {
+  for (const child of node.children ?? []) {
     const found = findNode(child, predicate)
     if (found) return found
   }
@@ -92,7 +104,7 @@ export function findNode(node: PenNode, predicate: (n: PenNode) => boolean): Pen
 
 export function flattenNodes(node: PenNode): PenNode[] {
   const result: PenNode[] = [node]
-  for (const child of (node.children ?? [])) {
+  for (const child of node.children ?? []) {
     result.push(...flattenNodes(child))
   }
   return result

@@ -1,9 +1,21 @@
 export const COMMANDS = [
-  'design', 'spec', 'test-gen', 'codegen', 'build',
-  'validate', 'security', 'fix', 'provision', 'deliver', 'report', 'setup', 'run', 'doctor',
+  'design',
+  'spec',
+  'test-gen',
+  'codegen',
+  'build',
+  'validate',
+  'security',
+  'fix',
+  'provision',
+  'deliver',
+  'report',
+  'setup',
+  'run',
+  'doctor',
 ] as const
 
-export type Command = typeof COMMANDS[number] | 'help' | 'version'
+export type Command = (typeof COMMANDS)[number] | 'help' | 'version'
 
 const SUBCOMMAND_COMMANDS = new Set(['spec', 'test-gen', 'provision'])
 

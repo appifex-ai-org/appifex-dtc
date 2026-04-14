@@ -8,12 +8,21 @@ const MAX_BUFFER = 10 * 1024 * 1024
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000
 
 /** Spawn an agent with plain text prompt on stdin */
-export function spawnAgent(binary: string, args: string[], opts: AgentRunOpts): Promise<AgentResult> {
+export function spawnAgent(
+  binary: string,
+  args: string[],
+  opts: AgentRunOpts,
+): Promise<AgentResult> {
   return spawnAgentWithInput(binary, args, opts.prompt, opts)
 }
 
 /** Spawn an agent with a pre-formatted stream-json message on stdin */
-export function spawnAgentStreamJson(binary: string, args: string[], jsonMessage: string, opts: AgentRunOpts): Promise<AgentResult> {
+export function spawnAgentStreamJson(
+  binary: string,
+  args: string[],
+  jsonMessage: string,
+  opts: AgentRunOpts,
+): Promise<AgentResult> {
   return spawnAgentWithInput(binary, args, jsonMessage + '\n', opts)
 }
 
@@ -26,10 +35,20 @@ interface StreamJsonState {
   lastAssistantText: string
 }
 
-function spawnAgentWithInput(binary: string, args: string[], input: string, opts: AgentRunOpts): Promise<AgentResult> {
+function spawnAgentWithInput(
+  binary: string,
+  args: string[],
+  input: string,
+  opts: AgentRunOpts,
+): Promise<AgentResult> {
   return new Promise((resolve, reject) => {
     let settled = false
-    const settle = (fn: () => void) => { if (!settled) { settled = true; fn() } }
+    const settle = (fn: () => void) => {
+      if (!settled) {
+        settled = true
+        fn()
+      }
+    }
 
     const child = spawn(binary, args, {
       cwd: opts.cwd,
@@ -52,7 +71,13 @@ function spawnAgentWithInput(binary: string, args: string[], input: string, opts
       idleTimer = setTimeout(() => {
         idleTimedOut = true
         child.kill('SIGTERM')
-        setTimeout(() => { try { child.kill('SIGKILL') } catch { /* already dead */ } }, 5_000)
+        setTimeout(() => {
+          try {
+            child.kill('SIGKILL')
+          } catch {
+            /* already dead */
+          }
+        }, 5_000)
       }, IDLE_TIMEOUT_MS)
     }
     resetIdleTimer()
@@ -69,7 +94,9 @@ function spawnAgentWithInput(binary: string, args: string[], input: string, opts
           try {
             const event = JSON.parse(line) as Record<string, unknown>
             parseStreamEvent(event, state)
-          } catch { /* not JSON */ }
+          } catch {
+            /* not JSON */
+          }
         }
       }
     })
@@ -86,7 +113,13 @@ function spawnAgentWithInput(binary: string, args: string[], input: string, opts
           timedOut = true
           child.kill('SIGTERM')
           // Escalate to SIGKILL after 5s if process doesn't exit
-          setTimeout(() => { try { child.kill('SIGKILL') } catch { /* already dead */ } }, 5_000)
+          setTimeout(() => {
+            try {
+              child.kill('SIGKILL')
+            } catch {
+              /* already dead */
+            }
+          }, 5_000)
         }, opts.timeoutMs)
       : undefined
 
@@ -95,55 +128,68 @@ function spawnAgentWithInput(binary: string, args: string[], input: string, opts
       if (idleTimer) clearTimeout(idleTimer)
 
       if (timedOut) {
-        settle(() => resolve({
-          success: false,
-          output: isStreamJson ? state.lastAssistantText : stdout,
-          exitCode: code ?? 1,
-          error: `Agent timed out after ${Math.round((opts.timeoutMs ?? 0) / 60_000)} minutes.`,
-          stopReason: 'timeout',
-          sessionId: state.sessionId,
-          costUsd: state.costUsd,
-        }))
+        settle(() =>
+          resolve({
+            success: false,
+            output: isStreamJson ? state.lastAssistantText : stdout,
+            exitCode: code ?? 1,
+            error: `Agent timed out after ${Math.round((opts.timeoutMs ?? 0) / 60_000)} minutes.`,
+            stopReason: 'timeout',
+            sessionId: state.sessionId,
+            costUsd: state.costUsd,
+          }),
+        )
         return
       }
 
       if (idleTimedOut) {
         // Agent stopped producing output — likely stuck after budget exhaustion
         const reason = state.stopReason ?? 'budget_exceeded'
-        settle(() => resolve({
-          success: false,
-          output: isStreamJson ? state.lastAssistantText : stdout,
-          exitCode: code ?? 1,
-          error: `Agent idle for ${Math.round(IDLE_TIMEOUT_MS / 60_000)} minutes with no output — killed. Likely ran out of budget.`,
-          stopReason: reason,
-          sessionId: state.sessionId,
-          costUsd: state.costUsd,
-        }))
+        settle(() =>
+          resolve({
+            success: false,
+            output: isStreamJson ? state.lastAssistantText : stdout,
+            exitCode: code ?? 1,
+            error: `Agent idle for ${Math.round(IDLE_TIMEOUT_MS / 60_000)} minutes with no output — killed. Likely ran out of budget.`,
+            stopReason: reason,
+            sessionId: state.sessionId,
+            costUsd: state.costUsd,
+          }),
+        )
         return
       }
 
       if (isStreamJson) {
         const stopReason = state.stopReason ?? (state.isError ? 'error' : 'success')
         const success = stopReason === 'success'
-        settle(() => resolve({
-          success,
-          output: state.lastAssistantText || stdout,
-          exitCode: code ?? (success ? 0 : 1),
-          error: !success ? (state.errors?.join('; ') || `Agent exited with code ${code}`) : undefined,
-          stopReason,
-          sessionId: state.sessionId,
-          costUsd: state.costUsd,
-        }))
+        settle(() =>
+          resolve({
+            success,
+            output: state.lastAssistantText || stdout,
+            exitCode: code ?? (success ? 0 : 1),
+            error: !success
+              ? state.errors?.join('; ') || `Agent exited with code ${code}`
+              : undefined,
+            stopReason,
+            sessionId: state.sessionId,
+            costUsd: state.costUsd,
+          }),
+        )
         return
       }
 
-      settle(() => resolve({
-        success: code === 0,
-        output: stdout,
-        exitCode: code ?? 1,
-        error: code !== 0 ? (stderr.slice(-2000) || stdout.slice(-2000) || `Agent exited with code ${code}`) : undefined,
-        stopReason: code === 0 ? 'success' : 'error',
-      }))
+      settle(() =>
+        resolve({
+          success: code === 0,
+          output: stdout,
+          exitCode: code ?? 1,
+          error:
+            code !== 0
+              ? stderr.slice(-2000) || stdout.slice(-2000) || `Agent exited with code ${code}`
+              : undefined,
+          stopReason: code === 0 ? 'success' : 'error',
+        }),
+      )
     })
 
     child.on('error', (err) => {

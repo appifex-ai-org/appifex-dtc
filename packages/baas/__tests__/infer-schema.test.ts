@@ -1,5 +1,15 @@
 import { describe, it, expect } from 'vitest'
-import type { BaasFieldType, BaasEntity, BaasSchema, BaasField, BaasRelationship, BaasContext, PhaseId, CheckpointData, PlatformSpec } from '@appifex/core'
+import type {
+  BaasFieldType,
+  BaasEntity,
+  BaasSchema,
+  BaasField,
+  BaasRelationship,
+  BaasContext,
+  PhaseId,
+  CheckpointData,
+  PlatformSpec,
+} from '@appifex/core'
 import { PHASE_ORDER } from '@appifex/core'
 import { inferBaasSchema, SCHEMA_INFERENCE_PROMPT } from '@appifex/baas'
 
@@ -19,9 +29,7 @@ describe('BaasSchema types', () => {
         { name: 'title', type: 'string', required: true },
         { name: 'count', type: 'number', required: false },
       ],
-      relationships: [
-        { target: 'User', type: 'belongs_to' },
-      ],
+      relationships: [{ target: 'User', type: 'belongs_to' }],
     }
     expect(entity.name).toBe('Todo')
     expect(entity.fields).toHaveLength(2)
@@ -45,7 +53,11 @@ describe('BaasSchema types', () => {
   it('BaasContext.schema is typed as BaasSchema (not unknown)', () => {
     const schema: BaasSchema = {
       entities: [
-        { name: 'User', fields: [{ name: 'email', type: 'string', required: true }], relationships: [] },
+        {
+          name: 'User',
+          fields: [{ name: 'email', type: 'string', required: true }],
+          relationships: [],
+        },
       ],
     }
     const ctx: BaasContext = {
@@ -117,9 +129,7 @@ const VALID_SCHEMA_JSON = JSON.stringify({
         { name: 'completed', type: 'boolean', required: true },
         { name: 'dueDate', type: 'date', required: false },
       ],
-      relationships: [
-        { target: 'User', type: 'belongs_to' },
-      ],
+      relationships: [{ target: 'User', type: 'belongs_to' }],
     },
     {
       name: 'User',
@@ -129,15 +139,17 @@ const VALID_SCHEMA_JSON = JSON.stringify({
         { name: 'age', type: 'number', required: false },
         { name: 'tags', type: 'array', required: false },
       ],
-      relationships: [
-        { target: 'Todo', type: 'has_many' },
-      ],
+      relationships: [{ target: 'Todo', type: 'has_many' }],
     },
   ],
 })
 
 function mockCreateMessage(responseText: string) {
-  return async (_params: { model: string; max_tokens: number; messages: Array<{ role: string; content: string }> }) => ({
+  return async (_params: {
+    model: string
+    max_tokens: number
+    messages: Array<{ role: string; content: string }>
+  }) => ({
     content: [{ type: 'text' as const, text: responseText }],
   })
 }
@@ -181,8 +193,15 @@ describe('inferBaasSchema', () => {
       provider: 'firebase',
       createMessage: mockCreateMessage(VALID_SCHEMA_JSON),
     })
-    const allFieldTypes = result.entities.flatMap(e => e.fields.map(f => f.type))
-    const validTypes: BaasFieldType[] = ['string', 'number', 'boolean', 'date', 'reference', 'array']
+    const allFieldTypes = result.entities.flatMap((e) => e.fields.map((f) => f.type))
+    const validTypes: BaasFieldType[] = [
+      'string',
+      'number',
+      'boolean',
+      'date',
+      'reference',
+      'array',
+    ]
     for (const t of allFieldTypes) {
       expect(validTypes).toContain(t)
     }

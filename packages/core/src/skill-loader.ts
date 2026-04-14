@@ -26,7 +26,7 @@ async function readMdDir(dir: string): Promise<string> {
   } catch {
     return ''
   }
-  const mdFiles = files.filter(f => f.endsWith('.md')).sort()
+  const mdFiles = files.filter((f) => f.endsWith('.md')).sort()
   const chunks: string[] = []
   for (const f of mdFiles) {
     const content = await readFile(join(dir, f), 'utf-8')
@@ -48,7 +48,9 @@ async function readFlatSkillDir(dir: string): Promise<string> {
     // Strip YAML frontmatter
     content = content.replace(/^---\n[\s\S]*?\n---\n/, '')
     chunks.push(content.trim())
-  } catch { /* no SKILL.md */ }
+  } catch {
+    /* no SKILL.md */
+  }
 
   // Read references/*.md
   const refs = await readMdDir(join(dir, 'references'))
@@ -66,7 +68,9 @@ async function isStructuredDir(dir: string): Promise<boolean> {
     try {
       const s = await stat(join(dir, 'swiftui'))
       if (s.isDirectory()) return true
-    } catch { /* not found */ }
+    } catch {
+      /* not found */
+    }
     try {
       const s = await stat(join(dir, 'kotlin-compose'))
       return s.isDirectory()
@@ -99,14 +103,15 @@ export function createFileSkillProvider(skillsDir: string): SkillProvider {
         // Structured format: shared/ + platform/ subdirs
         const sharedDir = join(skillsDir, 'shared')
         const platformDir = join(skillsDir, platform)
-        const [sharedSpec, platformSpec, sharedCodegen, platformCodegen, sharedFix, platformFix] = await Promise.all([
-          readMdDir(join(sharedDir, 'spec')),
-          readMdDir(join(platformDir, 'spec')),
-          readMdDir(join(sharedDir, 'codegen')),
-          readMdDir(join(platformDir, 'codegen')),
-          readMdDir(join(sharedDir, 'fix')),
-          readMdDir(join(platformDir, 'fix')),
-        ])
+        const [sharedSpec, platformSpec, sharedCodegen, platformCodegen, sharedFix, platformFix] =
+          await Promise.all([
+            readMdDir(join(sharedDir, 'spec')),
+            readMdDir(join(platformDir, 'spec')),
+            readMdDir(join(sharedDir, 'codegen')),
+            readMdDir(join(platformDir, 'codegen')),
+            readMdDir(join(sharedDir, 'fix')),
+            readMdDir(join(platformDir, 'fix')),
+          ])
         return {
           specPrompt: [sharedSpec, platformSpec].filter(Boolean).join('\n\n'),
           codegenPrompt: [sharedCodegen, platformCodegen].filter(Boolean).join('\n\n'),

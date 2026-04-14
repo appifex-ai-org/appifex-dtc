@@ -133,7 +133,10 @@ export class StitchAdapter {
       ])
 
       if (!htmlResp.ok || !imageResp.ok) {
-        return { ...base, error: `Failed to download artifacts (HTML: ${htmlResp.ok}, image: ${imageResp.ok})` }
+        return {
+          ...base,
+          error: `Failed to download artifacts (HTML: ${htmlResp.ok}, image: ${imageResp.ok})`,
+        }
       }
 
       const htmlContent = await htmlResp.text()

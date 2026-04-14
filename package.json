@@ -1,6 +1,7 @@
 {
   "name": "appifex-monorepo",
   "private": true,
+  "type": "module",
   "description": "Composable toolkit for UI/UX-driven mobile app development",
   "license": "MIT",
   "scripts": {
@@ -8,7 +9,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:related": "vitest related --run",
-    "typecheck": "tsc --noEmit && pnpm -r exec tsc --noEmit",
+    "typecheck": "pnpm -r exec tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

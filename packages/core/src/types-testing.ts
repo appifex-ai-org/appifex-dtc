@@ -67,8 +67,19 @@ export interface ValidationReport {
 
 // ── Fix Loop ──
 export type FixStatus = 'all_green' | 'partial' | 'stuck' | 'budget_exceeded' | 'timeout'
-export type CircuitBreakReason = 'max_attempts' | 'same_error_repeated' | 'no_progress' | 'budget_exceeded' | 'regression' | 'timeout'
-export type FixRecommendation = 'manual_fix' | 'simplify_design' | 'relax_tests' | 'split_and_retry' | 'add_budget'
+export type CircuitBreakReason =
+  | 'max_attempts'
+  | 'same_error_repeated'
+  | 'no_progress'
+  | 'budget_exceeded'
+  | 'regression'
+  | 'timeout'
+export type FixRecommendation =
+  | 'manual_fix'
+  | 'simplify_design'
+  | 'relax_tests'
+  | 'split_and_retry'
+  | 'add_budget'
 
 export interface FixAttempt {
   attempt: number
@@ -83,7 +94,9 @@ export interface FixAttempt {
 export interface FixResult {
   status: FixStatus
   attempts: FixAttempt[]
-  unresolvedFailures: Array<FlowResult | UnitTestFailure | BaasIntegrationViolation | ParityViolation>
+  unresolvedFailures: Array<
+    FlowResult | UnitTestFailure | BaasIntegrationViolation | ParityViolation
+  >
   rollbackApplied: boolean
   recommendation?: FixRecommendation
   circuitBreakReason?: CircuitBreakReason

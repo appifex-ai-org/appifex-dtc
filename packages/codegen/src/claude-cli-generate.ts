@@ -14,7 +14,9 @@ export interface ClaudeCliGenerateOpts {
  * Creates a generate function that shells out to the local `claude` CLI.
  * Requires `claude` to be installed and authenticated.
  */
-export function createClaudeCliGenerateFn(opts: ClaudeCliGenerateOpts = {}): (input: CodegenInput) => Promise<CodegenResult> {
+export function createClaudeCliGenerateFn(
+  opts: ClaudeCliGenerateOpts = {},
+): (input: CodegenInput) => Promise<CodegenResult> {
   const model = opts.model ?? 'claude-sonnet-4-6'
   const timeoutMs = opts.timeoutMs ?? 15 * 60 * 1000
 
@@ -25,7 +27,9 @@ export function createClaudeCliGenerateFn(opts: ClaudeCliGenerateOpts = {}): (in
 
       const specJson = JSON.stringify(input.spec, null, 2)
 
-      const platformInstructions = input.spec.platform === 'swiftui' ? `
+      const platformInstructions =
+        input.spec.platform === 'swiftui'
+          ? `
 ## SwiftUI Project Structure
 - All .swift files MUST go in Sources/ directory
 - Include a ContentView.swift as the main view
@@ -38,25 +42,30 @@ export function createClaudeCliGenerateFn(opts: ClaudeCliGenerateOpts = {}): (in
   3. NEVER use .accessibilityElement() in any form — it breaks Maestro discovery
   4. Every interactive component in the spec's testIds map MUST have .accessibilityIdentifier()
 - Include Info.plist in Sources/
-` : `
+`
+          : `
 ## Kotlin Compose
 - Include Modifier.testTag() on all interactive composables
 `
 
       const uiTestsContext = input.uiTestContent?.length
-        ? `### UI Tests (Maestro flows)\n${input.uiTestContent.map(t => `**${t.path}:**\n\`\`\`yaml\n${t.content}\n\`\`\``).join('\n\n')}`
+        ? `### UI Tests (Maestro flows)\n${input.uiTestContent.map((t) => `**${t.path}:**\n\`\`\`yaml\n${t.content}\n\`\`\``).join('\n\n')}`
         : `UI tests: ${input.uiTestPaths.join(', ')}`
 
       const unitTestsContext = input.unitTestContent?.length
-        ? `### Unit Tests\n${input.unitTestContent.map(t => `**${t.path}:**\n\`\`\`\n${t.content}\n\`\`\``).join('\n\n')}`
+        ? `### Unit Tests\n${input.unitTestContent.map((t) => `**${t.path}:**\n\`\`\`\n${t.content}\n\`\`\``).join('\n\n')}`
         : `Unit tests: ${input.unitTestPaths.join(', ')}`
 
       const prompt = `You are a senior ${input.spec.platform} developer. Write ALL source files for a complete app.
 
 ## 1. Design Image
-${input.designImagePath ? `Read the design image at: ${input.designImagePath}
+${
+  input.designImagePath
+    ? `Read the design image at: ${input.designImagePath}
 Study EVERY screen. Reproduce the EXACT layout, navigation, components, colors, and typography.
-DO NOT simplify — implement every screen and every visual element shown.` : 'No design image — follow the spec below.'}
+DO NOT simplify — implement every screen and every visual element shown.`
+    : 'No design image — follow the spec below.'
+}
 
 ## 2. Tests (must pass)
 ${uiTestsContext}
@@ -82,7 +91,9 @@ Write all files now using the Write tool. Do not ask questions.`
       // Log prompt for debugging
       try {
         writeFileSync(join(input.outputDir, 'codegen-prompt.md'), prompt, 'utf-8')
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
 
       const result = await runClaude(prompt, input.outputDir, model, timeoutMs)
 
@@ -92,7 +103,12 @@ Write all files now using the Write tool. Do not ask questions.`
 
       return { success: true, files: result.files, tokensUsed: 0 }
     } catch (err) {
-      return { success: false, files: [], tokensUsed: 0, error: String(err instanceof Error ? err.message : err) }
+      return {
+        success: false,
+        files: [],
+        tokensUsed: 0,
+        error: String(err instanceof Error ? err.message : err),
+      }
     }
   }
 }
@@ -108,7 +124,16 @@ export interface ClaudeCliResult {
 function collectWrittenFiles(dir: string, baseDir: string): GeneratedFile[] {
   const files: GeneratedFile[] = []
   const SOURCE_EXTS = /\.(tsx?|jsx?|swift|json|css|yaml|yml)$/
-  const SKIP_DIRS = new Set(['node_modules', '.maestro', '__tests__', 'build', '.expo', 'ios', 'android', '.dtc-report'])
+  const SKIP_DIRS = new Set([
+    'node_modules',
+    '.maestro',
+    '__tests__',
+    'build',
+    '.expo',
+    'ios',
+    'android',
+    '.dtc-report',
+  ])
 
   try {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -121,16 +146,26 @@ function collectWrittenFiles(dir: string, baseDir: string): GeneratedFile[] {
         files.push({ path: relative(baseDir, fullPath), content: readFileSync(fullPath, 'utf-8') })
       }
     }
-  } catch { /* dir may not exist */ }
+  } catch {
+    /* dir may not exist */
+  }
   return files
 }
 
-export async function runClaude(prompt: string, cwd: string, model: string, timeoutMs: number): Promise<ClaudeCliResult> {
+export async function runClaude(
+  prompt: string,
+  cwd: string,
+  model: string,
+  timeoutMs: number,
+): Promise<ClaudeCliResult> {
   return new Promise((resolve) => {
     const args = [
-      '--model', model,
-      '--max-budget-usd', '5',
-      '--allowedTools', 'Edit,Write,Read,Bash(safe_mode=true),Glob,Grep',
+      '--model',
+      model,
+      '--max-budget-usd',
+      '5',
+      '--allowedTools',
+      'Edit,Write,Read,Bash(safe_mode=true),Glob,Grep',
       '--dangerously-skip-permissions',
     ]
 
@@ -147,18 +182,29 @@ export async function runClaude(prompt: string, cwd: string, model: string, time
     let stdout = ''
     let stderr = ''
 
-    child.stdout.on('data', (data: Buffer) => { stdout += data.toString() })
-    child.stderr.on('data', (data: Buffer) => { stderr += data.toString() })
+    child.stdout.on('data', (data: Buffer) => {
+      stdout += data.toString()
+    })
+    child.stderr.on('data', (data: Buffer) => {
+      stderr += data.toString()
+    })
 
     const timer = setTimeout(() => {
       child.kill('SIGTERM')
-      resolve({ success: false, files: [], output: stdout, error: `Claude CLI timed out after ${timeoutMs / 1000}s` })
+      resolve({
+        success: false,
+        files: [],
+        output: stdout,
+        error: `Claude CLI timed out after ${timeoutMs / 1000}s`,
+      })
     }, timeoutMs)
 
     child.on('close', (code) => {
       clearTimeout(timer)
       if (code !== 0) {
-        const errMsg = [stderr, stdout].filter(Boolean).join('\n').slice(-2000) || `Claude CLI exited with code ${code}`
+        const errMsg =
+          [stderr, stdout].filter(Boolean).join('\n').slice(-2000) ||
+          `Claude CLI exited with code ${code}`
         resolve({ success: false, files: [], output: stdout, error: errMsg })
       } else {
         // Claude CLI runs in agentic mode — files are written directly to cwd via Write/Edit tools

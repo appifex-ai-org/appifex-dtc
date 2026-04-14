@@ -139,14 +139,29 @@ describe('toSfSymbol', () => {
 
       const penDoc = JSON.stringify({
         version: '1',
-        children: [{
-          type: 'frame', name: 'Home', width: 390, height: 844,
-          children: [
-            { type: 'icon_font', name: 'Nav Icon', iconFontFamily: 'lucide', iconFontName: 'home' },
-            { type: 'icon_font', name: 'Search', iconFontFamily: 'lucide', iconFontName: 'search' },
-            { type: 'text', name: 'Title', content: 'Hello' },
-          ],
-        }],
+        children: [
+          {
+            type: 'frame',
+            name: 'Home',
+            width: 390,
+            height: 844,
+            children: [
+              {
+                type: 'icon_font',
+                name: 'Nav Icon',
+                iconFontFamily: 'lucide',
+                iconFontName: 'home',
+              },
+              {
+                type: 'icon_font',
+                name: 'Search',
+                iconFontFamily: 'lucide',
+                iconFontName: 'search',
+              },
+              { type: 'text', name: 'Title', content: 'Hello' },
+            ],
+          },
+        ],
       })
 
       const spec = extractSpecFromPen(penDoc)
@@ -166,12 +181,17 @@ describe('toSfSymbol', () => {
 
       const penDoc = JSON.stringify({
         version: '1',
-        children: [{
-          type: 'frame', name: 'Home', width: 390, height: 844,
-          children: [
-            { type: 'icon_font', name: 'Icon', iconFontFamily: 'lucide', iconFontName: 'home' },
-          ],
-        }],
+        children: [
+          {
+            type: 'frame',
+            name: 'Home',
+            width: 390,
+            height: 844,
+            children: [
+              { type: 'icon_font', name: 'Icon', iconFontFamily: 'lucide', iconFontName: 'home' },
+            ],
+          },
+        ],
       })
 
       const spec = extractSpecFromPen(penDoc)

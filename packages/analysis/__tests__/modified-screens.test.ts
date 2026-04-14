@@ -100,9 +100,7 @@ describe('diffScreenInventory', () => {
     const runner = createMockRunner({
       '/tmp/dtc-test/Sources/X.swift': 'same content',
     })
-    const preSnapshot = new Map<string, string>([
-      ['/tmp/dtc-test/Sources/X.swift', 'same content'],
-    ])
+    const preSnapshot = new Map<string, string>([['/tmp/dtc-test/Sources/X.swift', 'same content']])
 
     const result = await diffScreenInventory(outputDir, 'swiftui', runner, preSnapshot)
 
@@ -152,9 +150,7 @@ describe('diffScreenInventory', () => {
     const runner = createMockRunner({
       '/tmp/dtc-test/Sources/Y.swift': 'same',
     })
-    const preSnapshot = new Map<string, string>([
-      ['/tmp/dtc-test/Sources/Y.swift', 'same'],
-    ])
+    const preSnapshot = new Map<string, string>([['/tmp/dtc-test/Sources/Y.swift', 'same']])
 
     const result = await diffScreenInventory('/tmp/dtc-test/', 'swiftui', runner, preSnapshot)
 

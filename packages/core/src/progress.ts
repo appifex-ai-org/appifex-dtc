@@ -34,9 +34,7 @@ const STATUS_ICONS: Record<string, string> = {
   skipped: '○',
 }
 
-export function terminalProgressListener(
-  write: (line: string) => void,
-): ProgressListener {
+export function terminalProgressListener(write: (line: string) => void): ProgressListener {
   return (event: ProgressEvent) => {
     const icon = STATUS_ICONS[event.status] ?? '?'
     const tokens = event.tokensUsed ? ` [${event.tokensUsed} tokens]` : ''

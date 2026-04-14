@@ -1,6 +1,9 @@
 import type { BaasProvider } from '@appifex/core'
 
-interface GeneratedFile { path: string; content: string }
+interface GeneratedFile {
+  path: string
+  content: string
+}
 
 const FIREBASE_DEEP_LINK_INSTRUCTIONS = `// Deep Link Configuration — Firebase Password Reset
 //

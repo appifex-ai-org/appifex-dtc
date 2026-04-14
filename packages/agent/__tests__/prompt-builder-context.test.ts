@@ -10,7 +10,16 @@ function makeTempProject(): string {
   // Write a minimal spec file
   const spec = {
     platform: 'swiftui',
-    screens: [{ id: 's1', name: 'Home', componentName: 'HomeView', description: 'Home screen', components: [], testIds: {} }],
+    screens: [
+      {
+        id: 's1',
+        name: 'Home',
+        componentName: 'HomeView',
+        description: 'Home screen',
+        components: [],
+        testIds: {},
+      },
+    ],
     designTokens: { colors: {}, typography: {}, spacing: {}, borderRadius: {} },
     imports: [],
   }
@@ -202,7 +211,16 @@ describe('buildAgentPrompt with existingDesignTokens', () => {
     const d = mkdtempSync(join(tmpdir(), 'dtc-prompt-tokens-'))
     const spec = {
       platform: 'swiftui',
-      screens: [{ id: 's1', name: 'Home', componentName: 'HomeView', description: 'Home screen', components: [], testIds: {} }],
+      screens: [
+        {
+          id: 's1',
+          name: 'Home',
+          componentName: 'HomeView',
+          description: 'Home screen',
+          components: [],
+          testIds: {},
+        },
+      ],
       designTokens: { colors: {}, typography: {}, spacing: {}, borderRadius: {} },
       imports: [],
     }

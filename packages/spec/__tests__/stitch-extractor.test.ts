@@ -125,13 +125,15 @@ describe('extractSpecFromStitch', () => {
 
   const cannedSpec = {
     version: '1.0',
-    screens: [{
-      id: 'screen-home',
-      name: 'Home',
-      description: 'Main screen',
-      components: [{ id: 'comp-title', type: 'text', name: 'Title', props: {}, style: {} }],
-      layout: { type: 'stack', direction: 'vertical' },
-    }],
+    screens: [
+      {
+        id: 'screen-home',
+        name: 'Home',
+        description: 'Main screen',
+        components: [{ id: 'comp-title', type: 'text', name: 'Title', props: {}, style: {} }],
+        layout: { type: 'stack', direction: 'vertical' },
+      },
+    ],
     designTokens: {
       colors: { primary: '#0000FF' },
       typography: {},

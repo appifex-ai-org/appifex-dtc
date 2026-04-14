@@ -19,21 +19,34 @@ export async function setupWizard(configDir?: string): Promise<void> {
   const provider = await p.select({
     message: 'LLM provider',
     options: [
-      { value: 'claude-cli', label: 'Claude Code (local CLI)', hint: 'uses your local `claude` — no API key needed' },
+      {
+        value: 'claude-cli',
+        label: 'Claude Code (local CLI)',
+        hint: 'uses your local `claude` — no API key needed',
+      },
       { value: 'anthropic', label: 'Anthropic (Claude API)', hint: 'API key' },
       { value: 'openai', label: 'OpenAI (GPT)', hint: 'API key' },
-      { value: 'copilot', label: 'GitHub Copilot', hint: 'sign in with GitHub — uses your Copilot subscription' },
+      {
+        value: 'copilot',
+        label: 'GitHub Copilot',
+        hint: 'sign in with GitHub — uses your Copilot subscription',
+      },
       { value: 'google', label: 'Google (Gemini)', hint: 'API key' },
     ],
   })
-  if (p.isCancel(provider)) { p.cancel('Setup cancelled.'); process.exit(0) }
+  if (p.isCancel(provider)) {
+    p.cancel('Setup cancelled.')
+    process.exit(0)
+  }
 
   let apiKey = ''
   let githubToken = ''
 
   if (provider === 'copilot') {
     if (DTC_GITHUB_CLIENT_ID === 'Iv1.dtc_placeholder') {
-      p.cancel('Copilot auth requires a real GitHub App client ID. Set DTC_GITHUB_CLIENT_ID env var.')
+      p.cancel(
+        'Copilot auth requires a real GitHub App client ID. Set DTC_GITHUB_CLIENT_ID env var.',
+      )
       process.exit(1)
     }
     const s = p.spinner()
@@ -69,16 +82,23 @@ export async function setupWizard(configDir?: string): Promise<void> {
   } else {
     const keyInput = await p.password({
       message: 'API key',
-      validate: (v) => v.length === 0 ? 'API key is required' : undefined,
+      validate: (v) => (v.length === 0 ? 'API key is required' : undefined),
     })
-    if (p.isCancel(keyInput)) { p.cancel('Setup cancelled.'); process.exit(0) }
+    if (p.isCancel(keyInput)) {
+      p.cancel('Setup cancelled.')
+      process.exit(0)
+    }
     apiKey = keyInput
   }
 
   // Model selection based on provider
   const modelOptions: Record<string, Array<{ value: string; label: string; hint?: string }>> = {
     anthropic: [
-      { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4', hint: 'recommended — fast + capable' },
+      {
+        value: 'claude-sonnet-4-20250514',
+        label: 'Claude Sonnet 4',
+        hint: 'recommended — fast + capable',
+      },
       { value: 'claude-opus-4-20250514', label: 'Claude Opus 4', hint: 'most capable, slower' },
       { value: 'claude-haiku-4-20250514', label: 'Claude Haiku 4', hint: 'fastest, cheapest' },
     ],
@@ -88,7 +108,11 @@ export async function setupWizard(configDir?: string): Promise<void> {
       { value: 'o3-mini', label: 'o3-mini', hint: 'reasoning model' },
     ],
     google: [
-      { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', hint: 'best for code — reasoning-first' },
+      {
+        value: 'gemini-3.1-pro-preview',
+        label: 'Gemini 3.1 Pro',
+        hint: 'best for code — reasoning-first',
+      },
       { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash', hint: 'fast + capable' },
       { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', hint: 'stable, proven' },
       { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', hint: 'cheapest' },
@@ -100,7 +124,11 @@ export async function setupWizard(configDir?: string): Promise<void> {
       { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
     ],
     'claude-cli': [
-      { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6', hint: 'recommended — fast + capable' },
+      {
+        value: 'claude-sonnet-4-6',
+        label: 'Claude Sonnet 4.6',
+        hint: 'recommended — fast + capable',
+      },
       { value: 'claude-opus-4-6', label: 'Claude Opus 4.6', hint: 'most capable' },
       { value: 'claude-haiku-4-5', label: 'Claude Haiku 4.5', hint: 'fastest' },
     ],
@@ -110,23 +138,37 @@ export async function setupWizard(configDir?: string): Promise<void> {
     message: 'Model',
     options: modelOptions[provider as string] ?? [{ value: 'default', label: 'Default' }],
   })
-  if (p.isCancel(modelChoice)) { p.cancel('Setup cancelled.'); process.exit(0) }
+  if (p.isCancel(modelChoice)) {
+    p.cancel('Setup cancelled.')
+    process.exit(0)
+  }
   const model = modelChoice as string
 
   const llm = { provider, apiKey, model }
   if (githubToken) {
-    (llm as Record<string, string>).githubToken = githubToken
+    ;(llm as Record<string, string>).githubToken = githubToken
   }
 
   const design = await p.select({
     message: 'Design tool',
     options: [
       { value: 'pencil', label: 'Pencil', hint: 'AI-native design (requires Pencil desktop app)' },
-      { value: 'stitch', label: 'Google Stitch', hint: 'Google AI design (requires API key from stitch.withgoogle.com)' },
-      { value: 'figma-make', label: 'Figma Make', hint: 'Figma AI design (requires Figma Personal Access Token)' },
+      {
+        value: 'stitch',
+        label: 'Google Stitch',
+        hint: 'Google AI design (requires API key from stitch.withgoogle.com)',
+      },
+      {
+        value: 'figma-make',
+        label: 'Figma Make',
+        hint: 'Figma AI design (requires Figma Personal Access Token)',
+      },
     ],
   })
-  if (p.isCancel(design)) { p.cancel('Setup cancelled.'); process.exit(0) }
+  if (p.isCancel(design)) {
+    p.cancel('Setup cancelled.')
+    process.exit(0)
+  }
 
   let designApiKey: string | undefined
   let figmaToken: string | undefined
@@ -134,16 +176,22 @@ export async function setupWizard(configDir?: string): Promise<void> {
   if (design === 'stitch') {
     const keyInput = await p.password({
       message: 'Stitch API key (from stitch.withgoogle.com)',
-      validate: (v) => v.length === 0 ? 'API key is required for Stitch' : undefined,
+      validate: (v) => (v.length === 0 ? 'API key is required for Stitch' : undefined),
     })
-    if (p.isCancel(keyInput)) { p.cancel('Setup cancelled.'); process.exit(0) }
+    if (p.isCancel(keyInput)) {
+      p.cancel('Setup cancelled.')
+      process.exit(0)
+    }
     designApiKey = keyInput
   } else if (design === 'figma-make') {
     const tokenInput = await p.password({
       message: 'Figma Personal Access Token (from figma.com/developers)',
-      validate: (v) => v.length === 0 ? 'Token is required for Figma Make' : undefined,
+      validate: (v) => (v.length === 0 ? 'Token is required for Figma Make' : undefined),
     })
-    if (p.isCancel(tokenInput)) { p.cancel('Setup cancelled.'); process.exit(0) }
+    if (p.isCancel(tokenInput)) {
+      p.cancel('Setup cancelled.')
+      process.exit(0)
+    }
     figmaToken = tokenInput
     const urlInput = await p.text({
       message: 'Figma file URL (e.g. https://www.figma.com/design/ABC123/MyApp)',
@@ -154,7 +202,10 @@ export async function setupWizard(configDir?: string): Promise<void> {
         return undefined
       },
     })
-    if (p.isCancel(urlInput)) { p.cancel('Setup cancelled.'); process.exit(0) }
+    if (p.isCancel(urlInput)) {
+      p.cancel('Setup cancelled.')
+      process.exit(0)
+    }
     if (urlInput) figmaFileUrl = urlInput
   }
 
@@ -166,7 +217,10 @@ export async function setupWizard(configDir?: string): Promise<void> {
       { value: 'remote', label: 'Remote Mac Runner', hint: 'for Xcode builds' },
     ],
   })
-  if (p.isCancel(runnerType)) { p.cancel('Setup cancelled.'); process.exit(0) }
+  if (p.isCancel(runnerType)) {
+    p.cancel('Setup cancelled.')
+    process.exit(0)
+  }
 
   let sandboxId: string | undefined
   let runnerUrl: string | undefined
@@ -174,7 +228,11 @@ export async function setupWizard(configDir?: string): Promise<void> {
 
   if (runnerType === 'e2b') {
     const e2b = await p.group({
-      sandboxId: () => p.text({ message: 'E2B sandbox ID', validate: (v) => v.length === 0 ? 'Required' : undefined }),
+      sandboxId: () =>
+        p.text({
+          message: 'E2B sandbox ID',
+          validate: (v) => (v.length === 0 ? 'Required' : undefined),
+        }),
     })
     sandboxId = e2b.sandboxId
   } else if (runnerType === 'remote') {
@@ -189,20 +247,30 @@ export async function setupWizard(configDir?: string): Promise<void> {
   const agentType = await p.select({
     message: 'Agent CLI for code generation',
     options: [
-      { value: 'auto', label: 'Auto-detect (recommended)', hint: 'uses first available: Claude > Codex > Gemini' },
+      {
+        value: 'auto',
+        label: 'Auto-detect (recommended)',
+        hint: 'uses first available: Claude > Codex > Gemini',
+      },
       { value: 'claude', label: 'Claude Code', hint: 'claude CLI' },
       { value: 'codex', label: 'OpenAI Codex', hint: 'codex CLI' },
       { value: 'gemini', label: 'Gemini CLI', hint: 'gemini CLI' },
       { value: 'api', label: 'API only (no agent)', hint: 'uses current multi-call pipeline' },
     ],
   })
-  if (p.isCancel(agentType)) { p.cancel('Setup cancelled.'); process.exit(0) }
+  if (p.isCancel(agentType)) {
+    p.cancel('Setup cancelled.')
+    process.exit(0)
+  }
 
   const wantApple = await p.confirm({
     message: 'Configure Apple TestFlight?',
     initialValue: false,
   })
-  if (p.isCancel(wantApple)) { p.cancel('Setup cancelled.'); process.exit(0) }
+  if (p.isCancel(wantApple)) {
+    p.cancel('Setup cancelled.')
+    process.exit(0)
+  }
 
   let appleTeamId: string | undefined
   let appleBundleId: string | undefined
@@ -216,11 +284,14 @@ export async function setupWizard(configDir?: string): Promise<void> {
     const apple = await p.group({
       teamId: () => p.text({ message: 'Apple Team ID' }),
       bundleId: () => p.text({ message: 'Bundle ID', placeholder: 'com.example.app' }),
-      appId: () => p.text({ message: 'App Store Connect App ID (numeric)', placeholder: '123456789' }),
+      appId: () =>
+        p.text({ message: 'App Store Connect App ID (numeric)', placeholder: '123456789' }),
       keyId: () => p.text({ message: 'App Store Connect Key ID' }),
       issuerId: () => p.text({ message: 'App Store Connect Issuer ID' }),
-      keyPath: () => p.text({ message: 'Auth key path (.p8)', placeholder: '~/.appstoreconnect/AuthKey.p8' }),
-      testFlightGroup: () => p.text({ message: 'TestFlight beta group name', placeholder: 'Internal Testers' }),
+      keyPath: () =>
+        p.text({ message: 'Auth key path (.p8)', placeholder: '~/.appstoreconnect/AuthKey.p8' }),
+      testFlightGroup: () =>
+        p.text({ message: 'TestFlight beta group name', placeholder: 'Internal Testers' }),
     })
     appleTeamId = apple.teamId
     appleBundleId = apple.bundleId
@@ -235,7 +306,10 @@ export async function setupWizard(configDir?: string): Promise<void> {
     message: 'Configure Google Play Console?',
     initialValue: false,
   })
-  if (p.isCancel(wantAndroid)) { p.cancel('Setup cancelled.'); process.exit(0) }
+  if (p.isCancel(wantAndroid)) {
+    p.cancel('Setup cancelled.')
+    process.exit(0)
+  }
 
   let androidServiceAccountKeyPath: string | undefined
   let androidPackageName: string | undefined
@@ -247,20 +321,34 @@ export async function setupWizard(configDir?: string): Promise<void> {
 
   if (wantAndroid) {
     const android = await p.group({
-      serviceAccountKeyPath: () => p.text({ message: 'Service account JSON key path', placeholder: '~/.config/gcloud/play-console-key.json' }),
-      packageName: () => p.text({ message: 'Package name (application ID)', placeholder: 'com.example.app' }),
-      keystorePath: () => p.text({ message: 'Release keystore path (.jks)', placeholder: '~/.android/release.keystore' }),
+      serviceAccountKeyPath: () =>
+        p.text({
+          message: 'Service account JSON key path',
+          placeholder: '~/.config/gcloud/play-console-key.json',
+        }),
+      packageName: () =>
+        p.text({ message: 'Package name (application ID)', placeholder: 'com.example.app' }),
+      keystorePath: () =>
+        p.text({
+          message: 'Release keystore path (.jks)',
+          placeholder: '~/.android/release.keystore',
+        }),
       keystorePassword: () => p.password({ message: 'Keystore password' }),
       keyAlias: () => p.text({ message: 'Key alias', placeholder: 'release' }),
       keyPassword: () => p.password({ message: 'Key password' }),
-      playTrack: () => p.select({
-        message: 'Play Console track',
-        options: [
-          { value: 'internal', label: 'Internal Testing', hint: 'recommended — up to 100 testers, no review' },
-          { value: 'alpha', label: 'Closed Testing' },
-          { value: 'beta', label: 'Open Testing' },
-        ],
-      }),
+      playTrack: () =>
+        p.select({
+          message: 'Play Console track',
+          options: [
+            {
+              value: 'internal',
+              label: 'Internal Testing',
+              hint: 'recommended — up to 100 testers, no review',
+            },
+            { value: 'alpha', label: 'Closed Testing' },
+            { value: 'beta', label: 'Open Testing' },
+          ],
+        }),
     })
     androidServiceAccountKeyPath = android.serviceAccountKeyPath
     androidPackageName = android.packageName
@@ -276,7 +364,10 @@ export async function setupWizard(configDir?: string): Promise<void> {
     message: 'Configure BaaS provider? (Firebase or Supabase)',
     initialValue: false,
   })
-  if (p.isCancel(wantBaas)) { p.cancel('Setup cancelled.'); process.exit(0) }
+  if (p.isCancel(wantBaas)) {
+    p.cancel('Setup cancelled.')
+    process.exit(0)
+  }
 
   let baasProvider: 'firebase' | 'supabase' | undefined
   let baasSkipTemplate = false
@@ -284,12 +375,23 @@ export async function setupWizard(configDir?: string): Promise<void> {
     const selected = await p.select({
       message: 'BaaS provider',
       options: [
-        { value: 'firebase', label: 'Firebase', hint: 'drop GoogleService-Info.plist or google-services.json into project root' },
-        { value: 'supabase', label: 'Supabase', hint: 'set SUPABASE_URL and SUPABASE_ANON_KEY in .env' },
+        {
+          value: 'firebase',
+          label: 'Firebase',
+          hint: 'drop GoogleService-Info.plist or google-services.json into project root',
+        },
+        {
+          value: 'supabase',
+          label: 'Supabase',
+          hint: 'set SUPABASE_URL and SUPABASE_ANON_KEY in .env',
+        },
         { value: 'skip', label: 'Skip for now', hint: 'creates a template file with instructions' },
       ],
     })
-    if (p.isCancel(selected)) { p.cancel('Setup cancelled.'); process.exit(0) }
+    if (p.isCancel(selected)) {
+      p.cancel('Setup cancelled.')
+      process.exit(0)
+    }
 
     if (selected === 'skip') {
       baasSkipTemplate = true
@@ -307,16 +409,22 @@ export async function setupWizard(configDir?: string): Promise<void> {
     message: 'Custom skills directory? (codegen/fix prompts)',
     initialValue: false,
   })
-  if (p.isCancel(wantSkills)) { p.cancel('Setup cancelled.'); process.exit(0) }
+  if (p.isCancel(wantSkills)) {
+    p.cancel('Setup cancelled.')
+    process.exit(0)
+  }
 
   let skillsDir: string | undefined
   if (wantSkills) {
     const skillsInput = await p.text({
       message: 'Skills directory path',
       placeholder: './skills',
-      validate: (v) => v.length === 0 ? 'Path is required' : undefined,
+      validate: (v) => (v.length === 0 ? 'Path is required' : undefined),
     })
-    if (p.isCancel(skillsInput)) { p.cancel('Setup cancelled.'); process.exit(0) }
+    if (p.isCancel(skillsInput)) {
+      p.cancel('Setup cancelled.')
+      process.exit(0)
+    }
     skillsDir = skillsInput
   }
 
@@ -325,7 +433,10 @@ export async function setupWizard(configDir?: string): Promise<void> {
     message: 'Configure git delivery? (commit, push, PR)',
     initialValue: false,
   })
-  if (p.isCancel(wantDeliver)) { p.cancel('Setup cancelled.'); process.exit(0) }
+  if (p.isCancel(wantDeliver)) {
+    p.cancel('Setup cancelled.')
+    process.exit(0)
+  }
 
   let deliverRemoteUrl: string | undefined
   let deliverBaseBranch: string | undefined
@@ -342,12 +453,17 @@ export async function setupWizard(configDir?: string): Promise<void> {
       message: 'Remote repository URL (leave empty to auto-create on GitHub)',
       validate: (v) => {
         if (!v) return undefined // empty is valid — means auto-create
-        if (!v.includes('github.com/')) return 'Must be a GitHub URL (e.g. https://github.com/owner/repo.git)'
-        if (v.includes('owner/repo')) return 'Please enter your actual repository URL, not the example'
+        if (!v.includes('github.com/'))
+          return 'Must be a GitHub URL (e.g. https://github.com/owner/repo.git)'
+        if (v.includes('owner/repo'))
+          return 'Please enter your actual repository URL, not the example'
         return undefined
       },
     })
-    if (p.isCancel(remoteUrlInput)) { p.cancel('Setup cancelled.'); process.exit(0) }
+    if (p.isCancel(remoteUrlInput)) {
+      p.cancel('Setup cancelled.')
+      process.exit(0)
+    }
 
     if (remoteUrlInput) {
       deliverRemoteUrl = remoteUrlInput
@@ -357,7 +473,9 @@ export async function setupWizard(configDir?: string): Promise<void> {
         execSync('gh auth status', { stdio: 'ignore' })
         p.log.success('Authenticated via `gh` CLI')
       } catch {
-        p.cancel('`gh` CLI is required for auto-creating repos. Install it (https://cli.github.com) and run `gh auth login`, or provide a remote URL.')
+        p.cancel(
+          '`gh` CLI is required for auto-creating repos. Install it (https://cli.github.com) and run `gh auth login`, or provide a remote URL.',
+        )
         process.exit(1)
       }
       // Repo visibility — for auto-create now and future runtime auto-creates
@@ -368,27 +486,38 @@ export async function setupWizard(configDir?: string): Promise<void> {
           { value: 'public', label: 'Public' },
         ],
       })
-      if (p.isCancel(visibility)) { p.cancel('Setup cancelled.'); process.exit(0) }
+      if (p.isCancel(visibility)) {
+        p.cancel('Setup cancelled.')
+        process.exit(0)
+      }
       deliverRepoVisibility = visibility as 'private' | 'public'
 
       const repoName = await p.text({
         message: 'Repository name (leave empty to auto-create at runtime from prompt)',
       })
-      if (p.isCancel(repoName)) { p.cancel('Setup cancelled.'); process.exit(0) }
+      if (p.isCancel(repoName)) {
+        p.cancel('Setup cancelled.')
+        process.exit(0)
+      }
 
       if (repoName) {
         const s = p.spinner()
         s.start(`Creating GitHub repo: ${repoName} (${deliverRepoVisibility})`)
         try {
-          const output = execSync(
-            `gh repo create ${repoName} --${deliverRepoVisibility}`,
-            { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] },
-          ).trim()
-          deliverRemoteUrl = output || `https://github.com/${execSync('gh api user -q .login', { encoding: 'utf-8' }).trim()}/${repoName}.git`
+          const output = execSync(`gh repo create ${repoName} --${deliverRepoVisibility}`, {
+            encoding: 'utf-8',
+            stdio: ['ignore', 'pipe', 'pipe'],
+          }).trim()
+          deliverRemoteUrl =
+            output ||
+            `https://github.com/${execSync('gh api user -q .login', { encoding: 'utf-8' }).trim()}/${repoName}.git`
           s.stop(chalk.green(`Created: ${deliverRemoteUrl}`))
         } catch (err) {
           s.stop(chalk.red('Failed to create repo'))
-          const msg = err instanceof Error ? (err as { stderr?: string }).stderr ?? err.message : String(err)
+          const msg =
+            err instanceof Error
+              ? ((err as { stderr?: string }).stderr ?? err.message)
+              : String(err)
           p.cancel(`gh repo create failed: ${msg}`)
           process.exit(1)
         }
@@ -401,14 +530,20 @@ export async function setupWizard(configDir?: string): Promise<void> {
       message: 'Base branch for PRs',
       initialValue: 'main',
     })
-    if (p.isCancel(baseBranchInput)) { p.cancel('Setup cancelled.'); process.exit(0) }
+    if (p.isCancel(baseBranchInput)) {
+      p.cancel('Setup cancelled.')
+      process.exit(0)
+    }
     deliverBaseBranch = baseBranchInput
 
     const autoMergeInput = await p.confirm({
       message: 'Auto-merge PRs when all tests pass?',
       initialValue: false,
     })
-    if (p.isCancel(autoMergeInput)) { p.cancel('Setup cancelled.'); process.exit(0) }
+    if (p.isCancel(autoMergeInput)) {
+      p.cancel('Setup cancelled.')
+      process.exit(0)
+    }
     deliverAutoMerge = autoMergeInput
 
     if (deliverAutoMerge) {
@@ -420,7 +555,10 @@ export async function setupWizard(configDir?: string): Promise<void> {
           { value: 'rebase', label: 'Rebase', hint: 'linear history' },
         ],
       })
-      if (p.isCancel(methodInput)) { p.cancel('Setup cancelled.'); process.exit(0) }
+      if (p.isCancel(methodInput)) {
+        p.cancel('Setup cancelled.')
+        process.exit(0)
+      }
       deliverMergeMethod = methodInput as 'squash' | 'merge' | 'rebase'
     }
 
@@ -428,23 +566,32 @@ export async function setupWizard(configDir?: string): Promise<void> {
       message: 'Git user name (for commits)',
       placeholder: 'dtc-bot',
     })
-    if (p.isCancel(gitNameInput)) { p.cancel('Setup cancelled.'); process.exit(0) }
+    if (p.isCancel(gitNameInput)) {
+      p.cancel('Setup cancelled.')
+      process.exit(0)
+    }
     deliverUserName = gitNameInput || undefined
 
     const gitEmailInput = await p.text({
       message: 'Git user email (for commits)',
       placeholder: 'dtc@example.com',
     })
-    if (p.isCancel(gitEmailInput)) { p.cancel('Setup cancelled.'); process.exit(0) }
+    if (p.isCancel(gitEmailInput)) {
+      p.cancel('Setup cancelled.')
+      process.exit(0)
+    }
     deliverUserEmail = gitEmailInput || undefined
   }
 
   const budgetInput = await p.text({
     message: 'Token budget (total)',
     initialValue: '100000',
-    validate: (v) => isNaN(Number(v)) ? 'Must be a number' : undefined,
+    validate: (v) => (isNaN(Number(v)) ? 'Must be a number' : undefined),
   })
-  if (p.isCancel(budgetInput)) { p.cancel('Setup cancelled.'); process.exit(0) }
+  if (p.isCancel(budgetInput)) {
+    p.cancel('Setup cancelled.')
+    process.exit(0)
+  }
   const tokenBudget = Number(budgetInput)
 
   const s = p.spinner()
@@ -505,10 +652,14 @@ export async function setupWizard(configDir?: string): Promise<void> {
       `${chalk.dim('Runner:')} ${runnerType}`,
       wantApple ? `${chalk.dim('TestFlight:')} ${appleTeamId}` : '',
       wantAndroid ? `${chalk.dim('Play Console:')} ${androidPackageName}` : '',
-      deliverRemoteUrl ? `${chalk.dim('Deliver:')} ${deliverRemoteUrl}${deliverAutoMerge ? ' (auto-merge: ' + (deliverMergeMethod ?? 'squash') + ')' : ''}` : '',
+      deliverRemoteUrl
+        ? `${chalk.dim('Deliver:')} ${deliverRemoteUrl}${deliverAutoMerge ? ' (auto-merge: ' + (deliverMergeMethod ?? 'squash') + ')' : ''}`
+        : '',
       skillsDir ? `${chalk.dim('Skills:')} ${skillsDir}` : '',
       `${chalk.dim('Budget:')} ${tokenBudget.toLocaleString()} tokens`,
-    ].filter(Boolean).join('\n'),
+    ]
+      .filter(Boolean)
+      .join('\n'),
     'Configuration summary',
   )
 
@@ -520,7 +671,7 @@ export async function setupWizard(configDir?: string): Promise<void> {
   const kotlinReport = checkPrerequisites('kotlin-compose', savedConfig)
 
   // Dedupe shared checks (LLM, design tool, Maestro, Semgrep, Agent CLI appear in both reports)
-  type Missing = { check: typeof swiftReport.checks[number]; platforms: string[] }
+  type Missing = { check: (typeof swiftReport.checks)[number]; platforms: string[] }
   const missingByName = new Map<string, Missing>()
   const addMissing = (checks: typeof swiftReport.checks, platformLabel: string) => {
     for (const c of checks) {
@@ -538,8 +689,8 @@ export async function setupWizard(configDir?: string): Promise<void> {
   addMissing(kotlinReport.checks, 'kotlin-compose')
 
   const missing = [...missingByName.values()]
-  const criticalMissing = missing.filter(m => m.check.severity === 'critical')
-  const optionalMissing = missing.filter(m => m.check.severity === 'warning')
+  const criticalMissing = missing.filter((m) => m.check.severity === 'critical')
+  const optionalMissing = missing.filter((m) => m.check.severity === 'warning')
 
   const formatPlatformTag = (platforms: string[]) => {
     // Shared checks appear in both → omit tag; platform-specific → show tag
@@ -550,17 +701,25 @@ export async function setupWizard(configDir?: string): Promise<void> {
   if (criticalMissing.length > 0) {
     p.log.warn(chalk.red('Critical tools not found:'))
     for (const m of criticalMissing) {
-      p.log.message(`  ${chalk.red('✗')} ${m.check.name}${formatPlatformTag(m.platforms)} — ${m.check.installHint ?? m.check.message}`)
+      p.log.message(
+        `  ${chalk.red('✗')} ${m.check.name}${formatPlatformTag(m.platforms)} — ${m.check.installHint ?? m.check.message}`,
+      )
     }
   }
   if (optionalMissing.length > 0) {
     p.log.warn(chalk.yellow('Optional tools not found (some features will be skipped):'))
     for (const m of optionalMissing) {
-      p.log.message(`  ${chalk.dim('•')} ${m.check.name}${formatPlatformTag(m.platforms)} — ${m.check.installHint ?? m.check.message}`)
+      p.log.message(
+        `  ${chalk.dim('•')} ${m.check.name}${formatPlatformTag(m.platforms)} — ${m.check.installHint ?? m.check.message}`,
+      )
     }
   }
 
-  p.outro(chalk.green('Ready! Run `dtc doctor` to verify all prerequisites, or `dtc design --prompt "..."` to start.\n\n') +
-    chalk.dim('MCP: The DTC and Pencil MCP servers are configured in .mcp.json.\n') +
-    chalk.dim('Run `pnpm build` in packages/appifex-dtc/ to enable it in Claude Code.'))
+  p.outro(
+    chalk.green(
+      'Ready! Run `dtc doctor` to verify all prerequisites, or `dtc design --prompt "..."` to start.\n\n',
+    ) +
+      chalk.dim('MCP: The DTC and Pencil MCP servers are configured in .mcp.json.\n') +
+      chalk.dim('Run `pnpm build` in packages/appifex-dtc/ to enable it in Claude Code.'),
+  )
 }

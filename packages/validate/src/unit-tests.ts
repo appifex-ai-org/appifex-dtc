@@ -31,7 +31,11 @@ async function runKotlinTest(runner: Runner, opts: UnitTestOpts): Promise<UnitTe
     const { mkdir } = await import('node:fs/promises')
     const { copyFile } = await import('node:fs/promises')
     const { basename } = await import('node:path')
-    try { await mkdir(gradleTestDir, { recursive: true }) } catch { /* may exist */ }
+    try {
+      await mkdir(gradleTestDir, { recursive: true })
+    } catch {
+      /* may exist */
+    }
     for (const src of generatedTests) {
       await copyFile(src, `${gradleTestDir}/${basename(src)}`)
     }
@@ -42,7 +46,7 @@ async function runKotlinTest(runner: Runner, opts: UnitTestOpts): Promise<UnitTe
     return { total: 0, passed: 0, failed: 0, failures: [] }
   }
 
-  const gradlew = await runner.exists(`${opts.projectDir}/gradlew`) ? './gradlew' : 'gradle'
+  const gradlew = (await runner.exists(`${opts.projectDir}/gradlew`)) ? './gradlew' : 'gradle'
   const result = await runner.exec(gradlew, ['test', '--no-daemon'], {
     cwd: opts.projectDir,
     timeout: 180_000,
@@ -73,7 +77,10 @@ async function runKotlinTest(runner: Runner, opts: UnitTestOpts): Promise<UnitTe
   return unitResult
 }
 
-function parseGradleTestOutput(result: { exitCode: number; stdout: string; stderr: string }, fallbackTotal: number): UnitTestResult {
+function parseGradleTestOutput(
+  result: { exitCode: number; stdout: string; stderr: string },
+  fallbackTotal: number,
+): UnitTestResult {
   if (result.exitCode === 0) {
     const totalMatch = result.stdout.match(/(\d+) tests? completed/)
     const failedMatch = result.stdout.match(/(\d+) tests? failed/)
@@ -86,13 +93,26 @@ function parseGradleTestOutput(result: { exitCode: number; stdout: string; stder
   const failRegex = /> (.+?)\.(\w+)\s+FAILED/g
   let match
   while ((match = failRegex.exec(result.stdout + result.stderr)) !== null) {
-    failures.push({ testName: match[2], suiteName: match[1], error: `${match[1]}.${match[2]} FAILED` })
+    failures.push({
+      testName: match[2],
+      suiteName: match[1],
+      error: `${match[1]}.${match[2]} FAILED`,
+    })
   }
   if (failures.length === 0 && result.exitCode !== 0) {
-    failures.push({ testName: 'build', suiteName: 'gradle', error: result.stderr.slice(-500) || 'Test execution failed' })
+    failures.push({
+      testName: 'build',
+      suiteName: 'gradle',
+      error: result.stderr.slice(-500) || 'Test execution failed',
+    })
   }
 
-  return { total: Math.max(failures.length, 1), passed: 0, failed: Math.max(failures.length, 1), failures }
+  return {
+    total: Math.max(failures.length, 1),
+    passed: 0,
+    failed: Math.max(failures.length, 1),
+    failures,
+  }
 }
 
 async function runXCTest(runner: Runner, opts: UnitTestOpts): Promise<UnitTestResult> {
@@ -111,7 +131,12 @@ async function runXCTest(runner: Runner, opts: UnitTestOpts): Promise<UnitTestRe
   // Find the .xcodeproj
   const projs = await runner.glob(`${opts.projectDir}/*.xcodeproj`)
   if (projs.length === 0) {
-    return { total: 0, passed: 0, failed: 0, failures: [{ testName: 'XCTest', suiteName: 'setup', error: 'No .xcodeproj found' }] }
+    return {
+      total: 0,
+      passed: 0,
+      failed: 0,
+      failures: [{ testName: 'XCTest', suiteName: 'setup', error: 'No .xcodeproj found' }],
+    }
   }
   const projName = projs[0].split('/').pop()!
 
@@ -123,13 +148,20 @@ async function runXCTest(runner: Runner, opts: UnitTestOpts): Promise<UnitTestRe
   const simResult = await runner.exec('xcrun', ['simctl', 'list', 'devices', 'available', '-j'])
   if (simResult.exitCode === 0) {
     try {
-      const data = JSON.parse(simResult.stdout) as { devices: Record<string, Array<{ name: string; udid: string; isAvailable: boolean }>> }
+      const data = JSON.parse(simResult.stdout) as {
+        devices: Record<string, Array<{ name: string; udid: string; isAvailable: boolean }>>
+      }
       for (const [runtime, devices] of Object.entries(data.devices).reverse()) {
         if (!runtime.includes('iOS')) continue
-        const iphone = devices.find(d => d.isAvailable && d.name.includes('iPhone'))
-        if (iphone) { destination = `platform=iOS Simulator,id=${iphone.udid}`; break }
+        const iphone = devices.find((d) => d.isAvailable && d.name.includes('iPhone'))
+        if (iphone) {
+          destination = `platform=iOS Simulator,id=${iphone.udid}`
+          break
+        }
       }
-    } catch { /* use fallback */ }
+    } catch {
+      /* use fallback */
+    }
   }
 
   // Regenerate xcodeproj to pick up test files copied to Tests/
@@ -141,14 +173,23 @@ async function runXCTest(runner: Runner, opts: UnitTestOpts): Promise<UnitTestRe
   const resultBundle = `${opts.projectDir}/.build/results.xcresult`
   await runner.exec('rm', ['-rf', resultBundle])
 
-  const result = await runner.exec('xcodebuild', [
-    'test',
-    '-project', projName,
-    '-scheme', scheme,
-    '-destination', destination,
-    '-derivedDataPath', 'build',
-    '-resultBundlePath', resultBundle,
-  ], { cwd: opts.projectDir })
+  const result = await runner.exec(
+    'xcodebuild',
+    [
+      'test',
+      '-project',
+      projName,
+      '-scheme',
+      scheme,
+      '-destination',
+      destination,
+      '-derivedDataPath',
+      'build',
+      '-resultBundlePath',
+      resultBundle,
+    ],
+    { cwd: opts.projectDir },
+  )
 
   // Parse test results from xcodebuild output
   const output = result.stdout + '\n' + result.stderr
@@ -157,21 +198,37 @@ async function runXCTest(runner: Runner, opts: UnitTestOpts): Promise<UnitTestRe
 
   // Fallback: try xcresulttool
   const xcresult = await runner.exec('xcrun', [
-    'xcresulttool', 'get', 'test-results', 'summary',
-    '--path', resultBundle, '--format', 'json',
+    'xcresulttool',
+    'get',
+    'test-results',
+    'summary',
+    '--path',
+    resultBundle,
+    '--format',
+    'json',
   ])
   if (xcresult.exitCode === 0) {
     try {
       return parseXcresultJson(xcresult.stdout)
-    } catch { /* fall through */ }
+    } catch {
+      /* fall through */
+    }
   }
 
   // If build output has errors, report them
   if (result.exitCode !== 0) {
     const errors = output.match(/error: .+/g) ?? []
     return {
-      total: 1, passed: 0, failed: 1,
-      failures: [{ testName: 'XCTest', suiteName: scheme, error: errors.join('\n') || 'xcodebuild test failed' }],
+      total: 1,
+      passed: 0,
+      failed: 1,
+      failures: [
+        {
+          testName: 'XCTest',
+          suiteName: scheme,
+          error: errors.join('\n') || 'xcodebuild test failed',
+        },
+      ],
     }
   }
 
@@ -197,14 +254,23 @@ function parseXcodebuildOutput(output: string): UnitTestResult {
 
 function parseXcresultJson(json: string): UnitTestResult {
   const data = JSON.parse(json) as {
-    testPlanSummary?: { testableSummaries?: Array<{
-      tests?: Array<{ subtests?: Array<{ subtests?: Array<{
-        name?: string; status?: string; identifier?: string
-      }> }> }>
-    }> }
+    testPlanSummary?: {
+      testableSummaries?: Array<{
+        tests?: Array<{
+          subtests?: Array<{
+            subtests?: Array<{
+              name?: string
+              status?: string
+              identifier?: string
+            }>
+          }>
+        }>
+      }>
+    }
   }
 
-  let total = 0, passed = 0
+  let total = 0,
+    passed = 0
   const failures: UnitTestFailure[] = []
 
   for (const testable of data.testPlanSummary?.testableSummaries ?? []) {
@@ -212,8 +278,15 @@ function parseXcresultJson(json: string): UnitTestResult {
       for (const group of suite.subtests ?? []) {
         for (const test of group.subtests ?? []) {
           total++
-          if (test.status === 'Success') { passed++ }
-          else { failures.push({ testName: test.name ?? 'unknown', suiteName: test.identifier ?? '', error: test.status ?? 'failed' }) }
+          if (test.status === 'Success') {
+            passed++
+          } else {
+            failures.push({
+              testName: test.name ?? 'unknown',
+              suiteName: test.identifier ?? '',
+              error: test.status ?? 'failed',
+            })
+          }
         }
       }
     }
@@ -221,4 +294,3 @@ function parseXcresultJson(json: string): UnitTestResult {
 
   return { total, passed, failed: failures.length, failures }
 }
-
