@@ -119,7 +119,10 @@ jobs:
         run: |
           set -euo pipefail
           BASE_REF="${{ github.base_ref }}"
-          git fetch --no-tags --depth=0 origin "$BASE_REF"
+          # checkout@v4 above already pulled full history (fetch-depth: 0),
+          # but the base ref isn't fetched as a remote-tracking branch yet —
+          # do that without --depth (--depth=0 is invalid for git-fetch).
+          git fetch --no-tags origin "$BASE_REF"
           ADDED=$(git diff --name-only --diff-filter=A "origin/${BASE_REF}...HEAD" -- '.changeset/*.md' \
             | grep -vE '^\.changeset/(README\.md|config\.json)$' || true)
           if [[ -z "$ADDED" ]]; then
