@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Questions / Discussions
-    url: https://github.com/appifex/appifex-dtc/discussions
+    url: https://github.com/appifex-ai-org/appifex-dtc/discussions
     about: Use Discussions for usage questions and ideas.
   - name: Security report
-    url: https://github.com/appifex/appifex-dtc/security/policy
+    url: https://github.com/appifex-ai-org/appifex-dtc/security/policy
     about: Report security issues privately, not via public issues.

@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = resolve(__dirname, '..')
 
-const REPO_URL = 'https://github.com/appifex/appifex-dtc'
+const REPO_URL = 'https://github.com/appifex-ai-org/appifex-dtc'
 const AUTHOR = 'Appifex'
 const LICENSE = 'MIT'
 

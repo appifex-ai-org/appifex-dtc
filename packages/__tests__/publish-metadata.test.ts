@@ -65,7 +65,7 @@ function loadPackages(): PublishedPkg[] {
 }
 
 const pkgs = loadPackages()
-const REPO_URL = 'git+https://github.com/appifex/appifex-dtc.git'
+const REPO_URL = 'git+https://github.com/appifex-ai-org/appifex-dtc.git'
 
 describe('NPM-01 publish metadata invariants', () => {
   it('loaded at least 19 published packages', () => {

@@ -2,7 +2,7 @@
 
 > Design to TestFlight in one command.
 
-[![CI](https://github.com/appifex/appifex-dtc/actions/workflows/ci.yml/badge.svg)](https://github.com/appifex/appifex-dtc/actions/workflows/ci.yml)
+[![CI](https://github.com/appifex-ai-org/appifex-dtc/actions/workflows/ci.yml/badge.svg)](https://github.com/appifex-ai-org/appifex-dtc/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![npm version](https://img.shields.io/npm/v/@appifex/cli.svg)](https://www.npmjs.com/package/@appifex/cli)
 

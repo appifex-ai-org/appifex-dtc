@@ -18,8 +18,11 @@
 #      disables merge commits, enables squash + rebase merges, deletes branches on merge.
 #
 # Usage:
-#   OWNER=appifex REPO=appifex-dtc ./scripts/setup-branch-protection.sh
-#   OWNER=appifex REPO=appifex-dtc CODEOWNERS_TEAM_CHECK=1 ./scripts/setup-branch-protection.sh
+#   OWNER=appifex-ai-org REPO=appifex-dtc ./scripts/setup-branch-protection.sh
+#   OWNER=appifex-ai-org REPO=appifex-dtc CODEOWNERS_USER_CHECK=1 ./scripts/setup-branch-protection.sh
+#
+# Defaults match the current repo (appifex-ai-org/appifex-dtc, owner
+# @rayliu-factory). Override OWNER/REPO/CODEOWNERS_USER if you fork or migrate.
 #
 # Requires: gh CLI authenticated as a repo admin, jq.
 # Idempotent: PUT replaces the protection state, so re-running is safe.
@@ -32,19 +35,18 @@
 #   gh pr checks <PR-number> --json name,bucket | jq -r '.[].name'
 # to read the actually-emitted names, update REQUIRED_CONTEXTS below, and re-run.
 #
-# CODEOWNERS team caveat (per Plan 02 SUMMARY follow-up #1): CODEOWNERS uses
-# `@appifex/maintainers`, a placeholder team. If that team does not exist on the
-# `appifex` GitHub org, `require_code_owner_reviews` will not actually block
-# merges (GitHub silently treats unresolved owners as no owner). This script
-# warns by default and continues; set CODEOWNERS_TEAM_CHECK=1 to abort on a
-# missing team.
+# CODEOWNERS pre-flight: this script verifies the CODEOWNERS user (default
+# @rayliu-factory) exists on GitHub. If you migrate CODEOWNERS to a team
+# (e.g. @appifex-ai-org/maintainers), set CODEOWNERS_USER to the team slug
+# (without leading @) and the check will resolve `orgs/<org>/teams/<name>`
+# instead of `users/<login>`.
 
 set -euo pipefail
 
-OWNER="${OWNER:?set OWNER env var, e.g. OWNER=appifex}"
-REPO="${REPO:?set REPO env var, e.g. REPO=appifex-dtc}"
-CODEOWNERS_TEAM="${CODEOWNERS_TEAM:-appifex/maintainers}"
-CODEOWNERS_TEAM_CHECK="${CODEOWNERS_TEAM_CHECK:-0}"
+OWNER="${OWNER:-appifex-ai-org}"
+REPO="${REPO:-appifex-dtc}"
+CODEOWNERS_USER="${CODEOWNERS_USER:-rayliu-factory}"
+CODEOWNERS_USER_CHECK="${CODEOWNERS_USER_CHECK:-0}"
 
 # --- Pre-flight ---------------------------------------------------------------
 
@@ -61,15 +63,20 @@ gh auth status >/dev/null 2>&1 || {
   exit 1
 }
 
-# CODEOWNERS team existence check (optional hard-fail).
-team_slug="${CODEOWNERS_TEAM#@}"   # strip leading @ if present
-team_org="${team_slug%%/*}"
-team_name="${team_slug##*/}"
-if ! gh api "orgs/$team_org/teams/$team_name" >/dev/null 2>&1; then
-  msg="WARNING: CODEOWNERS team '@$team_slug' not found on GitHub. require_code_owner_reviews will be applied but may not actually block merges until the team is created (or CODEOWNERS is updated to a real handle)."
-  if [[ "$CODEOWNERS_TEAM_CHECK" == "1" ]]; then
+# CODEOWNERS owner existence check (user OR team — slug shape decides).
+co_slug="${CODEOWNERS_USER#@}"
+if [[ "$co_slug" == */* ]]; then
+  co_endpoint="orgs/${co_slug%%/*}/teams/${co_slug##*/}"
+  co_kind="team"
+else
+  co_endpoint="users/$co_slug"
+  co_kind="user"
+fi
+if ! gh api "$co_endpoint" >/dev/null 2>&1; then
+  msg="WARNING: CODEOWNERS $co_kind '@$co_slug' not found on GitHub. require_code_owner_reviews will be applied but may not actually block merges until the $co_kind exists (or CODEOWNERS is updated)."
+  if [[ "$CODEOWNERS_USER_CHECK" == "1" ]]; then
     echo "ERROR: $msg" >&2
-    echo "       Re-run without CODEOWNERS_TEAM_CHECK=1 to apply protection anyway." >&2
+    echo "       Re-run without CODEOWNERS_USER_CHECK=1 to apply protection anyway." >&2
     exit 1
   fi
   echo "$msg" >&2

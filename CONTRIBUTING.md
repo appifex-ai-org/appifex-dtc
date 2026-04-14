@@ -92,17 +92,18 @@ What the script does (idempotent, safe to re-run):
 **Usage:**
 
 ```bash
-# From a clean working tree, as a repo admin authenticated via `gh auth login`:
-OWNER=appifex REPO=appifex-dtc ./scripts/setup-branch-protection.sh
+# From a clean working tree, as a repo admin authenticated via `gh auth login`.
+# Defaults: OWNER=appifex-ai-org, REPO=appifex-dtc, CODEOWNERS_USER=rayliu-factory.
+./scripts/setup-branch-protection.sh
 ```
 
-> **CODEOWNERS caveat:** `.github/CODEOWNERS` references `@appifex/maintainers` — a placeholder team. If that team does not exist on the `appifex` GitHub org, `require_code_owner_reviews` silently fails open (unresolved owners are treated as no owner). The script prints a warning by default; pass `CODEOWNERS_TEAM_CHECK=1` to abort instead. Either create the team or edit CODEOWNERS to point at a real handle (e.g. `@rayliu`) before relying on the review gate.
+> **CODEOWNERS:** `.github/CODEOWNERS` is owned by the solo maintainer `@rayliu-factory`. When a maintainers team is later created on the `appifex-ai-org` GitHub org, edit CODEOWNERS to point at `@appifex-ai-org/<team>` and re-run the script with `CODEOWNERS_USER=appifex-ai-org/<team>`.
 
 **Verifying protection is live:**
 
 ```bash
-gh api repos/appifex/appifex-dtc/branches/main/protection    | jq '{required_status_checks, required_pull_request_reviews, required_linear_history, required_signatures, enforce_admins, allow_force_pushes}'
-gh api repos/appifex/appifex-dtc/branches/develop/protection | jq '{required_status_checks, required_pull_request_reviews, required_linear_history, required_signatures, enforce_admins, allow_force_pushes}'
+gh api repos/appifex-ai-org/appifex-dtc/branches/main/protection    | jq '{required_status_checks, required_pull_request_reviews, required_linear_history, required_signatures, enforce_admins, allow_force_pushes}'
+gh api repos/appifex-ai-org/appifex-dtc/branches/develop/protection | jq '{required_status_checks, required_pull_request_reviews, required_linear_history, required_signatures, enforce_admins, allow_force_pushes}'
 git ls-remote --heads origin develop
 ```
 

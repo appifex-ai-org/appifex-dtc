@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-Please report security issues privately to **security@appifex.com**. Do not open public GitHub issues for security findings.
+Please report security issues privately to **dev@appifex.ai**. Do not open public GitHub issues for security findings.
 
 Include:
 - A clear description of the issue
