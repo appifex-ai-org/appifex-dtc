@@ -142,6 +142,10 @@ async function main() {
       const platform = validatePlatform((args.flags.platform as string) ?? 'swiftui')
       const outputDir = (args.flags.out as string) ?? './app'
       const designFile = args.flags.design as string | undefined
+      // Phase 1 Plan 07 (GATE-02): --design-ir is the typed fallback path
+      // exposed on ParsedArgs (mutual exclusion with --design enforced in
+      // parseArgs). Threaded through to PipelineOpts.designIrPath.
+      const designIrPath = args.designIrPath
       const skillsDir = args.flags.skills as string | undefined
       const agent = args.flags.agent as string | undefined
       const resumeRaw = args.flags.resume as string | true | undefined
@@ -151,10 +155,10 @@ async function main() {
       const noResume = args.flags['no-resume'] === true
       const baasProviderFlag = args.flags['baas-provider'] as string | undefined
 
-      if (!prompt && !resumeRaw && !designFile) {
+      if (!prompt && !resumeRaw && !designFile && !designIrPath) {
         console.error(
           chalk.red(
-            'Error: --prompt is required for `dtc run` (or use --design <file.pen|file.zip> or --resume <session-id>)',
+            'Error: --prompt is required for `dtc run` (or use --design <file.pen|file.zip>, --design-ir <ir.json>, or --resume <session-id>)',
           ),
         )
         process.exit(1)
@@ -221,10 +225,13 @@ async function main() {
       await renderRunApp({
         prompt:
           prompt ??
-          (designFile ? 'Build the app matching the provided design' : 'Resume previous session'),
+          (designFile || designIrPath
+            ? 'Build the app matching the provided design'
+            : 'Resume previous session'),
         platform: platform as Platform,
         outputDir,
         designFile,
+        designIrPath,
         skillsDir,
         verbose: args.flags.verbose === true,
         benchmark: args.flags.benchmark === true,

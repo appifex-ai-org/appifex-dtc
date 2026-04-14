@@ -598,6 +598,13 @@ export interface PipelineOpts {
   outputDir: string
   /** Path to existing design file (.pen for Pencil, .zip for Stitch export) */
   designFile?: string
+  /**
+   * Phase 1 Plan 07 (GATE-02): Path to a pre-extracted design IR JSON
+   * ({ spec: PlatformSpec, tokens: DesignTokens, ... }). When set, the design
+   * phase is bypassed and the checkpoint is hydrated directly from the JSON.
+   * Mutually exclusive with `designFile`.
+   */
+  designIrPath?: string
   requirements?: string[]
   configDir?: string
   interactive?: boolean
@@ -1451,6 +1458,42 @@ export async function runPipeline(
     ? decidePenFileStrategy(effectivePrompt, appContext)
     : 'new'
 
+  // Phase 1 Plan 07 (GATE-02): --design-ir fallback path. When the caller
+  // hands us a pre-extracted PlatformSpec + DesignTokens JSON, skip the
+  // Pencil-MCP design phase + spec phase entirely and hydrate the checkpoint
+  // straight from the JSON. Used by the hermetic E2E fixture in CI.
+  let designIrInjectedSpec: PlatformSpec | undefined
+  if (opts.designIrPath) {
+    if (opts.designFile) {
+      throw new Error('Pass exactly one of --design or --design-ir')
+    }
+    const { readFileSync, existsSync } = await import('node:fs')
+    const irPath = opts.designIrPath.startsWith('/')
+      ? opts.designIrPath
+      : join(process.cwd(), opts.designIrPath)
+    if (!existsSync(irPath)) {
+      throw new Error(`Design IR file not found: ${irPath}`)
+    }
+    let irRaw: string
+    try {
+      irRaw = readFileSync(irPath, 'utf-8')
+    } catch (err) {
+      throw new Error(`Failed to read design IR ${irPath}: ${String(err)}`)
+    }
+    let ir: { spec?: PlatformSpec; tokens?: unknown }
+    try {
+      ir = JSON.parse(irRaw)
+    } catch (err) {
+      throw new Error(`Design IR ${irPath} is not valid JSON: ${String(err)}`)
+    }
+    if (!ir.spec || !Array.isArray((ir.spec as PlatformSpec).screens)) {
+      throw new Error(
+        `Design IR ${irPath} missing required \`spec\` field with screens[] (PlatformSpec shape)`,
+      )
+    }
+    designIrInjectedSpec = ir.spec as PlatformSpec
+  }
+
   // 1. Design with review loop
   const adapter = createDesignAdapter({ config: config.design, runner })
   // designPath always points to the working copy (never the user's original)
@@ -1459,7 +1502,13 @@ export async function runPipeline(
   let stitchArtifacts: StitchArtifacts | undefined
   let lastDesignResult: DesignToolResult | undefined
 
-  if (opts.designFile) {
+  if (designIrInjectedSpec) {
+    // Phase 1 Plan 07 (GATE-02): IR-fallback path — skip Pencil MCP entirely.
+    // Persist a marker so downstream skip gates see a "design" was provided.
+    emit('design', 'completed', `Using design IR: ${opts.designIrPath}`)
+    checkpoint.savePhase(checkpointRunId, 'design', { designFile: opts.designIrPath ?? '' })
+    await flushContext()
+  } else if (opts.designFile) {
     // Explicit --design flag always wins over cached design
     const userPath = opts.designFile.startsWith('/')
       ? opts.designFile
@@ -1690,7 +1739,22 @@ export async function runPipeline(
 
   // Spec skip gate — skip if resume + spec.json exists + checkpoint has saved platformSpec
   let specSkipped = false
-  if (canSkipPhase('spec') && (await runner.exists(specPath))) {
+  // Phase 1 Plan 07 (GATE-02): --design-ir bypasses Pencil-MCP-based spec
+  // extraction; the PlatformSpec was already loaded from the IR JSON above.
+  if (designIrInjectedSpec) {
+    platformSpec = designIrInjectedSpec
+    await runner.writeFile(specPath, JSON.stringify(platformSpec, null, 2))
+    progress.emit({
+      phase: 'spec',
+      status: 'completed',
+      message: `Using PlatformSpec from --design-ir (${platformSpec.screens.length} screen(s))`,
+      timestamp: Date.now(),
+    })
+    ctxBuilder.recordPhase('spec', 'completed', 'Using PlatformSpec from --design-ir')
+    checkpoint.savePhase(checkpointRunId, 'spec', { platformSpec })
+    await flushContext()
+    specSkipped = true
+  } else if (canSkipPhase('spec') && (await runner.exists(specPath))) {
     const saved = checkpoint.getPhase(checkpointRunId, 'spec') as {
       platformSpec: PlatformSpec
     } | null

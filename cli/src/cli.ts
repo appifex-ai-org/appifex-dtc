@@ -24,6 +24,13 @@ export interface ParsedArgs {
   subcommand?: string
   positional: string[]
   flags: Record<string, string | boolean>
+  /**
+   * Phase 1 Plan 07 (GATE-02, fallback path for spike outcome (b)/(c)):
+   * Path to a pre-extracted `design-ir.json` (PlatformSpec + DesignTokens).
+   * When set, the pipeline skips the Pencil-MCP design phase entirely.
+   * Mutually exclusive with `--design`.
+   */
+  designIrPath?: string
 }
 
 export function parseArgs(argv: string[]): ParsedArgs {
@@ -67,5 +74,16 @@ export function parseArgs(argv: string[]): ParsedArgs {
     }
   }
 
-  return { command, subcommand, positional, flags }
+  // Phase 1 Plan 07 (GATE-02): hoist --design-ir into a typed field on
+  // ParsedArgs so the pipeline can route around the Pencil-MCP design phase
+  // when the spike fallback (outcome (b)/(c)) is in effect. Mutually exclusive
+  // with --design — passing both is a usage error.
+  const rawDesign = flags.design
+  const rawDesignIr = flags['design-ir']
+  if (typeof rawDesign === 'string' && typeof rawDesignIr === 'string') {
+    throw new Error('Pass exactly one of --design or --design-ir')
+  }
+  const designIrPath = typeof rawDesignIr === 'string' ? rawDesignIr : undefined
+
+  return { command, subcommand, positional, flags, designIrPath }
 }
