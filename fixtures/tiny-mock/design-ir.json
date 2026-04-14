@@ -1,0 +1,228 @@
+{
+  "spec": {
+    "platform": "swiftui",
+    "imports": ["SwiftUI"],
+    "designTokens": {
+      "colors": {
+        "primary": "#1E88E5",
+        "background": "#FFFFFF",
+        "text": "#111111",
+        "muted": "#666666",
+        "border": "#E5E5E5"
+      },
+      "typography": {
+        "title": {
+          "fontFamily": "System",
+          "fontSize": 28,
+          "fontWeight": "700",
+          "lineHeight": 34
+        },
+        "body": {
+          "fontFamily": "System",
+          "fontSize": 16,
+          "fontWeight": "400",
+          "lineHeight": 22
+        },
+        "button": {
+          "fontFamily": "System",
+          "fontSize": 16,
+          "fontWeight": "600"
+        }
+      },
+      "spacing": { "xs": 4, "sm": 8, "md": 16, "lg": 24, "xl": 32 },
+      "borderRadius": { "sm": 4, "md": 8, "lg": 12 }
+    },
+    "screens": [
+      {
+        "id": "login",
+        "name": "Login",
+        "componentName": "LoginView",
+        "description": "Email + password sign-in screen for the tiny-mock fixture.",
+        "testIds": {
+          "login_root": "Login",
+          "login_title": "Sign In",
+          "login_email": "Email",
+          "login_password": "Password",
+          "login_submit": "Sign In"
+        },
+        "components": [
+          {
+            "id": "login_root",
+            "platformType": "VStack",
+            "name": "Login",
+            "props": { "testID": "Login" },
+            "style": {
+              "padding": { "top": 24, "bottom": 24, "left": 16, "right": 16 },
+              "backgroundColor": "background",
+              "gap": 16
+            },
+            "testId": "Login",
+            "children": [
+              {
+                "id": "login_title",
+                "platformType": "Text",
+                "name": "Sign In",
+                "props": { "testID": "Sign In", "text": "Sign In" },
+                "style": { "fontSize": 28, "fontWeight": "700", "color": "text" },
+                "testId": "Sign In"
+              },
+              {
+                "id": "login_email",
+                "platformType": "TextField",
+                "name": "Email",
+                "props": {
+                  "testID": "Email",
+                  "placeholder": "Email",
+                  "keyboardType": "emailAddress"
+                },
+                "style": {
+                  "padding": { "top": 12, "bottom": 12, "left": 12, "right": 12 },
+                  "borderRadius": 8,
+                  "borderWidth": 1,
+                  "borderColor": "border"
+                },
+                "testId": "Email"
+              },
+              {
+                "id": "login_password",
+                "platformType": "TextField",
+                "name": "Password",
+                "props": {
+                  "testID": "Password",
+                  "placeholder": "Password",
+                  "secureTextEntry": true
+                },
+                "style": {
+                  "padding": { "top": 12, "bottom": 12, "left": 12, "right": 12 },
+                  "borderRadius": 8,
+                  "borderWidth": 1,
+                  "borderColor": "border"
+                },
+                "testId": "Password"
+              },
+              {
+                "id": "login_submit",
+                "platformType": "Button",
+                "name": "Sign In",
+                "props": { "testID": "Sign In", "title": "Sign In" },
+                "style": {
+                  "padding": { "top": 14, "bottom": 14, "left": 16, "right": 16 },
+                  "backgroundColor": "primary",
+                  "color": "background",
+                  "borderRadius": 8,
+                  "fontWeight": "600"
+                },
+                "testId": "Sign In"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "home",
+        "name": "Home",
+        "componentName": "HomeView",
+        "description": "Authenticated home screen showing a list of mock items.",
+        "testIds": {
+          "home_root": "Home",
+          "home_title": "Items",
+          "home_list": "ItemsList",
+          "home_item_1": "Item 1",
+          "home_item_2": "Item 2",
+          "home_item_3": "Item 3"
+        },
+        "components": [
+          {
+            "id": "home_root",
+            "platformType": "VStack",
+            "name": "Home",
+            "props": { "testID": "Home" },
+            "style": {
+              "padding": { "top": 24, "bottom": 24, "left": 16, "right": 16 },
+              "backgroundColor": "background",
+              "gap": 12
+            },
+            "testId": "Home",
+            "children": [
+              {
+                "id": "home_title",
+                "platformType": "Text",
+                "name": "Items",
+                "props": { "testID": "Items", "text": "Items" },
+                "style": { "fontSize": 28, "fontWeight": "700", "color": "text" },
+                "testId": "Items"
+              },
+              {
+                "id": "home_list",
+                "platformType": "LazyVGrid",
+                "name": "ItemsList",
+                "props": { "testID": "ItemsList" },
+                "style": { "gap": 8 },
+                "testId": "ItemsList",
+                "children": [
+                  {
+                    "id": "home_item_1",
+                    "platformType": "Text",
+                    "name": "Item 1",
+                    "props": { "testID": "Item 1", "text": "First item" },
+                    "style": { "fontSize": 16, "color": "text" },
+                    "testId": "Item 1"
+                  },
+                  {
+                    "id": "home_item_2",
+                    "platformType": "Text",
+                    "name": "Item 2",
+                    "props": { "testID": "Item 2", "text": "Second item" },
+                    "style": { "fontSize": 16, "color": "text" },
+                    "testId": "Item 2"
+                  },
+                  {
+                    "id": "home_item_3",
+                    "platformType": "Text",
+                    "name": "Item 3",
+                    "props": { "testID": "Item 3", "text": "Third item" },
+                    "style": { "fontSize": 16, "color": "text" },
+                    "testId": "Item 3"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "tokens": {
+    "colors": {
+      "primary": "#1E88E5",
+      "background": "#FFFFFF",
+      "text": "#111111",
+      "muted": "#666666",
+      "border": "#E5E5E5"
+    },
+    "typography": {
+      "title": {
+        "fontFamily": "System",
+        "fontSize": 28,
+        "fontWeight": "700",
+        "lineHeight": 34
+      },
+      "body": {
+        "fontFamily": "System",
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 22
+      },
+      "button": {
+        "fontFamily": "System",
+        "fontSize": 16,
+        "fontWeight": "600"
+      }
+    },
+    "spacing": { "xs": 4, "sm": 8, "md": 16, "lg": 24, "xl": 32 },
+    "borderRadius": { "sm": 4, "md": 8, "lg": 12 }
+  },
+  "generatedAt": "2026-04-14T00:00:00Z",
+  "sourceFile": "design.pen",
+  "dtcVersion": "0.0.0-fixture"
+}
