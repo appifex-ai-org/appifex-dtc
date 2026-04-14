@@ -1,0 +1,15 @@
+# NOTE: @appifex/maintainers is a placeholder team. The team must be created
+# on GitHub (org: appifex) before branch protection can enforce this file.
+# Until then, replace with an individual handle (e.g. @rayliu) for testing.
+
+# Default owner — appifex maintainers team
+* @appifex/maintainers
+
+# CI/release-critical paths
+/.github/ @appifex/maintainers
+/.changeset/ @appifex/maintainers
+/lefthook.yml @appifex/maintainers
+/eslint.config.js @appifex/maintainers
+/.gitleaks.toml @appifex/maintainers
+/package.json @appifex/maintainers
+/pnpm-lock.yaml @appifex/maintainers
