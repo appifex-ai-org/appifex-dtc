@@ -111,7 +111,10 @@ REQUIRED_CONTEXTS=(
   # baas-schema because it shells out to `claude --print` which needs network +
   # LLM credentials that CI does not have. Re-add this context once either a
   # --mock-llm mode ships or ANTHROPIC_API_KEY is wired in as a repo secret.
-  "Changesets/Version Packages"
+  # "Changesets/Version Packages" — DEFERRED. The release.yml workflow only runs
+  # on push-to-main (not PRs), so this context will never emit on a PR unless
+  # the Changesets GitHub App (https://github.com/apps/changeset-bot) is
+  # installed on the repo. Install it, then re-add this context.
 )
 
 # Build the contexts JSON array from the bash array (jq handles quoting).
