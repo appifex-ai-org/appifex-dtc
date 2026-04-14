@@ -24,5 +24,18 @@
     "@appifex/runner": "workspace:*",
     "@appifex/baas-check": "workspace:*",
     "@appifex/mock-check": "workspace:*"
+  },
+  "author": "Appifex",
+  "homepage": "https://github.com/appifex/appifex-dtc#readme",
+  "bugs": {
+    "url": "https://github.com/appifex/appifex-dtc/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/appifex/appifex-dtc.git",
+    "directory": "packages/validate"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
