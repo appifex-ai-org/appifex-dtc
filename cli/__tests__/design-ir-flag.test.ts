@@ -29,14 +29,14 @@ describe('parseArgs — --design-ir flag', () => {
   })
 
   it('throws "Pass exactly one of --design or --design-ir" when both are passed', () => {
-    expect(() =>
-      parseArgs(['run', '--design', 'foo.pen', '--design-ir', 'foo.json']),
-    ).toThrowError('Pass exactly one of --design or --design-ir')
+    expect(() => parseArgs(['run', '--design', 'foo.pen', '--design-ir', 'foo.json'])).toThrowError(
+      'Pass exactly one of --design or --design-ir',
+    )
   })
 
   it('throws regardless of flag order (design-ir first)', () => {
-    expect(() =>
-      parseArgs(['run', '--design-ir', 'foo.json', '--design', 'foo.pen']),
-    ).toThrowError('Pass exactly one of --design or --design-ir')
+    expect(() => parseArgs(['run', '--design-ir', 'foo.json', '--design', 'foo.pen'])).toThrowError(
+      'Pass exactly one of --design or --design-ir',
+    )
   })
 })

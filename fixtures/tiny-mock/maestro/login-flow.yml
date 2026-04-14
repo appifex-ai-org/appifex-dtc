@@ -2,10 +2,10 @@
 appId: com.appifex.tinymock
 ---
 - launchApp
-- assertVisible: "Sign In"
-- tapOn: "Email"
-- inputText: "demo@example.com"
-- tapOn: "Password"
-- inputText: "demo-password"
-- tapOn: "Sign In"
-- assertVisible: "Items"
+- assertVisible: 'Sign In'
+- tapOn: 'Email'
+- inputText: 'demo@example.com'
+- tapOn: 'Password'
+- inputText: 'demo-password'
+- tapOn: 'Sign In'
+- assertVisible: 'Items'
