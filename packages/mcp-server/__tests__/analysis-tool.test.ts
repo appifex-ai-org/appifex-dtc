@@ -18,7 +18,12 @@ vi.mock('@appifex/analysis', () => ({
 import { handleAnalyze } from '../src/tools/analysis.js'
 import { loadConfig } from '@appifex/core'
 import { createRunner } from '@appifex/runner'
-import { scanProject, buildNavGraph, backupRunContext, buildAppContextSummary } from '@appifex/analysis'
+import {
+  scanProject,
+  buildNavGraph,
+  backupRunContext,
+  buildAppContextSummary,
+} from '@appifex/analysis'
 
 const mockLoadConfig = vi.mocked(loadConfig)
 const mockCreateRunner = vi.mocked(createRunner)
@@ -30,9 +35,7 @@ const mockBuildAppContextSummary = vi.mocked(buildAppContextSummary)
 const MOCK_INVENTORY = [
   { filePath: 'Sources/Views/HomeView.swift', type: 'screen' as const, name: 'HomeView' },
 ]
-const MOCK_NAV_NODES = [
-  { screenId: 'HomeView', type: 'push' as const, targets: ['DetailView'] },
-]
+const MOCK_NAV_NODES = [{ screenId: 'HomeView', type: 'push' as const, targets: ['DetailView'] }]
 
 describe('handleAnalyze', () => {
   beforeEach(() => {

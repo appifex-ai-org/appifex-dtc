@@ -2,7 +2,25 @@ import type { PlatformSpec, DesignTokens } from './types-design.js'
 import type { BaasRecommendationTier, BaasProvider } from './types-validation.js'
 
 // ── Progress ──
-export type PhaseId = 'analysis' | 'design' | 'spec' | 'design_delta' | 'baas_recommend' | 'baas_schema' | 'baas_auth' | 'mock_service' | 'test_gen' | 'codegen' | 'test_regen' | 'build' | 'validate' | 'security' | 'fix' | 'deliver' | 'report' | 'provision'
+export type PhaseId =
+  | 'analysis'
+  | 'design'
+  | 'spec'
+  | 'design_delta'
+  | 'baas_recommend'
+  | 'baas_schema'
+  | 'baas_auth'
+  | 'mock_service'
+  | 'test_gen'
+  | 'codegen'
+  | 'test_regen'
+  | 'build'
+  | 'validate'
+  | 'security'
+  | 'fix'
+  | 'deliver'
+  | 'report'
+  | 'provision'
 
 /** Phase 13 (QUALITY-03a): terminal-per-phase checkpoint row status. */
 export type CheckpointStatus = 'completed' | 'failed' | 'skipped'
@@ -12,14 +30,14 @@ export type CheckpointStatus = 'completed' | 'failed' | 'skipped'
  *  cli/src/pipeline.ts:921/935/1289/1438 remain source-compatible (D-02/Pitfall 7). */
 export interface CheckpointBase {
   status?: CheckpointStatus
-  completedAt?: string  // ISO-8601
+  completedAt?: string // ISO-8601
 }
 
 export interface CheckpointFailed {
   status: 'failed'
-  error: string         // String(err) — no Error object (specifics #3)
-  failedAt: string      // ISO-8601
-  completedAt?: string  // present for terminal-row uniformity
+  error: string // String(err) — no Error object (specifics #3)
+  failedAt: string // ISO-8601
+  completedAt?: string // present for terminal-row uniformity
 }
 
 export interface CheckpointSkipped {
@@ -34,32 +52,47 @@ export interface CheckpointSkipped {
  *  round-trip for any phase.
  */
 export type CheckpointData = {
-  analysis: (CheckpointBase & {
-    snapshotPath?: string
-    snapshotSha256?: string
-    fileCount?: number
-  }) | CheckpointFailed | CheckpointSkipped
+  analysis:
+    | (CheckpointBase & {
+        snapshotPath?: string
+        snapshotSha256?: string
+        fileCount?: number
+      })
+    | CheckpointFailed
+    | CheckpointSkipped
   design: (CheckpointBase & { designFile?: string }) | CheckpointFailed | CheckpointSkipped
   spec: (CheckpointBase & { platformSpec?: PlatformSpec }) | CheckpointFailed | CheckpointSkipped
   design_delta: CheckpointBase | CheckpointFailed | CheckpointSkipped
-  baas_recommend: (CheckpointBase & {
-    tier?: BaasRecommendationTier
-    provider?: BaasProvider
-  }) | CheckpointFailed | CheckpointSkipped
-  baas_schema: (CheckpointBase & {
-    entityCount?: number
-  }) | CheckpointFailed | CheckpointSkipped
+  baas_recommend:
+    | (CheckpointBase & {
+        tier?: BaasRecommendationTier
+        provider?: BaasProvider
+      })
+    | CheckpointFailed
+    | CheckpointSkipped
+  baas_schema:
+    | (CheckpointBase & {
+        entityCount?: number
+      })
+    | CheckpointFailed
+    | CheckpointSkipped
   baas_auth: CheckpointBase | CheckpointFailed | CheckpointSkipped
-  mock_service: (CheckpointBase & {
-    fileCount?: number
-    platforms?: string[]
-  }) | CheckpointFailed | CheckpointSkipped
-  test_gen: (CheckpointBase & {
-    uiTestFileNames?: string[]
-    unitTestFileNames?: string[]
-    uiTestCount?: number
-    unitTestCount?: number
-  }) | CheckpointFailed | CheckpointSkipped
+  mock_service:
+    | (CheckpointBase & {
+        fileCount?: number
+        platforms?: string[]
+      })
+    | CheckpointFailed
+    | CheckpointSkipped
+  test_gen:
+    | (CheckpointBase & {
+        uiTestFileNames?: string[]
+        unitTestFileNames?: string[]
+        uiTestCount?: number
+        unitTestCount?: number
+      })
+    | CheckpointFailed
+    | CheckpointSkipped
   codegen: CheckpointBase | CheckpointFailed | CheckpointSkipped
   test_regen: CheckpointBase | CheckpointFailed | CheckpointSkipped
   build: CheckpointBase | CheckpointFailed | CheckpointSkipped
@@ -82,7 +115,14 @@ export interface ProgressEvent {
 }
 
 // ── Agent ──
-export type AgentConfigType = 'claude' | 'codex' | 'gemini' | 'copilot' | 'antigravity' | 'api' | 'auto'
+export type AgentConfigType =
+  | 'claude'
+  | 'codex'
+  | 'gemini'
+  | 'copilot'
+  | 'antigravity'
+  | 'api'
+  | 'auto'
 
 export interface AgentConfig {
   type: AgentConfigType

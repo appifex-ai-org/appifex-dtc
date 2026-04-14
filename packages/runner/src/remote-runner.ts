@@ -39,7 +39,7 @@ export class RemoteRunner implements Runner {
 
   private headers(): Record<string, string> {
     return {
-      'Authorization': `Bearer ${this.token}`,
+      Authorization: `Bearer ${this.token}`,
       'Content-Type': 'application/json',
     }
   }
@@ -58,7 +58,7 @@ export class RemoteRunner implements Runner {
         timeout: opts?.timeout,
       }),
     })
-    const data = await resp.json() as { exitCode: number; stdout: string; stderr: string }
+    const data = (await resp.json()) as { exitCode: number; stdout: string; stderr: string }
     return {
       command: shellCommand,
       exitCode: data.exitCode,
@@ -69,10 +69,9 @@ export class RemoteRunner implements Runner {
   }
 
   async readFile(path: string): Promise<string> {
-    const resp = await this.fetch(
-      this.url(`/files?path=${encodeURIComponent(path)}`),
-      { headers: this.headers() },
-    )
+    const resp = await this.fetch(this.url(`/files?path=${encodeURIComponent(path)}`), {
+      headers: this.headers(),
+    })
     return resp.text()
   }
 
@@ -85,10 +84,10 @@ export class RemoteRunner implements Runner {
   }
 
   async exists(path: string): Promise<boolean> {
-    const resp = await this.fetch(
-      this.url(`/files?path=${encodeURIComponent(path)}`),
-      { method: 'HEAD', headers: this.headers() },
-    )
+    const resp = await this.fetch(this.url(`/files?path=${encodeURIComponent(path)}`), {
+      method: 'HEAD',
+      headers: this.headers(),
+    })
     return resp.ok
   }
 

@@ -1,0 +1,12 @@
+**/dist/
+node_modules/
+sidecar/dist/
+bin/
+cli/__tests__/__fixtures__/**
+packages/core/skills/**
+*.md
+pnpm-lock.yaml
+fixtures/**/*.pen
+.changeset/*.md
+.planning/
+.claude/

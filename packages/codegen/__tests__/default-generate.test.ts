@@ -5,13 +5,25 @@ import type { CodegenInput } from '../src/types.js'
 const sampleInput: CodegenInput = {
   spec: {
     platform: 'swiftui',
-    screens: [{
-      id: 's1', name: 'Home', componentName: 'HomeView',
-      description: 'Main screen with greeting', components: [
-        { id: 'c1', platformType: 'Text', name: 'Greeting', props: { testID: 'greeting' }, style: {}, testId: 'greeting' },
-      ],
-      testIds: { c1: 'greeting' },
-    }],
+    screens: [
+      {
+        id: 's1',
+        name: 'Home',
+        componentName: 'HomeView',
+        description: 'Main screen with greeting',
+        components: [
+          {
+            id: 'c1',
+            platformType: 'Text',
+            name: 'Greeting',
+            props: { testID: 'greeting' },
+            style: {},
+            testId: 'greeting',
+          },
+        ],
+        testIds: { c1: 'greeting' },
+      },
+    ],
     designTokens: { colors: { primary: '#FF6B35' }, typography: {}, spacing: {}, borderRadius: {} },
     imports: ['SwiftUI'],
   },
@@ -23,15 +35,23 @@ const sampleInput: CodegenInput = {
 describe('createDefaultGenerateFn', () => {
   it('calls the LLM with spec and test context in the prompt', async () => {
     const mockCreate = vi.fn().mockResolvedValue({
-      content: [{
-        type: 'text',
-        text: JSON.stringify({
-          files: [
-            { path: 'HomeView.swift', content: 'struct HomeView: View { var body: some View { Text("Hello") } }' },
-            { path: 'Theme.swift', content: 'enum AppColors { static let primary = Color(hex: "#FF6B35") }' },
-          ],
-        }),
-      }],
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            files: [
+              {
+                path: 'HomeView.swift',
+                content: 'struct HomeView: View { var body: some View { Text("Hello") } }',
+              },
+              {
+                path: 'Theme.swift',
+                content: 'enum AppColors { static let primary = Color(hex: "#FF6B35") }',
+              },
+            ],
+          }),
+        },
+      ],
       usage: { input_tokens: 500, output_tokens: 1500 },
     })
 

@@ -92,9 +92,7 @@ describe('PlayConsoleClient', () => {
         aabPath: '/build/app.aab',
       })
 
-      expect(mockUpdate).toHaveBeenCalledWith(
-        expect.objectContaining({ track: 'internal' }),
-      )
+      expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ track: 'internal' }))
     })
 
     it('uses specified track', async () => {
@@ -106,9 +104,7 @@ describe('PlayConsoleClient', () => {
         track: 'beta',
       })
 
-      expect(mockUpdate).toHaveBeenCalledWith(
-        expect.objectContaining({ track: 'beta' }),
-      )
+      expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ track: 'beta' }))
     })
 
     it('returns failure on API error', async () => {

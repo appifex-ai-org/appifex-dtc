@@ -156,7 +156,10 @@ describe('setBaasContext', () => {
       platform: 'swiftui',
       mode: 'fresh',
     })
-    builder.setBaasContext({ provider: 'firebase', recommendation: { tier: 'appropriate', reason: 'test' } })
+    builder.setBaasContext({
+      provider: 'firebase',
+      recommendation: { tier: 'appropriate', reason: 'test' },
+    })
     const ctx = builder.build('completed')
     expect(ctx.baasContext?.provider).toBe('firebase')
     expect(ctx.baasContext?.recommendation.tier).toBe('appropriate')

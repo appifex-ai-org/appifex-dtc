@@ -32,9 +32,14 @@ function totalTests(v: ValidationResult): number {
 }
 
 function errorSignature(v: ValidationResult): string {
-  const uiErrors = v.ui.results.filter(r => !r.passed).map(r => r.error ?? r.flowName).sort()
-  const unitErrors = v.unit.failures.map(f => f.error).sort()
-  const secErrors = (v.security?.findings ?? []).map(f => `${f.ruleId}:${f.file}:${f.line}`).sort()
+  const uiErrors = v.ui.results
+    .filter((r) => !r.passed)
+    .map((r) => r.error ?? r.flowName)
+    .sort()
+  const unitErrors = v.unit.failures.map((f) => f.error).sort()
+  const secErrors = (v.security?.findings ?? [])
+    .map((f) => `${f.ruleId}:${f.file}:${f.line}`)
+    .sort()
   return JSON.stringify([...uiErrors, ...unitErrors, ...secErrors])
 }
 
@@ -67,10 +72,11 @@ export async function fixLoop(
   const startTime = Date.now()
 
   const fail = (reason: CircuitBreakReason, rollback: boolean): FixResult => ({
-    status: reason === 'budget_exceeded' ? 'budget_exceeded' : reason === 'timeout' ? 'timeout' : 'stuck',
+    status:
+      reason === 'budget_exceeded' ? 'budget_exceeded' : reason === 'timeout' ? 'timeout' : 'stuck',
     attempts,
     unresolvedFailures: [
-      ...lastValidation.ui.results.filter(r => !r.passed),
+      ...lastValidation.ui.results.filter((r) => !r.passed),
       ...lastValidation.unit.failures,
       ...(lastValidation.baasIntegration?.violations ?? []),
       ...(lastValidation.baasParity?.violations ?? []),

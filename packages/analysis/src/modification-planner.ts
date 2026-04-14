@@ -1,15 +1,30 @@
-import type { AppContext, ModificationPlan, ModificationItem, ModificationChangeType, Runner } from '@appifex/core'
+import type {
+  AppContext,
+  ModificationPlan,
+  ModificationItem,
+  ModificationChangeType,
+  Runner,
+} from '@appifex/core'
 import { join, resolve } from 'node:path'
 
 const CHARS_PER_TOKEN = 4
 const MODIFICATION_TOKEN_CAP = 8_000 // ~32,000 chars for file contents
-const CHANGE_TYPE_PRIORITY: ModificationChangeType[] = ['navigation', 'layout', 'button', 'form', 'other']
+const CHANGE_TYPE_PRIORITY: ModificationChangeType[] = [
+  'navigation',
+  'layout',
+  'button',
+  'form',
+  'other',
+]
 
 type CreateMessageFn = (params: {
   model: string
   max_tokens: number
   messages: Array<{ role: string; content: any }>
-}) => Promise<{ content: Array<{ type: string; text: string }>; usage: { input_tokens: number; output_tokens: number } }>
+}) => Promise<{
+  content: Array<{ type: string; text: string }>
+  usage: { input_tokens: number; output_tokens: number }
+}>
 
 export async function planModifications(
   prompt: string,
@@ -56,7 +71,15 @@ export async function planModifications(
   const firstBrace = rawText.indexOf('{')
   const lastBrace = rawText.lastIndexOf('}')
 
-  let parsed: { items: Array<{ filePath: string; screenName: string; changeDescription: string; changeType: string }>; reasoning?: string } | null = null
+  let parsed: {
+    items: Array<{
+      filePath: string
+      screenName: string
+      changeDescription: string
+      changeType: string
+    }>
+    reasoning?: string
+  } | null = null
 
   if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
     const jsonSubstring = rawText.slice(firstBrace, lastBrace + 1)
@@ -96,7 +119,9 @@ export async function planModifications(
         fileContent,
       })
     } catch (err) {
-      console.warn(`[modification-planner] Skipping item, could not read file: ${rawItem.filePath} — ${err}`)
+      console.warn(
+        `[modification-planner] Skipping item, could not read file: ${rawItem.filePath} — ${err}`,
+      )
     }
   }
 

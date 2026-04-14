@@ -6,20 +6,70 @@ import { hasKeywords, extractCoreDescription, wordCount } from './refine-keyword
 // ── Feature-specific keyword arrays ──
 
 const FEATURE_WHAT_KEYWORDS = [
-  'screen', 'page', 'view', 'tab', 'button', 'action', 'list', 'section',
-  'modal', 'sheet', 'form', 'input', 'widget', 'card', 'menu', 'option',
-  'toggle', 'setting', 'notification', 'filter', 'sort', 'search',
+  'screen',
+  'page',
+  'view',
+  'tab',
+  'button',
+  'action',
+  'list',
+  'section',
+  'modal',
+  'sheet',
+  'form',
+  'input',
+  'widget',
+  'card',
+  'menu',
+  'option',
+  'toggle',
+  'setting',
+  'notification',
+  'filter',
+  'sort',
+  'search',
 ]
 
 const FEATURE_WHERE_KEYWORDS = [
-  'to', 'on', 'in', 'inside', 'from', 'navigation', 'tab bar', 'home',
-  'settings', 'profile', 'detail', 'existing', 'current', 'main',
+  'to',
+  'on',
+  'in',
+  'inside',
+  'from',
+  'navigation',
+  'tab bar',
+  'home',
+  'settings',
+  'profile',
+  'detail',
+  'existing',
+  'current',
+  'main',
 ]
 
 const FEATURE_BEHAVIOR_KEYWORDS = [
-  'show', 'display', 'let', 'allow', 'enable', 'create', 'add', 'delete',
-  'edit', 'update', 'save', 'load', 'fetch', 'send', 'navigate', 'open',
-  'view', 'manage', 'track', 'list', 'store', 'share',
+  'show',
+  'display',
+  'let',
+  'allow',
+  'enable',
+  'create',
+  'add',
+  'delete',
+  'edit',
+  'update',
+  'save',
+  'load',
+  'fetch',
+  'send',
+  'navigate',
+  'open',
+  'view',
+  'manage',
+  'track',
+  'list',
+  'store',
+  'share',
 ]
 
 // ── Types ──
@@ -61,7 +111,7 @@ export function generateFeatureAssumptions(
 
   // Infer type
   const screenWords = ['screen', 'page', 'view']
-  const hasScreenWord = screenWords.some(w => promptLower.includes(w))
+  const hasScreenWord = screenWords.some((w) => promptLower.includes(w))
   if (!hasScreenWord) {
     assumptions.push({
       id: 'type-1',
@@ -73,7 +123,7 @@ export function generateFeatureAssumptions(
   // Infer placement
   const hasPlacement = hasKeywords(prompt, FEATURE_WHERE_KEYWORDS)
   if (!hasPlacement) {
-    const hasTabNav = appContext?.navGraph?.some(n => n.type === 'tab') ?? false
+    const hasTabNav = appContext?.navGraph?.some((n) => n.type === 'tab') ?? false
     const navType = hasTabNav ? 'tab bar' : 'navigation stack'
     assumptions.push({
       id: 'placement-1',
@@ -99,9 +149,10 @@ export function generateFeatureAssumptions(
     description: 'Local storage (no network calls)',
   })
 
-  const summary = assumptions.length > 0
-    ? "I'll assume:\n" + assumptions.map(a => `  - ${a.description}`).join('\n')
-    : 'Could not infer assumptions — please provide a more specific prompt.'
+  const summary =
+    assumptions.length > 0
+      ? "I'll assume:\n" + assumptions.map((a) => `  - ${a.description}`).join('\n')
+      : 'Could not infer assumptions — please provide a more specific prompt.'
 
   return { mode: 'feature_assumptions', originalPrompt: prompt, assumptions, summary }
 }
@@ -131,7 +182,7 @@ export async function handleFeatureRefine(args: {
         summary: result.summary,
         hint: 'Call dtc_refine_feature_prompt again with confirmed=true to proceed, or supply a more detailed prompt.',
       }),
-      isError: false,  // NOT an error — structured response per UI-SPEC
+      isError: false, // NOT an error — structured response per UI-SPEC
     }
   }
 

@@ -3,15 +3,21 @@ import { assessBaasAppropriateness, extractBaasSignals } from '../src/baas-recom
 import type { PlatformSpec } from '../src/types.js'
 
 // Helper to build minimal PlatformSpec fixtures
-function makeSpec(screens: Array<{ name: string; description: string; components: Array<{ name: string; platformType: string }> }>): PlatformSpec {
+function makeSpec(
+  screens: Array<{
+    name: string
+    description: string
+    components: Array<{ name: string; platformType: string }>
+  }>,
+): PlatformSpec {
   return {
     platform: 'swiftui',
-    screens: screens.map(s => ({
+    screens: screens.map((s) => ({
       id: s.name.toLowerCase().replace(/\s/g, '-'),
       name: s.name,
       componentName: s.name.replace(/\s/g, ''),
       description: s.description,
-      components: s.components.map(c => ({
+      components: s.components.map((c) => ({
         id: c.name.toLowerCase(),
         platformType: c.platformType,
         name: c.name,
@@ -25,7 +31,14 @@ function makeSpec(screens: Array<{ name: string; description: string; components
   }
 }
 
-function makeScreens(count: number, namePrefix = 'Screen'): Array<{ name: string; description: string; components: Array<{ name: string; platformType: string }> }> {
+function makeScreens(
+  count: number,
+  namePrefix = 'Screen',
+): Array<{
+  name: string
+  description: string
+  components: Array<{ name: string; platformType: string }>
+}> {
   return Array.from({ length: count }, (_, i) => ({
     name: `${namePrefix} ${i + 1}`,
     description: `Screen ${i + 1} description`,
@@ -36,10 +49,26 @@ function makeScreens(count: number, namePrefix = 'Screen'): Array<{ name: string
 describe('assessBaasAppropriateness', () => {
   it('returns tier appropriate for a simple 4-screen CRUD spec with no special patterns', () => {
     const spec = makeSpec([
-      { name: 'Home', description: 'Main screen', components: [{ name: 'title', platformType: 'Text' }] },
-      { name: 'List', description: 'Item list', components: [{ name: 'list', platformType: 'Text' }] },
-      { name: 'Create', description: 'Create item', components: [{ name: 'field', platformType: 'TextField' }] },
-      { name: 'Settings', description: 'App settings', components: [{ name: 'toggle', platformType: 'Toggle' }] },
+      {
+        name: 'Home',
+        description: 'Main screen',
+        components: [{ name: 'title', platformType: 'Text' }],
+      },
+      {
+        name: 'List',
+        description: 'Item list',
+        components: [{ name: 'list', platformType: 'Text' }],
+      },
+      {
+        name: 'Create',
+        description: 'Create item',
+        components: [{ name: 'field', platformType: 'TextField' }],
+      },
+      {
+        name: 'Settings',
+        description: 'App settings',
+        components: [{ name: 'toggle', platformType: 'Toggle' }],
+      },
     ])
     const result = assessBaasAppropriateness(spec)
     expect(result.tier).toBe('appropriate')
@@ -53,13 +82,21 @@ describe('assessBaasAppropriateness', () => {
     // avgInputsPerScreen: 8 TextField across 10 screens = 0.8 (> 0, not > 3)
     // BUT: 10 screens > 8 => caveats threshold is met via screenCount alone
     const screens = [
-      { name: 'Alpha Screen', description: 'Screen with list', components: [{ name: 'list', platformType: 'List' }] },
-      { name: 'Beta Detail', description: 'Detail view', components: [
-        { name: 'f1', platformType: 'TextField' },
-        { name: 'f2', platformType: 'TextField' },
-        { name: 'f3', platformType: 'TextField' },
-        { name: 'f4', platformType: 'TextField' },
-      ]},
+      {
+        name: 'Alpha Screen',
+        description: 'Screen with list',
+        components: [{ name: 'list', platformType: 'List' }],
+      },
+      {
+        name: 'Beta Detail',
+        description: 'Detail view',
+        components: [
+          { name: 'f1', platformType: 'TextField' },
+          { name: 'f2', platformType: 'TextField' },
+          { name: 'f3', platformType: 'TextField' },
+          { name: 'f4', platformType: 'TextField' },
+        ],
+      },
       ...makeScreens(8, 'Extra'),
     ]
     const spec = makeSpec(screens)
@@ -70,8 +107,16 @@ describe('assessBaasAppropriateness', () => {
   it('returns tier caveats for a 9-screen spec with list-detail pairs even when avgInputsPerScreen <= 3', () => {
     // 9 screens > 8 => caveats via screenCount alone (no self-referential patterns)
     const screens = [
-      { name: 'Alpha Screen', description: 'Screen with list', components: [{ name: 'list', platformType: 'List' }] },
-      { name: 'Beta Detail', description: 'Detail view', components: [{ name: 'f1', platformType: 'TextField' }] },
+      {
+        name: 'Alpha Screen',
+        description: 'Screen with list',
+        components: [{ name: 'list', platformType: 'List' }],
+      },
+      {
+        name: 'Beta Detail',
+        description: 'Detail view',
+        components: [{ name: 'f1', platformType: 'TextField' }],
+      },
       ...makeScreens(7, 'Page'),
     ]
     const spec = makeSpec(screens)
@@ -119,11 +164,19 @@ describe('assessBaasAppropriateness', () => {
 describe('extractBaasSignals', () => {
   it('extracts correct screenCount, hasListDetailPairs, avgInputsPerScreen for known fixture', () => {
     const spec = makeSpec([
-      { name: 'Task List', description: 'Tasks', components: [{ name: 'list', platformType: 'List' }] },
-      { name: 'Task Detail', description: 'Task detail', components: [
-        { name: 'f1', platformType: 'TextField' },
-        { name: 'f2', platformType: 'TextField' },
-      ]},
+      {
+        name: 'Task List',
+        description: 'Tasks',
+        components: [{ name: 'list', platformType: 'List' }],
+      },
+      {
+        name: 'Task Detail',
+        description: 'Task detail',
+        components: [
+          { name: 'f1', platformType: 'TextField' },
+          { name: 'f2', platformType: 'TextField' },
+        ],
+      },
       { name: 'Settings', description: 'Settings', components: [] },
     ])
     const signals = extractBaasSignals(spec)

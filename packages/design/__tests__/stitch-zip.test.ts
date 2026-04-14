@@ -97,7 +97,6 @@ describe('extractStitchZip', () => {
   })
 
   it('throws for non-existent file', async () => {
-    await expect(extractStitchZip('/tmp/does-not-exist.zip', workDir))
-      .rejects.toThrow()
+    await expect(extractStitchZip('/tmp/does-not-exist.zip', workDir)).rejects.toThrow()
   })
 })

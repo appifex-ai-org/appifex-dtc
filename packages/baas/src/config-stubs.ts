@@ -1,6 +1,9 @@
 import type { BaasProvider } from '@appifex/core'
 
-interface GeneratedFile { path: string; content: string }
+interface GeneratedFile {
+  path: string
+  content: string
+}
 
 const FIREBASE_PLIST_STUB = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

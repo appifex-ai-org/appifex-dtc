@@ -26,14 +26,14 @@ const pipelineLines = pipelineSrc.split('\n')
  * Returns -1 if not found.
  */
 function firstLineOf(searchStr: string): number {
-  const idx = pipelineLines.findIndex(l => l.includes(searchStr))
+  const idx = pipelineLines.findIndex((l) => l.includes(searchStr))
   return idx === -1 ? -1 : idx + 1
 }
 
 describe('Pipeline: effectivePrompt propagation (D-01, INCON-1b, INCON-2)', () => {
   it('buildAgentPrompt call uses effectivePrompt not opts.prompt', () => {
     // Find the buildAgentPrompt({ block
-    const buildAgentLine = pipelineLines.findIndex(l => l.includes('buildAgentPrompt({'))
+    const buildAgentLine = pipelineLines.findIndex((l) => l.includes('buildAgentPrompt({'))
     expect(buildAgentLine).toBeGreaterThan(0)
     // The next few lines should include "prompt: effectivePrompt" not "prompt: opts.prompt"
     const block = pipelineLines.slice(buildAgentLine, buildAgentLine + 5).join('\n')
@@ -42,24 +42,25 @@ describe('Pipeline: effectivePrompt propagation (D-01, INCON-1b, INCON-2)', () =
   })
 
   it('designPrompt construction uses effectivePrompt not opts.prompt', () => {
-    // Find the designPrompt = ... line
-    const designPromptLine = pipelineLines.findIndex(l =>
-      l.includes('const designPrompt =') && l.includes('buildPencilPrompt')
-    )
+    // Phase 1 Plan 03: after Prettier ran, `const designPrompt = ... buildPencilPrompt(...)`
+    // spans multiple lines. Anchor on the declaration line and slice a small window.
+    const designPromptLine = pipelineLines.findIndex((l) => l.includes('const designPrompt ='))
     expect(designPromptLine).toBeGreaterThan(0)
-    const line = pipelineLines[designPromptLine]
-    expect(line).toContain('effectivePrompt')
-    expect(line).not.toContain('opts.prompt')
+    const block = pipelineLines.slice(designPromptLine, designPromptLine + 5).join('\n')
+    expect(block).toContain('buildPencilPrompt')
+    expect(block).toContain('effectivePrompt')
+    expect(block).not.toContain('opts.prompt')
   })
 })
 
 describe('Pipeline: decidePenFileStrategy called exactly once (D-03, INCON-2)', () => {
   it('decidePenFileStrategy is called (not defined) exactly once in the source', () => {
     // Exclude the export function definition line — only count call sites
-    const matches = pipelineLines.filter(l =>
-      l.includes('decidePenFileStrategy(') &&
-      !l.startsWith('//') &&
-      !l.includes('export function decidePenFileStrategy')
+    const matches = pipelineLines.filter(
+      (l) =>
+        l.includes('decidePenFileStrategy(') &&
+        !l.startsWith('//') &&
+        !l.includes('export function decidePenFileStrategy'),
     )
     expect(matches.length).toBe(1)
   })
@@ -77,15 +78,17 @@ describe('Pipeline: planModifications runs after vagueness enrichment (D-02, INC
 
 describe('Pipeline: snapshot guard simplified (D-06, INCON-3)', () => {
   it('always-true guard modificationPlan.items.length >= 0 is removed', () => {
-    const alwaysTrueGuard = pipelineLines.filter(l =>
-      l.includes('modificationPlan.items.length >= 0')
+    const alwaysTrueGuard = pipelineLines.filter((l) =>
+      l.includes('modificationPlan.items.length >= 0'),
     )
     expect(alwaysTrueGuard.length).toBe(0)
   })
 
   it('snapshot block is nested under the runMode === "add-feature" guard', () => {
     // Find the preAgentSnapshot line
-    const snapshotLine = pipelineLines.findIndex(l => l.includes('preAgentSnapshot = await snapshotSourceFiles'))
+    const snapshotLine = pipelineLines.findIndex((l) =>
+      l.includes('preAgentSnapshot = await snapshotSourceFiles'),
+    )
     expect(snapshotLine).toBeGreaterThan(0)
 
     // Phase 14 (D-22, D-24): the snapshot block is now inside a resume/non-resume

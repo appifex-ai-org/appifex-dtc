@@ -40,8 +40,14 @@ export function extractBracedBody(source: string, startPattern: RegExp): string 
  * methods in class/struct bodies are ignored.
  * Uses brace-depth counting to handle nested `{ get }` property declarations.
  */
-export function extractSwiftProtocolMethods(source: string, protocolName: string): MethodSignature[] {
-  const block = extractBracedBody(source, new RegExp(`protocol\\s+${escapeRegex(protocolName)}[^{]*`))
+export function extractSwiftProtocolMethods(
+  source: string,
+  protocolName: string,
+): MethodSignature[] {
+  const block = extractBracedBody(
+    source,
+    new RegExp(`protocol\\s+${escapeRegex(protocolName)}[^{]*`),
+  )
   if (!block) return []
   const methodRegex = /func\s+(\w+)\(([^)]*)\)/g
   const methods: MethodSignature[] = []
@@ -50,9 +56,13 @@ export function extractSwiftProtocolMethods(source: string, protocolName: string
   while ((m = methodRegex.exec(block)) !== null) {
     const name = m[1]
     const rawParams = m[2].trim()
-    const params = rawParams.length === 0
-      ? []
-      : rawParams.split(',').map(p => p.trim()).filter(p => p.length > 0)
+    const params =
+      rawParams.length === 0
+        ? []
+        : rawParams
+            .split(',')
+            .map((p) => p.trim())
+            .filter((p) => p.length > 0)
     methods.push({ name, params })
   }
 

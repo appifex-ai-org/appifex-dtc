@@ -23,8 +23,9 @@ export async function handleProvisionSubmit(
       } else if (args.ipaPath) {
         platform = 'ios'
       } else if (args.projectDir) {
-        const hasGradle = await runner.exists(`${args.projectDir}/app/build.gradle.kts`)
-          || await runner.exists(`${args.projectDir}/build.gradle.kts`)
+        const hasGradle =
+          (await runner.exists(`${args.projectDir}/app/build.gradle.kts`)) ||
+          (await runner.exists(`${args.projectDir}/build.gradle.kts`))
         platform = hasGradle ? 'android' : 'ios'
       } else {
         return { text: 'projectDir, ipaPath, or aabPath is required.', isError: true }
@@ -44,7 +45,12 @@ export async function handleProvisionSubmit(
 }
 
 async function handleIosSubmit(
-  args: { projectDir?: string; scheme?: string; ipaPath?: string; exportMethod?: 'app-store' | 'ad-hoc' | 'development' },
+  args: {
+    projectDir?: string
+    scheme?: string
+    ipaPath?: string
+    exportMethod?: 'app-store' | 'ad-hoc' | 'development'
+  },
   runner: Runner,
   config: DtcConfig,
 ): Promise<{ text: string; isError: boolean }> {
@@ -52,10 +58,16 @@ async function handleIosSubmit(
     return { text: 'Apple TestFlight not configured. Run `dtc setup` first.', isError: true }
   }
   if (!config.apple.ascKeyId || !config.apple.ascIssuerId || !config.apple.ascKeyPath) {
-    return { text: 'App Store Connect credentials (ascKeyId, ascIssuerId, ascKeyPath) not configured. Run `dtc setup` first.', isError: true }
+    return {
+      text: 'App Store Connect credentials (ascKeyId, ascIssuerId, ascKeyPath) not configured. Run `dtc setup` first.',
+      isError: true,
+    }
   }
   if (!config.apple.ascAppId) {
-    return { text: 'App Store Connect App ID not configured. Run `dtc setup` to add it.', isError: true }
+    return {
+      text: 'App Store Connect App ID not configured. Run `dtc setup` to add it.',
+      isError: true,
+    }
   }
 
   const asc = new AscClient(runner, {
@@ -80,24 +92,41 @@ async function handleIosSubmit(
 
     if (!archiveResult.success) {
       return {
-        text: JSON.stringify({ phase: 'archive', success: false, error: archiveResult.error, commands: archiveResult.commands }, null, 2),
+        text: JSON.stringify(
+          {
+            phase: 'archive',
+            success: false,
+            error: archiveResult.error,
+            commands: archiveResult.commands,
+          },
+          null,
+          2,
+        ),
         isError: true,
       }
     }
     ipaPath = archiveResult.ipaPath!
   }
 
-  const submitResult = await asc.submitTestFlight({ appId: config.apple.ascAppId, ipaPath, group: config.apple.ascTestFlightGroup })
+  const submitResult = await asc.submitTestFlight({
+    appId: config.apple.ascAppId,
+    ipaPath,
+    group: config.apple.ascTestFlightGroup,
+  })
 
   return {
-    text: JSON.stringify({
-      phase: 'submit',
-      platform: 'ios',
-      success: submitResult.success,
-      ipaPath,
-      output: submitResult.output,
-      error: submitResult.error,
-    }, null, 2),
+    text: JSON.stringify(
+      {
+        phase: 'submit',
+        platform: 'ios',
+        success: submitResult.success,
+        ipaPath,
+        output: submitResult.output,
+        error: submitResult.error,
+      },
+      null,
+      2,
+    ),
     isError: !submitResult.success,
   }
 }
@@ -111,7 +140,10 @@ async function handleAndroidSubmit(
     return { text: 'Google Play Console not configured. Run `dtc setup` first.', isError: true }
   }
   if (!config.android.serviceAccountKeyPath || !config.android.packageName) {
-    return { text: 'Google Play Console credentials incomplete (serviceAccountKeyPath, packageName). Run `dtc setup` first.', isError: true }
+    return {
+      text: 'Google Play Console credentials incomplete (serviceAccountKeyPath, packageName). Run `dtc setup` first.',
+      isError: true,
+    }
   }
 
   let aabPath = args.aabPath
@@ -134,7 +166,16 @@ async function handleAndroidSubmit(
 
     if (!bundleResult.success) {
       return {
-        text: JSON.stringify({ phase: 'bundle', success: false, error: bundleResult.error, commands: bundleResult.commands }, null, 2),
+        text: JSON.stringify(
+          {
+            phase: 'bundle',
+            success: false,
+            error: bundleResult.error,
+            commands: bundleResult.commands,
+          },
+          null,
+          2,
+        ),
         isError: true,
       }
     }
@@ -142,19 +183,29 @@ async function handleAndroidSubmit(
   }
 
   const track = config.android.playTrack ?? 'internal'
-  const playClient = new PlayConsoleClient({ serviceAccountKeyPath: config.android.serviceAccountKeyPath })
-  const submitResult = await playClient.submitToTrack({ packageName: config.android.packageName, aabPath, track })
+  const playClient = new PlayConsoleClient({
+    serviceAccountKeyPath: config.android.serviceAccountKeyPath,
+  })
+  const submitResult = await playClient.submitToTrack({
+    packageName: config.android.packageName,
+    aabPath,
+    track,
+  })
 
   return {
-    text: JSON.stringify({
-      phase: 'submit',
-      platform: 'android',
-      success: submitResult.success,
-      aabPath,
-      track,
-      output: submitResult.output,
-      error: submitResult.error,
-    }, null, 2),
+    text: JSON.stringify(
+      {
+        phase: 'submit',
+        platform: 'android',
+        success: submitResult.success,
+        aabPath,
+        track,
+        output: submitResult.output,
+        error: submitResult.error,
+      },
+      null,
+      2,
+    ),
     isError: !submitResult.success,
   }
 }

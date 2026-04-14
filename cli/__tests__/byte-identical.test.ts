@@ -37,9 +37,15 @@ function makeMemRunner(initial: Record<string, string>): Runner {
       if (c === undefined) throw new Error(`ENOENT: ${p}`)
       return c
     },
-    async writeFile(p: string, c: string) { files.set(p, c) },
-    async glob() { return [] },
-    async exists(p: string) { return files.has(p) },
+    async writeFile(p: string, c: string) {
+      files.set(p, c)
+    },
+    async glob() {
+      return []
+    },
+    async exists(p: string) {
+      return files.has(p)
+    },
     async exec() {
       return { command: '', exitCode: 0, stdout: '', stderr: '', duration: 0 }
     },
@@ -79,8 +85,12 @@ function makeDeps(runner: Runner): RunTestRegenDeps {
       platform: 'swiftui',
       mode: 'add-feature',
     }),
-    emit: () => { /* no-op */ },
-    flushContext: async () => { /* no-op */ },
+    emit: () => {
+      /* no-op */
+    },
+    flushContext: async () => {
+      /* no-op */
+    },
     flowDir: '.maestro',
     testDir: '__tests__',
     bundleId: 'com.dtc.TestApp',
@@ -96,10 +106,8 @@ describe('test_regen byte-identical guarantee (SHA-256 harness)', () => {
   it('untouched screen test files are byte-identical across two add-feature runs (QUALITY-01b #3)', async () => {
     const flowPath = '.maestro/home.yaml'
     const unitPath = '__tests__/ViewTests.swift'
-    const originalFlow =
-      'appId: com.dtc.TestApp\n---\n- launchApp\n- tapOn: "Home"\n'
-    const originalUnit =
-      'import XCTest\nfinal class HomeViewTests: XCTestCase { /* original */ }\n'
+    const originalFlow = 'appId: com.dtc.TestApp\n---\n- launchApp\n- tapOn: "Home"\n'
+    const originalUnit = 'import XCTest\nfinal class HomeViewTests: XCTestCase { /* original */ }\n'
 
     const runner = makeMemRunner({
       [flowPath]: originalFlow,

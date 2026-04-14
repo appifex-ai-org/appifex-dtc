@@ -53,20 +53,20 @@ export function generateAuthTemplates(
   // Auth screens (Login, Signup, ResetPassword, NewPassword)
   const screens = ['login', 'signup', 'reset-password', 'new-password']
   const swiftNames: Record<string, string> = {
-    'login': 'LoginView',
-    'signup': 'SignupView',
+    login: 'LoginView',
+    signup: 'SignupView',
     'reset-password': 'ResetPasswordView',
     'new-password': 'NewPasswordView',
   }
   const kotlinNames: Record<string, string> = {
-    'login': 'LoginScreen',
-    'signup': 'SignupScreen',
+    login: 'LoginScreen',
+    signup: 'SignupScreen',
     'reset-password': 'ResetPasswordScreen',
     'new-password': 'NewPasswordScreen',
   }
   const reactNames: Record<string, string> = {
-    'login': 'LoginPage',
-    'signup': 'SignupPage',
+    login: 'LoginPage',
+    signup: 'SignupPage',
     'reset-password': 'ResetPasswordPage',
     'new-password': 'NewPasswordPage',
   }

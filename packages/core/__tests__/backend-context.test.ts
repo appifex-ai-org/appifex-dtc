@@ -12,8 +12,8 @@ function makeBackendContext(overrides: Partial<BackendContext> = {}): BackendCon
       { method: 'POST', path: '/api/auth/login', description: 'Login' },
     ],
     models: {
-      'Pet': 'struct Pet: Codable, Identifiable {\n  let id: UUID\n  var name: String\n  var breed: String\n  var age: Int\n}',
-      'User': 'struct User: Codable, Identifiable {\n  let id: UUID\n  var email: String\n  var displayName: String\n}',
+      Pet: 'struct Pet: Codable, Identifiable {\n  let id: UUID\n  var name: String\n  var breed: String\n  var age: Int\n}',
+      User: 'struct User: Codable, Identifiable {\n  let id: UUID\n  var email: String\n  var displayName: String\n}',
     },
     auth: { type: 'bearer', description: 'JWT token in Authorization header' },
     ...overrides,

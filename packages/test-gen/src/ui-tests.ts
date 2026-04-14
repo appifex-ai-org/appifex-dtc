@@ -1,4 +1,9 @@
-import type { PlatformSpec, PlatformScreenSpec, PlatformComponentSpec, MaestroFlow } from '@appifex/core'
+import type {
+  PlatformSpec,
+  PlatformScreenSpec,
+  PlatformComponentSpec,
+  MaestroFlow,
+} from '@appifex/core'
 
 function toKebabCase(name: string): string {
   return name
@@ -8,23 +13,31 @@ function toKebabCase(name: string): string {
 }
 
 const TAPPABLE_TYPES = new Set([
-  'TouchableOpacity', 'Pressable', 'Button',
-  'button', 'TouchableHighlight',
+  'TouchableOpacity',
+  'Pressable',
+  'Button',
+  'button',
+  'TouchableHighlight',
 ])
 
-const INPUT_TYPES = new Set([
-  'TextField', 'TextInput', 'input',
-])
+const INPUT_TYPES = new Set(['TextField', 'TextInput', 'input'])
 
-const LIST_TYPES = new Set([
-  'LazyVGrid', 'FlatList', 'List', 'list',
-])
+const LIST_TYPES = new Set(['LazyVGrid', 'FlatList', 'List', 'list'])
 
 // Types where Maestro can reliably discover .accessibilityIdentifier / testID
 // EXCLUDES containers (VStack, HStack, etc.) — their identifiers overwrite children in iOS accessibility tree
 const MAESTRO_DISCOVERABLE_TYPES = new Set([
-  'Button', 'button', 'TouchableOpacity', 'Pressable', 'TouchableHighlight',
-  'TextField', 'TextInput', 'Toggle', 'Slider', 'Stepper', 'DatePicker',
+  'Button',
+  'button',
+  'TouchableOpacity',
+  'Pressable',
+  'TouchableHighlight',
+  'TextField',
+  'TextInput',
+  'Toggle',
+  'Slider',
+  'Stepper',
+  'DatePicker',
 ])
 
 /**
@@ -73,11 +86,9 @@ function generateFlowYaml(
   for (const comp of allComps) {
     if (listDescendantIds.has(comp.id)) continue
 
-    const textValues = [
-      comp.props?.title,
-      comp.props?.label,
-      comp.props?.placeholder,
-    ].filter((v): v is string => typeof v === 'string' && v.length > 0 && v.length < 50)
+    const textValues = [comp.props?.title, comp.props?.label, comp.props?.placeholder].filter(
+      (v): v is string => typeof v === 'string' && v.length > 0 && v.length < 50,
+    )
 
     for (const text of textValues) {
       if (!textAsserted.has(text)) {
@@ -90,7 +101,10 @@ function generateFlowYaml(
 
   // Assert accessibility IDs — only for discoverable (leaf/interactive) elements
   // Skip list descendants — their IDs are from design-time sample rows
-  const discoverableComps = allComps.filter(c => MAESTRO_DISCOVERABLE_TYPES.has(c.platformType) && c.testId && !listDescendantIds.has(c.id))
+  const discoverableComps = allComps.filter(
+    (c) =>
+      MAESTRO_DISCOVERABLE_TYPES.has(c.platformType) && c.testId && !listDescendantIds.has(c.id),
+  )
   if (discoverableComps.length > 0) {
     lines.push('')
     lines.push('# Verify interactive elements by accessibilityIdentifier')
@@ -101,13 +115,13 @@ function generateFlowYaml(
   }
 
   // Input interactions — type text into input fields
-  const inputs = allComps.filter(c => INPUT_TYPES.has(c.platformType))
+  const inputs = allComps.filter((c) => INPUT_TYPES.has(c.platformType))
   if (inputs.length > 0) {
     lines.push('')
     lines.push('# Test input fields')
     for (const input of inputs) {
       if (input.testId) {
-        const placeholder = input.props?.['placeholder'] as string ?? input.name
+        const placeholder = (input.props?.['placeholder'] as string) ?? input.name
         lines.push(`- tapOn:`)
         lines.push(`    id: "${input.testId}"`)
         lines.push(`- inputText: "Test ${placeholder}"`)
@@ -118,7 +132,9 @@ function generateFlowYaml(
 
   // Button interactions — tap buttons and verify they respond
   // Skip list descendants — sample row buttons won't exist at runtime
-  const buttons = allComps.filter(c => TAPPABLE_TYPES.has(c.platformType) && !listDescendantIds.has(c.id))
+  const buttons = allComps.filter(
+    (c) => TAPPABLE_TYPES.has(c.platformType) && !listDescendantIds.has(c.id),
+  )
   if (buttons.length > 0) {
     lines.push('')
     lines.push('# Test button interactions')
@@ -132,7 +148,7 @@ function generateFlowYaml(
   }
 
   // List assertions — verify lists are present and scrollable
-  const lists = allComps.filter(c => LIST_TYPES.has(c.platformType))
+  const lists = allComps.filter((c) => LIST_TYPES.has(c.platformType))
   if (lists.length > 0) {
     lines.push('')
     lines.push('# Verify list components')
@@ -195,7 +211,7 @@ export function generateUITests(spec: PlatformSpec, opts?: UITestOpts): MaestroF
   // Narrow WHICH flows are generated; generateFlowYaml still sees the full
   // spec.screens so cross-screen navigation targets still resolve.
   const screens = filter ? spec.screens.filter((s) => filter.has(s.name)) : spec.screens
-  return screens.map(screen => ({
+  return screens.map((screen) => ({
     name: screen.name,
     screenId: screen.id,
     fileName: `${toKebabCase(screen.name)}.yaml`,

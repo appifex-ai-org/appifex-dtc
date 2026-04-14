@@ -30,22 +30,29 @@ export function FixLoopView({
 
       {isRunning && currentAttempt && (
         <Box>
-          <Text color="cyan"><Spinner type="dots" /></Text>
-          <Text> Attempt {currentAttempt}/{maxAttempts}</Text>
+          <Text color="cyan">
+            <Spinner type="dots" />
+          </Text>
+          <Text>
+            {' '}
+            Attempt {currentAttempt}/{maxAttempts}
+          </Text>
         </Box>
       )}
 
       {attempts.map((attempt, i) => (
         <Box key={i} flexDirection="column" marginLeft={2}>
           <Text>
-            {chalk.dim(`#${attempt.attempt}`)}
-            {' '}
+            {chalk.dim(`#${attempt.attempt}`)}{' '}
             {attempt.testsAfter.passed > attempt.testsBefore.passed
-              ? chalk.green(`+${attempt.testsAfter.passed - attempt.testsBefore.passed} tests fixed`)
+              ? chalk.green(
+                  `+${attempt.testsAfter.passed - attempt.testsBefore.passed} tests fixed`,
+                )
               : attempt.testsAfter.passed === attempt.testsBefore.passed
-              ? chalk.yellow('no change')
-              : chalk.red(`-${attempt.testsBefore.passed - attempt.testsAfter.passed} regression`)}
-            {' '}
+                ? chalk.yellow('no change')
+                : chalk.red(
+                    `-${attempt.testsBefore.passed - attempt.testsAfter.passed} regression`,
+                  )}{' '}
             {chalk.dim(`(${attempt.tokensUsed.toLocaleString()} tokens)`)}
           </Text>
           <Text dimColor>

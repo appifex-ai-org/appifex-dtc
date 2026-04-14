@@ -9,7 +9,13 @@ function mockRunner(overrides: Partial<{ exec: unknown; capabilities: unknown }>
     writeFile: vi.fn().mockResolvedValue(undefined),
     exists: vi.fn().mockResolvedValue(true),
     glob: vi.fn().mockResolvedValue([]),
-    capabilities: { hasMaestro: false, hasXcode: false, hasNode: true, hasSemgrep: true, platform: 'darwin' },
+    capabilities: {
+      hasMaestro: false,
+      hasXcode: false,
+      hasNode: true,
+      hasSemgrep: true,
+      platform: 'darwin',
+    },
     ...overrides,
   } as Runner
 }
@@ -38,26 +44,38 @@ const FINDINGS_OUTPUT = JSON.stringify({
 
 describe('runSemgrep', () => {
   it('auto-installs semgrep when not found and pip succeeds', async () => {
-    const exec = vi.fn()
+    const exec = vi
+      .fn()
       .mockResolvedValueOnce({ exitCode: 1, stdout: '', stderr: 'pipx not found', duration: 100 }) // pipx fails
       .mockResolvedValueOnce({ exitCode: 0, stdout: '', stderr: '', duration: 5000 }) // pip install
       .mockResolvedValueOnce({ exitCode: 0, stdout: CLEAN_OUTPUT, stderr: '', duration: 3000 }) // semgrep scan
 
     const runner = mockRunner({
       exec,
-      capabilities: { hasMaestro: false, hasXcode: false, hasNode: true, hasSemgrep: false, platform: 'darwin' },
+      capabilities: {
+        hasMaestro: false,
+        hasXcode: false,
+        hasNode: true,
+        hasSemgrep: false,
+        platform: 'darwin',
+      },
     })
 
     const result = await runSemgrep(runner, { projectDir: '/app' })
 
     expect(exec).toHaveBeenCalledWith('pip', ['install', 'semgrep'], expect.anything())
-    expect(exec).toHaveBeenCalledWith('semgrep', expect.arrayContaining(['scan']), expect.anything())
+    expect(exec).toHaveBeenCalledWith(
+      'semgrep',
+      expect.arrayContaining(['scan']),
+      expect.anything(),
+    )
     expect(result.failed).toBe(0)
     expect(result.passed).toBe(1)
   })
 
   it('falls back to pip3 when pip fails', async () => {
-    const exec = vi.fn()
+    const exec = vi
+      .fn()
       .mockResolvedValueOnce({ exitCode: 1, stdout: '', stderr: 'pipx not found', duration: 100 }) // pipx fails
       .mockResolvedValueOnce({ exitCode: 1, stdout: '', stderr: 'pip not found', duration: 100 }) // pip fails
       .mockResolvedValueOnce({ exitCode: 0, stdout: '', stderr: '', duration: 5000 }) // pip3 succeeds
@@ -65,7 +83,13 @@ describe('runSemgrep', () => {
 
     const runner = mockRunner({
       exec,
-      capabilities: { hasMaestro: false, hasXcode: false, hasNode: true, hasSemgrep: false, platform: 'darwin' },
+      capabilities: {
+        hasMaestro: false,
+        hasXcode: false,
+        hasNode: true,
+        hasSemgrep: false,
+        platform: 'darwin',
+      },
     })
 
     const result = await runSemgrep(runner, { projectDir: '/app' })
@@ -75,14 +99,21 @@ describe('runSemgrep', () => {
   })
 
   it('returns error when install fails entirely', async () => {
-    const exec = vi.fn()
+    const exec = vi
+      .fn()
       .mockResolvedValueOnce({ exitCode: 1, stdout: '', stderr: 'pipx not found', duration: 100 }) // pipx fails
       .mockResolvedValueOnce({ exitCode: 1, stdout: '', stderr: 'pip not found', duration: 100 }) // pip fails
       .mockResolvedValueOnce({ exitCode: 1, stdout: '', stderr: 'pip3 not found', duration: 100 }) // pip3 fails
 
     const runner = mockRunner({
       exec,
-      capabilities: { hasMaestro: false, hasXcode: false, hasNode: true, hasSemgrep: false, platform: 'darwin' },
+      capabilities: {
+        hasMaestro: false,
+        hasXcode: false,
+        hasNode: true,
+        hasSemgrep: false,
+        platform: 'darwin',
+      },
     })
 
     const result = await runSemgrep(runner, { projectDir: '/app' })
@@ -93,7 +124,9 @@ describe('runSemgrep', () => {
 
   it('parses clean scan with 0 findings', async () => {
     const runner = mockRunner({
-      exec: vi.fn().mockResolvedValue({ exitCode: 0, stdout: CLEAN_OUTPUT, stderr: '', duration: 3000 }),
+      exec: vi
+        .fn()
+        .mockResolvedValue({ exitCode: 0, stdout: CLEAN_OUTPUT, stderr: '', duration: 3000 }),
     })
 
     const result = await runSemgrep(runner, { projectDir: '/app' })
@@ -106,7 +139,9 @@ describe('runSemgrep', () => {
 
   it('parses findings into SemgrepFinding objects', async () => {
     const runner = mockRunner({
-      exec: vi.fn().mockResolvedValue({ exitCode: 1, stdout: FINDINGS_OUTPUT, stderr: '', duration: 5000 }),
+      exec: vi
+        .fn()
+        .mockResolvedValue({ exitCode: 1, stdout: FINDINGS_OUTPUT, stderr: '', duration: 5000 }),
     })
 
     const result = await runSemgrep(runner, { projectDir: '/app' })
@@ -132,7 +167,12 @@ describe('runSemgrep', () => {
 
   it('handles JSON parse failure gracefully', async () => {
     const runner = mockRunner({
-      exec: vi.fn().mockResolvedValue({ exitCode: 1, stdout: 'not json', stderr: 'semgrep error', duration: 1000 }),
+      exec: vi.fn().mockResolvedValue({
+        exitCode: 1,
+        stdout: 'not json',
+        stderr: 'semgrep error',
+        duration: 1000,
+      }),
     })
 
     const result = await runSemgrep(runner, { projectDir: '/app' })
@@ -143,7 +183,9 @@ describe('runSemgrep', () => {
   })
 
   it('skips install when hasSemgrep is true', async () => {
-    const exec = vi.fn().mockResolvedValue({ exitCode: 0, stdout: CLEAN_OUTPUT, stderr: '', duration: 3000 })
+    const exec = vi
+      .fn()
+      .mockResolvedValue({ exitCode: 0, stdout: CLEAN_OUTPUT, stderr: '', duration: 3000 })
     const runner = mockRunner({ exec })
 
     await runSemgrep(runner, { projectDir: '/app' })
@@ -151,15 +193,25 @@ describe('runSemgrep', () => {
     // Should NOT have called pip install
     expect(exec).not.toHaveBeenCalledWith('pip', expect.anything(), expect.anything())
     // Should have called semgrep directly
-    expect(exec).toHaveBeenCalledWith('semgrep', expect.arrayContaining(['scan']), expect.anything())
+    expect(exec).toHaveBeenCalledWith(
+      'semgrep',
+      expect.arrayContaining(['scan']),
+      expect.anything(),
+    )
   })
 
   it('uses custom config arg', async () => {
-    const exec = vi.fn().mockResolvedValue({ exitCode: 0, stdout: CLEAN_OUTPUT, stderr: '', duration: 3000 })
+    const exec = vi
+      .fn()
+      .mockResolvedValue({ exitCode: 0, stdout: CLEAN_OUTPUT, stderr: '', duration: 3000 })
     const runner = mockRunner({ exec })
 
     await runSemgrep(runner, { projectDir: '/app', configArg: 'p/owasp-top-ten' })
 
-    expect(exec).toHaveBeenCalledWith('semgrep', expect.arrayContaining(['--config', 'p/owasp-top-ten']), expect.anything())
+    expect(exec).toHaveBeenCalledWith(
+      'semgrep',
+      expect.arrayContaining(['--config', 'p/owasp-top-ten']),
+      expect.anything(),
+    )
   })
 })

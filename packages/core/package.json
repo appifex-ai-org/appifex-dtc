@@ -12,7 +12,10 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist", "skills"],
+  "files": [
+    "dist",
+    "skills"
+  ],
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist"

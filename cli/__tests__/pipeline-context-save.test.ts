@@ -47,9 +47,12 @@ describe('flushContext', () => {
     await flushContext()
 
     expect(mockSave).toHaveBeenCalledTimes(1)
-    expect(mockSave).toHaveBeenCalledWith('/tmp/output', expect.objectContaining({
-      status: 'failed', // partial pipeline — always 'failed' for incremental saves
-    }))
+    expect(mockSave).toHaveBeenCalledWith(
+      '/tmp/output',
+      expect.objectContaining({
+        status: 'failed', // partial pipeline — always 'failed' for incremental saves
+      }),
+    )
   })
 
   it('calls saveRunContext after a failed phase emit', async () => {
@@ -58,9 +61,12 @@ describe('flushContext', () => {
     await flushContext()
 
     expect(mockSave).toHaveBeenCalledTimes(1)
-    expect(mockSave).toHaveBeenCalledWith('/tmp/output', expect.objectContaining({
-      status: 'failed',
-    }))
+    expect(mockSave).toHaveBeenCalledWith(
+      '/tmp/output',
+      expect.objectContaining({
+        status: 'failed',
+      }),
+    )
   })
 
   it('calls saveRunContext after a skipped phase emit', async () => {
@@ -69,9 +75,12 @@ describe('flushContext', () => {
     await flushContext()
 
     expect(mockSave).toHaveBeenCalledTimes(1)
-    expect(mockSave).toHaveBeenCalledWith('/tmp/output', expect.objectContaining({
-      status: 'failed',
-    }))
+    expect(mockSave).toHaveBeenCalledWith(
+      '/tmp/output',
+      expect.objectContaining({
+        status: 'failed',
+      }),
+    )
   })
 
   it('does NOT call saveRunContext for started status (non-terminal)', async () => {
@@ -115,7 +124,10 @@ describe('flushContext', () => {
 
     // Incremental save uses 'failed'
     await flushContext()
-    expect(mockSave).toHaveBeenLastCalledWith('/tmp/output', expect.objectContaining({ status: 'failed' }))
+    expect(mockSave).toHaveBeenLastCalledWith(
+      '/tmp/output',
+      expect.objectContaining({ status: 'failed' }),
+    )
 
     // Final save uses the real status (e.g., 'completed')
     const finalContext = ctxBuilder.build('completed')
@@ -137,7 +149,11 @@ describe('SIGINT handler', () => {
     const sigintHandler = async () => {
       if (sigintFlushed) return
       sigintFlushed = true
-      try { await mockSave('/tmp/output', ctxBuilder.build('failed')) } catch { /* best effort */ }
+      try {
+        await mockSave('/tmp/output', ctxBuilder.build('failed'))
+      } catch {
+        /* best effort */
+      }
     }
 
     // First call — should flush
@@ -158,17 +174,24 @@ describe('SIGINT handler', () => {
     const sigintHandler = async () => {
       if (sigintFlushed) return
       sigintFlushed = true
-      try { await mockSave('/tmp/output', ctxBuilder.build('failed')) } catch { /* best effort */ }
+      try {
+        await mockSave('/tmp/output', ctxBuilder.build('failed'))
+      } catch {
+        /* best effort */
+      }
     }
 
     await sigintHandler()
 
-    expect(mockSave).toHaveBeenCalledWith('/tmp/output', expect.objectContaining({
-      status: 'failed',
-      phases: expect.objectContaining({
-        design: expect.objectContaining({ status: 'completed' }),
+    expect(mockSave).toHaveBeenCalledWith(
+      '/tmp/output',
+      expect.objectContaining({
+        status: 'failed',
+        phases: expect.objectContaining({
+          design: expect.objectContaining({ status: 'completed' }),
+        }),
       }),
-    }))
+    )
   })
 
   it('swallows errors in SIGINT handler — process.exit still called even on save failure', async () => {
@@ -179,7 +202,11 @@ describe('SIGINT handler', () => {
     const sigintHandler = async (exit: (code: number) => void) => {
       if (sigintFlushed) return
       sigintFlushed = true
-      try { await failingSave() } catch { /* best effort */ }
+      try {
+        await failingSave()
+      } catch {
+        /* best effort */
+      }
       exit(130)
     }
 

@@ -52,17 +52,46 @@ const ANDROID_PATH = '/project/android/AuthViewModel.kt'
 
 function mockExec() {
   return vi.fn().mockImplementation((cmd: string, args?: string[]) => {
-    if (cmd === 'which') return Promise.resolve({ exitCode: 0, stdout: '/usr/local/bin/maestro', stderr: '', duration: 10 })
-    if (cmd === 'defaults') return Promise.resolve({ exitCode: 0, stdout: 'com.dtc.App', stderr: '', duration: 10 })
-    if (cmd === 'mkdir') return Promise.resolve({ exitCode: 0, stdout: '', stderr: '', duration: 10 })
+    if (cmd === 'which')
+      return Promise.resolve({
+        exitCode: 0,
+        stdout: '/usr/local/bin/maestro',
+        stderr: '',
+        duration: 10,
+      })
+    if (cmd === 'defaults')
+      return Promise.resolve({ exitCode: 0, stdout: 'com.dtc.App', stderr: '', duration: 10 })
+    if (cmd === 'mkdir')
+      return Promise.resolve({ exitCode: 0, stdout: '', stderr: '', duration: 10 })
     if (cmd === 'xcrun' && args?.[0] === 'simctl' && args?.[1] === 'list') {
-      return Promise.resolve({ exitCode: 0, stdout: JSON.stringify({ devices: { 'com.apple.CoreSimulator.SimRuntime.iOS-17-5': [{ name: 'iPhone 15', udid: 'sim-123', isAvailable: true }] } }), stderr: '', duration: 100 })
+      return Promise.resolve({
+        exitCode: 0,
+        stdout: JSON.stringify({
+          devices: {
+            'com.apple.CoreSimulator.SimRuntime.iOS-17-5': [
+              { name: 'iPhone 15', udid: 'sim-123', isAvailable: true },
+            ],
+          },
+        }),
+        stderr: '',
+        duration: 100,
+      })
     }
-    if (cmd === 'xcrun' && args?.[0] === 'simctl') return Promise.resolve({ exitCode: 0, stdout: '', stderr: '', duration: 100 })
-    if (cmd === 'xcrun') return Promise.resolve({ exitCode: 1, stdout: '', stderr: '', duration: 100 })
-    if (cmd === 'maestro') return Promise.resolve({ exitCode: 0, stdout: '', stderr: '', duration: 500 })
-    if (cmd === 'xcodebuild') return Promise.resolve({ exitCode: 0, stdout: "Test Case '-[AppTests.T testA]' passed (0.1 seconds).", stderr: '', duration: 1000 })
-    if (cmd === 'xcodegen') return Promise.resolve({ exitCode: 0, stdout: '', stderr: '', duration: 100 })
+    if (cmd === 'xcrun' && args?.[0] === 'simctl')
+      return Promise.resolve({ exitCode: 0, stdout: '', stderr: '', duration: 100 })
+    if (cmd === 'xcrun')
+      return Promise.resolve({ exitCode: 1, stdout: '', stderr: '', duration: 100 })
+    if (cmd === 'maestro')
+      return Promise.resolve({ exitCode: 0, stdout: '', stderr: '', duration: 500 })
+    if (cmd === 'xcodebuild')
+      return Promise.resolve({
+        exitCode: 0,
+        stdout: "Test Case '-[AppTests.T testA]' passed (0.1 seconds).",
+        stderr: '',
+        duration: 1000,
+      })
+    if (cmd === 'xcodegen')
+      return Promise.resolve({ exitCode: 0, stdout: '', stderr: '', duration: 100 })
     if (cmd === 'rm') return Promise.resolve({ exitCode: 0, stdout: '', stderr: '', duration: 10 })
     return Promise.resolve({ exitCode: 0, stdout: '', stderr: '', duration: 0 })
   })
@@ -98,7 +127,13 @@ function makeRunner(opts: { iosContent?: string; ktContent?: string }): Runner {
     writeFile: vi.fn().mockResolvedValue(undefined),
     exists: vi.fn().mockResolvedValue(true),
     glob: mockGlob({ hasIos: opts.iosContent != null, hasKt: opts.ktContent != null }),
-    capabilities: { hasMaestro: true, hasXcode: false, hasNode: true, hasSemgrep: false, platform: 'linux' },
+    capabilities: {
+      hasMaestro: true,
+      hasXcode: false,
+      hasNode: true,
+      hasSemgrep: false,
+      platform: 'linux',
+    },
   }
 }
 
@@ -129,12 +164,14 @@ describe('E2E BaaS validation chain', () => {
     expect(result.baasIntegration!.violations.length).toBeGreaterThan(0)
 
     // DET-01: missing_import violation for Swift
-    const missingImport = result.baasIntegration!.violations.find(v => v.type === 'missing_import')
+    const missingImport = result.baasIntegration!.violations.find(
+      (v) => v.type === 'missing_import',
+    )
     expect(missingImport).toBeDefined()
     expect(missingImport!.platform).toBe('swiftui')
 
     // DET-02: facade_auth violation for Swift
-    const facadeAuth = result.baasIntegration!.violations.find(v => v.type === 'facade_auth')
+    const facadeAuth = result.baasIntegration!.violations.find((v) => v.type === 'facade_auth')
     expect(facadeAuth).toBeDefined()
     expect(facadeAuth!.platform).toBe('swiftui')
 

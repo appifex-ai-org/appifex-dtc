@@ -18,7 +18,11 @@ function makeContext(overrides: Partial<RunContext> = {}): RunContext {
       build: { status: 'completed', summary: 'swiftui build succeeded' },
       validate: { status: 'completed', summary: 'UI 4/4  Unit 8/8' },
     },
-    filesGenerated: ['Sources/App.swift', 'Sources/Views/HomeView.swift', 'Sources/Models/Pet.swift'],
+    filesGenerated: [
+      'Sources/App.swift',
+      'Sources/Views/HomeView.swift',
+      'Sources/Models/Pet.swift',
+    ],
     agentSessionId: 'session-xyz',
     ...overrides,
   }

@@ -20,11 +20,14 @@ export interface DeviceFlowResult {
 export async function startDeviceFlow(clientId: string): Promise<DeviceFlowResult> {
   const resp = await fetch(GITHUB_DEVICE_CODE_URL, {
     method: 'POST',
-    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
     body: JSON.stringify({ client_id: clientId, scope: 'copilot' }),
   })
-  const data = await resp.json() as {
-    device_code: string; user_code: string; verification_uri: string; interval: number
+  const data = (await resp.json()) as {
+    device_code: string
+    user_code: string
+    verification_uri: string
+    interval: number
   }
   return {
     deviceCode: data.device_code,
@@ -42,17 +45,17 @@ export async function pollForToken(
 ): Promise<string> {
   const start = Date.now()
   while (Date.now() - start < timeoutMs) {
-    await new Promise(r => setTimeout(r, interval * 1000))
+    await new Promise((r) => setTimeout(r, interval * 1000))
     const resp = await fetch(GITHUB_TOKEN_URL, {
       method: 'POST',
-      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
       body: JSON.stringify({
         client_id: clientId,
         device_code: deviceCode,
         grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
       }),
     })
-    const data = await resp.json() as { access_token?: string; error?: string }
+    const data = (await resp.json()) as { access_token?: string; error?: string }
     if (data.access_token) return data.access_token
     if (data.error === 'expired_token') throw new Error('Device flow expired')
     if (data.error === 'access_denied') throw new Error('User denied access')
@@ -106,11 +109,13 @@ async function createRealClient(githubToken: string): Promise<CopilotClientLike>
   return new CopilotClient({ githubToken, useLoggedInUser: false }) as unknown as CopilotClientLike
 }
 
-export function createCopilotGenerateFn(opts: CopilotProviderOpts): (input: CodegenInput) => Promise<CodegenResult> {
+export function createCopilotGenerateFn(
+  opts: CopilotProviderOpts,
+): (input: CodegenInput) => Promise<CodegenResult> {
   const model = opts.model ?? 'claude-sonnet-4-6'
 
   return async (input: CodegenInput): Promise<CodegenResult> => {
-    const client = opts.createClient?.() ?? await createRealClient(opts.githubToken)
+    const client = opts.createClient?.() ?? (await createRealClient(opts.githubToken))
     try {
       await client.start()
       const session = await client.createSession({
@@ -126,7 +131,12 @@ export function createCopilotGenerateFn(opts: CopilotProviderOpts): (input: Code
 
       const jsonMatch = text.match(/\{[\s\S]*"files"[\s\S]*\}/)
       if (!jsonMatch) {
-        return { success: false, files: [], tokensUsed: 0, error: 'Copilot did not return valid JSON with files array' }
+        return {
+          success: false,
+          files: [],
+          tokensUsed: 0,
+          error: 'Copilot did not return valid JSON with files array',
+        }
       }
 
       const parsed = JSON.parse(jsonMatch[0]) as { files: GeneratedFile[] }
@@ -136,7 +146,12 @@ export function createCopilotGenerateFn(opts: CopilotProviderOpts): (input: Code
 
       return { success: true, files: parsed.files, tokensUsed: 0 }
     } catch (err) {
-      return { success: false, files: [], tokensUsed: 0, error: String(err instanceof Error ? err.message : err) }
+      return {
+        success: false,
+        files: [],
+        tokensUsed: 0,
+        error: String(err instanceof Error ? err.message : err),
+      }
     }
   }
 }
@@ -146,11 +161,13 @@ export interface CopilotFixOpts extends CopilotProviderOpts {
   projectDir: string
 }
 
-export function createCopilotFixFn(opts: CopilotFixOpts): (failures: ValidationResult) => Promise<{ filesChanged: string[]; tokensUsed: number }> {
+export function createCopilotFixFn(
+  opts: CopilotFixOpts,
+): (failures: ValidationResult) => Promise<{ filesChanged: string[]; tokensUsed: number }> {
   const model = opts.model ?? 'claude-sonnet-4-6'
 
   return async (failures: ValidationResult) => {
-    const client = opts.createClient?.() ?? await createRealClient(opts.githubToken)
+    const client = opts.createClient?.() ?? (await createRealClient(opts.githubToken))
     try {
       // Read source files
       const srcFiles = await opts.runner.glob(`${opts.projectDir}/src/**/*.{ts,tsx}`)
@@ -162,8 +179,13 @@ export function createCopilotFixFn(opts: CopilotFixOpts): (failures: ValidationR
         codeChunks.push(`// ${file}\n${content}`)
       }
 
-      const uiFailures = failures.ui.results.filter(r => !r.passed).map(r => `- UI: ${r.flowName}: ${r.error}`).join('\n')
-      const unitFailures = failures.unit.failures.map(f => `- Unit: ${f.testName}: ${f.error}`).join('\n')
+      const uiFailures = failures.ui.results
+        .filter((r) => !r.passed)
+        .map((r) => `- UI: ${r.flowName}: ${r.error}`)
+        .join('\n')
+      const unitFailures = failures.unit.failures
+        .map((f) => `- Unit: ${f.testName}: ${f.error}`)
+        .join('\n')
 
       const prompt = `Fix the following test failures. Only change what's needed.
 

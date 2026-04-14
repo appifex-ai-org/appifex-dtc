@@ -15,7 +15,13 @@ function mockRunner(execResult: Partial<ExecResult> = {}): Runner {
     writeFile: vi.fn().mockResolvedValue(undefined),
     exists: vi.fn().mockResolvedValue(true),
     glob: vi.fn().mockResolvedValue([]),
-    capabilities: { hasMaestro: false, hasXcode: false, hasNode: true, hasSemgrep: false, platform: 'darwin' },
+    capabilities: {
+      hasMaestro: false,
+      hasXcode: false,
+      hasNode: true,
+      hasSemgrep: false,
+      platform: 'darwin',
+    },
   }
 }
 
@@ -33,8 +39,10 @@ describe('PencilAdapter', () => {
       expect(runner.exec).toHaveBeenCalledWith(
         'pencil',
         expect.arrayContaining([
-          '--prompt', 'Pet adoption app with browse and favorites',
-          '--out', '/tmp/design.pen',
+          '--prompt',
+          'Pet adoption app with browse and favorites',
+          '--out',
+          '/tmp/design.pen',
         ]),
         expect.objectContaining({ env: expect.objectContaining({ PENCIL_CLI_KEY: 'pk-test' }) }),
       )
@@ -84,9 +92,12 @@ describe('PencilAdapter', () => {
       expect(runner.exec).toHaveBeenCalledWith(
         'pencil',
         expect.arrayContaining([
-          '--in', '/tmp/design.pen',
-          '--out', '/tmp/design.pen',
-          '--prompt', 'Make cards 2-column grid with shadows',
+          '--in',
+          '/tmp/design.pen',
+          '--out',
+          '/tmp/design.pen',
+          '--prompt',
+          'Make cards 2-column grid with shadows',
         ]),
         expect.anything(),
       )

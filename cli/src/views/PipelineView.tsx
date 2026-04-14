@@ -15,7 +15,22 @@ import {
 } from './format.js'
 
 export const PIPELINE_PHASES: PhaseId[] = [
-  'design', 'spec', 'design_delta', 'baas_recommend', 'baas_schema', 'baas_auth', 'mock_service', 'test_gen', 'codegen', 'test_regen', 'build', 'validate', 'security', 'fix', 'deliver', 'report',
+  'design',
+  'spec',
+  'design_delta',
+  'baas_recommend',
+  'baas_schema',
+  'baas_auth',
+  'mock_service',
+  'test_gen',
+  'codegen',
+  'test_regen',
+  'build',
+  'validate',
+  'security',
+  'fix',
+  'deliver',
+  'report',
 ]
 
 interface PipelineViewProps {
@@ -40,13 +55,18 @@ export function PipelineView({ projectName, onEvent, tokenBudget = 100_000 }: Pi
   useEffect(() => {
     if (!onEvent) return
     onEvent((event: ProgressEvent) => {
-      setPhases(prev => {
+      setPhases((prev) => {
         const next = new Map(prev)
         const status: PhaseDisplayStatus =
-          event.status === 'started' || event.status === 'running' ? 'running' :
-          event.status === 'completed' ? 'completed' :
-          event.status === 'failed' ? 'failed' :
-          event.status === 'skipped' ? 'skipped' : 'pending'
+          event.status === 'started' || event.status === 'running'
+            ? 'running'
+            : event.status === 'completed'
+              ? 'completed'
+              : event.status === 'failed'
+                ? 'failed'
+                : event.status === 'skipped'
+                  ? 'skipped'
+                  : 'pending'
 
         next.set(event.phase, {
           id: event.phase,
@@ -57,18 +77,21 @@ export function PipelineView({ projectName, onEvent, tokenBudget = 100_000 }: Pi
       })
 
       if (event.tokensUsed) {
-        setTokensUsed(prev => prev + event.tokensUsed!)
+        setTokensUsed((prev) => prev + event.tokensUsed!)
       }
 
       // Update validation summaries when validate phase reports results
       if (event.phase === 'validate' && event.status === 'completed' && event.message) {
         const match = event.message.match(/UI (\d+)\/(\d+)\s+Unit (\d+)\/(\d+)/)
         if (match) {
-          setValidations(prev => [...prev, {
-            platform: 'default',
-            ui: { passed: parseInt(match[1]), total: parseInt(match[2]) },
-            unit: { passed: parseInt(match[3]), total: parseInt(match[4]) },
-          }])
+          setValidations((prev) => [
+            ...prev,
+            {
+              platform: 'default',
+              ui: { passed: parseInt(match[1]), total: parseInt(match[2]) },
+              unit: { passed: parseInt(match[3]), total: parseInt(match[4]) },
+            },
+          ])
         }
       }
 
@@ -94,29 +117,26 @@ export function PipelineView({ projectName, onEvent, tokenBudget = 100_000 }: Pi
       <Box marginBottom={1}>
         <Text>
           {isRunning ? (
-            <Text color="cyan"><Spinner type="dots" /></Text>
+            <Text color="cyan">
+              <Spinner type="dots" />
+            </Text>
           ) : (
             <Text color="green">✓</Text>
-          )}
-          {' '}
+          )}{' '}
           <Text bold>{projectName}</Text>
         </Text>
       </Box>
 
       <Box flexDirection="column">
-        {PIPELINE_PHASES.map(id => {
+        {PIPELINE_PHASES.map((id) => {
           const phase = phases.get(id) ?? { id, status: 'pending' as const }
-          return (
-            <Text key={id}>
-              {formatPhaseStatus(phase)}
-            </Text>
-          )
+          return <Text key={id}>{formatPhaseStatus(phase)}</Text>
         })}
       </Box>
 
       {validations.length > 0 && (
         <Box flexDirection="column" marginTop={1}>
-          {validations.map(v => (
+          {validations.map((v) => (
             <Text key={v.platform}>{formatValidationSummary(v)}</Text>
           ))}
         </Box>

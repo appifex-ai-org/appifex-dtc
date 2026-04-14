@@ -37,8 +37,19 @@ import {
  * run-context module). Keep this in lockstep with the source of truth.
  */
 const PHASE_ORDER: PhaseId[] = [
-  'analysis', 'design', 'spec', 'design_delta', 'test_gen', 'codegen',
-  'test_regen', 'build', 'validate', 'security', 'fix', 'deliver', 'report',
+  'analysis',
+  'design',
+  'spec',
+  'design_delta',
+  'test_gen',
+  'codegen',
+  'test_regen',
+  'build',
+  'validate',
+  'security',
+  'fix',
+  'deliver',
+  'report',
 ]
 
 // ---------------------------------------------------------------------------
@@ -107,7 +118,10 @@ function emit(
       try {
         const now = new Date().toISOString()
         if (status === 'completed') {
-          ctx.checkpoint.savePhase(ctx.checkpointRunId, phase, { status: 'completed', completedAt: now })
+          ctx.checkpoint.savePhase(ctx.checkpointRunId, phase, {
+            status: 'completed',
+            completedAt: now,
+          })
         } else if (status === 'failed') {
           ctx.checkpoint.savePhase(ctx.checkpointRunId, phase, {
             status: 'failed',
@@ -148,7 +162,11 @@ async function replayAddFeaturePhases(
   try {
     for (const phase of PHASE_ORDER) {
       // design_delta skip branch mirrors runDesignDeltaPhase (D-03)
-      if (phase === 'design_delta' && ctx.runMode === 'add-feature' && (opts as any).hasBaselinePen === false) {
+      if (
+        phase === 'design_delta' &&
+        ctx.runMode === 'add-feature' &&
+        (opts as any).hasBaselinePen === false
+      ) {
         emit(ctx, phase, 'skipped', 'No baseline .pen tokens available')
         continue
       }
@@ -209,8 +227,14 @@ async function replayAddFeaturePhases(
         // serialize it, and upsert the analysis checkpoint row with the
         // richer payload (identical to pipeline.ts lines ~1570-1595).
         const snapshot = new Map<string, string>([
-          ['Sources/App.swift', 'import SwiftUI\n@main struct App: SwiftUI.App { var body: some Scene { WindowGroup {} } }\n'],
-          ['Sources/ContentView.swift', 'import SwiftUI\nstruct ContentView: View { var body: some View { Text("Hello") } }\n'],
+          [
+            'Sources/App.swift',
+            'import SwiftUI\n@main struct App: SwiftUI.App { var body: some Scene { WindowGroup {} } }\n',
+          ],
+          [
+            'Sources/ContentView.swift',
+            'import SwiftUI\nstruct ContentView: View { var body: some View { Text("Hello") } }\n',
+          ],
         ])
         try {
           const sidecarMeta = await writePreAgentSnapshotSidecar(
@@ -276,7 +300,11 @@ export async function runFullAddFeaturePipeline(opts: RunOpts = {}): Promise<Run
     ? new FailingCheckpoint(dbPath)
     : new Checkpoint(dbPath)
   const checkpoint = realCheckpoint
-  const ctxBuilder = new RunContextBuilder({ prompt: 'test', platform: 'swiftui', mode: 'add-feature' })
+  const ctxBuilder = new RunContextBuilder({
+    prompt: 'test',
+    platform: 'swiftui',
+    mode: 'add-feature',
+  })
 
   const ctx: EmitContext = {
     runMode: 'add-feature',
@@ -288,14 +316,18 @@ export async function runFullAddFeaturePipeline(opts: RunOpts = {}): Promise<Run
 
   const completedPhases = await replayAddFeaturePhases(ctx, {
     dtcDir,
-    ...(opts.hasBaselinePen === false && { hasBaselinePen: false } as any),
+    ...(opts.hasBaselinePen === false && ({ hasBaselinePen: false } as any)),
   } as any)
 
   // Persist run-context.json for completeness (not asserted on in add-feature tests)
   const { saveRunContext } = await import('@appifex/core')
   await saveRunContext(workdir, ctxBuilder.build('completed'))
 
-  try { realCheckpoint.close() } catch { /* ignore */ }
+  try {
+    realCheckpoint.close()
+  } catch {
+    /* ignore */
+  }
   return { runId: checkpointRunId, dtcDir, completedPhases }
 }
 
@@ -307,7 +339,11 @@ export async function runAddFeaturePipelineWithFailure(failAt: PhaseId): Promise
   const { workdir, dtcDir } = await makeTmpDtcDir('phase13-affail-')
   const checkpointRunId = `run-${randomUUID().slice(0, 8)}`
   const checkpoint = new Checkpoint(join(dtcDir, 'checkpoint.db'))
-  const ctxBuilder = new RunContextBuilder({ prompt: 'test', platform: 'swiftui', mode: 'add-feature' })
+  const ctxBuilder = new RunContextBuilder({
+    prompt: 'test',
+    platform: 'swiftui',
+    mode: 'add-feature',
+  })
 
   const ctx: EmitContext = {
     runMode: 'add-feature',
@@ -324,8 +360,16 @@ export async function runAddFeaturePipelineWithFailure(failAt: PhaseId): Promise
     // Expected — outer catch already wrote the failed row.
   }
 
-  try { await (await import('@appifex/core')).saveRunContext(workdir, ctxBuilder.build('failed')) } catch { /* ignore */ }
-  try { checkpoint.close() } catch { /* ignore */ }
+  try {
+    await (await import('@appifex/core')).saveRunContext(workdir, ctxBuilder.build('failed'))
+  } catch {
+    /* ignore */
+  }
+  try {
+    checkpoint.close()
+  } catch {
+    /* ignore */
+  }
   return { runId: checkpointRunId, dtcDir, completedPhases }
 }
 
@@ -341,7 +385,11 @@ export async function runFullFreshAppPipeline(_opts: RunOpts = {}): Promise<RunR
   const { workdir, dtcDir } = await makeTmpDtcDir('phase13-fresh-')
   const checkpointRunId = `run-${randomUUID().slice(0, 8)}`
   const checkpoint = new Checkpoint(join(dtcDir, 'checkpoint.db'))
-  const ctxBuilder = new RunContextBuilder({ prompt: 'Build a minimal counter app', platform: 'swiftui', mode: 'fresh' })
+  const ctxBuilder = new RunContextBuilder({
+    prompt: 'Build a minimal counter app',
+    platform: 'swiftui',
+    mode: 'fresh',
+  })
 
   const ctx: EmitContext = {
     runMode: 'fresh',
@@ -355,9 +403,17 @@ export async function runFullFreshAppPipeline(_opts: RunOpts = {}): Promise<RunR
   // add-feature-gated in pipeline.ts). Replay only the phases that fire in a
   // fresh-app run, matching pipeline.ts's fresh-app emit sequence.
   const FRESH_APP_PHASES: PhaseId[] = [
-    'design', 'spec', 'test_gen', 'codegen',
-    'test_regen', 'build', 'validate', 'security',
-    'fix', 'deliver', 'report',
+    'design',
+    'spec',
+    'test_gen',
+    'codegen',
+    'test_regen',
+    'build',
+    'validate',
+    'security',
+    'fix',
+    'deliver',
+    'report',
   ]
   for (const phase of FRESH_APP_PHASES) {
     emit(ctx, phase, 'completed', `${phase} ok`)
@@ -366,7 +422,11 @@ export async function runFullFreshAppPipeline(_opts: RunOpts = {}): Promise<RunR
   const { saveRunContext } = await import('@appifex/core')
   await saveRunContext(workdir, ctxBuilder.build('completed'))
 
-  try { checkpoint.close() } catch { /* ignore */ }
+  try {
+    checkpoint.close()
+  } catch {
+    /* ignore */
+  }
   return { runId: checkpointRunId, dtcDir, completedPhases: FRESH_APP_PHASES }
 }
 
@@ -415,7 +475,11 @@ export function normalizeRunContext(ctx: any): any {
         continue
       }
       // tmp path prefixes
-      if (value.startsWith('/tmp/') || value.startsWith('/var/folders/') || value.startsWith('/private/var/')) {
+      if (
+        value.startsWith('/tmp/') ||
+        value.startsWith('/var/folders/') ||
+        value.startsWith('/private/var/')
+      ) {
         out[key] = NORMALIZED
         continue
       }

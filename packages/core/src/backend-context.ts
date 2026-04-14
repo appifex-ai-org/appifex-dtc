@@ -1,7 +1,10 @@
 import type { BackendContext, Platform } from './types.js'
 
 /** Format a BackendContext into a prompt section for the agent */
-export function buildBackendPromptSection(ctx: BackendContext, platform: Platform = 'swiftui'): string {
+export function buildBackendPromptSection(
+  ctx: BackendContext,
+  platform: Platform = 'swiftui',
+): string {
   const lines: string[] = []
   const isSwift = platform === 'swiftui'
   const isKotlin = platform === 'kotlin-compose'
@@ -69,17 +72,25 @@ export function buildBackendPromptSection(ctx: BackendContext, platform: Platfor
     lines.push(`4. Use \`JSONDecoder\` with \`.convertFromSnakeCase\` key decoding strategy`)
     lines.push(`5. Handle errors gracefully — show user-friendly error states in the UI`)
     if (ctx.auth?.type === 'bearer') {
-      lines.push(`6. Store the auth token securely and attach it as \`Authorization: Bearer <token>\` on every request`)
+      lines.push(
+        `6. Store the auth token securely and attach it as \`Authorization: Bearer <token>\` on every request`,
+      )
     }
   } else if (isKotlin) {
     lines.push(`Create a \`app/src/main/java/com/dtc/app/data/api/ApiClient.kt\` that:`)
     lines.push(`1. Uses Retrofit + OkHttp with Kotlin coroutines (suspend functions)`)
     lines.push(`2. Sets the base URL to \`${ctx.apiBaseUrl}\``)
-    lines.push(`3. Define Kotlin data classes with \`@SerializedName\` annotations matching the backend models`)
+    lines.push(
+      `3. Define Kotlin data classes with \`@SerializedName\` annotations matching the backend models`,
+    )
     lines.push(`4. Use Gson or Moshi converter for JSON serialization`)
-    lines.push(`5. Handle errors gracefully — use sealed class \`Result<T>\` for success/error states`)
+    lines.push(
+      `5. Handle errors gracefully — use sealed class \`Result<T>\` for success/error states`,
+    )
     if (ctx.auth?.type === 'bearer') {
-      lines.push(`6. Use an OkHttp Interceptor to attach \`Authorization: Bearer <token>\` on every request`)
+      lines.push(
+        `6. Use an OkHttp Interceptor to attach \`Authorization: Bearer <token>\` on every request`,
+      )
     }
   } else if (isReact) {
     lines.push(`Create a \`src/services/apiClient.ts\` that:`)
@@ -89,7 +100,9 @@ export function buildBackendPromptSection(ctx: BackendContext, platform: Platfor
     lines.push(`4. Use \`JSON.parse\` / \`JSON.stringify\` for serialization`)
     lines.push(`5. Handle errors gracefully — use try/catch and return typed error states`)
     if (ctx.auth?.type === 'bearer') {
-      lines.push(`6. Store the auth token and attach it as \`Authorization: Bearer <token>\` on every request`)
+      lines.push(
+        `6. Store the auth token and attach it as \`Authorization: Bearer <token>\` on every request`,
+      )
     }
   } else {
     const _exhaustive: never = platform

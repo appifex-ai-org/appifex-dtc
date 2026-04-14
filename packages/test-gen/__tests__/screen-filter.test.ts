@@ -3,10 +3,7 @@ import type { PlatformSpec } from '@appifex/core'
 import { generateUITests } from '../src/ui-tests.js'
 import { generateSpecUnitTests } from '../src/unit-tests.js'
 
-function makeSpec(
-  platform: 'swiftui' | 'kotlin-compose',
-  screenNames: string[],
-): PlatformSpec {
+function makeSpec(platform: 'swiftui' | 'kotlin-compose', screenNames: string[]): PlatformSpec {
   return {
     platform,
     screens: screenNames.map((name, i) => ({

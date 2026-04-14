@@ -11,11 +11,17 @@ const sampleValidation: ValidationResult = {
 
 const sampleFix: FixResult = {
   status: 'all_green',
-  attempts: [{
-    attempt: 1, model: 'claude-sonnet', filesChanged: ['Home.tsx', 'utils.ts'],
-    testsBefore: { passed: 14, total: 17 }, testsAfter: { passed: 17, total: 17 },
-    tokensUsed: 3400, duration: 12000,
-  }],
+  attempts: [
+    {
+      attempt: 1,
+      model: 'claude-sonnet',
+      filesChanged: ['Home.tsx', 'utils.ts'],
+      testsBefore: { passed: 14, total: 17 },
+      testsAfter: { passed: 17, total: 17 },
+      tokensUsed: 3400,
+      duration: 12000,
+    },
+  ],
   unresolvedFailures: [],
   rollbackApplied: false,
   totalTokensUsed: 3400,
@@ -28,12 +34,18 @@ describe('buildReport', () => {
       projectName: 'Pet Adoption App',
       platforms: ['swiftui'],
       designIterations: 2,
-      validation: { 'swiftui': sampleValidation },
-      fix: { 'swiftui': sampleFix },
+      validation: { swiftui: sampleValidation },
+      fix: { swiftui: sampleFix },
       tokenUsage: {
-        design: 5000, spec: 1000, test_gen: 2000,
-        codegen: 15000, build: 0, validate: 500,
-        fix: 3400, deliver: 200, report: 0,
+        design: 5000,
+        spec: 1000,
+        test_gen: 2000,
+        codegen: 15000,
+        build: 0,
+        validate: 500,
+        fix: 3400,
+        deliver: 200,
+        report: 0,
       },
       totalDuration: 120000,
     })
@@ -57,7 +69,7 @@ describe('buildReport', () => {
       projectName: 'App',
       platforms: ['swiftui', 'kotlin-compose'],
       designIterations: 1,
-      validation: { 'swiftui': sampleValidation, 'kotlin-compose': ktValidation },
+      validation: { swiftui: sampleValidation, 'kotlin-compose': ktValidation },
       fix: {},
       tokenUsage: { design: 1000 },
       totalDuration: 60000,
@@ -74,8 +86,8 @@ describe('formatMarkdown', () => {
       projectName: 'Pet App',
       platforms: ['swiftui'],
       designIterations: 2,
-      validation: { 'swiftui': sampleValidation },
-      fix: { 'swiftui': sampleFix },
+      validation: { swiftui: sampleValidation },
+      fix: { swiftui: sampleFix },
       tokenUsage: { design: 5000, codegen: 15000, fix: 3400 },
       totalDuration: 120000,
     })
@@ -84,7 +96,7 @@ describe('formatMarkdown', () => {
 
     expect(md).toContain('# Pet App')
     expect(md).toContain('swiftui')
-    expect(md).toContain('5/5')  // UI tests
+    expect(md).toContain('5/5') // UI tests
     expect(md).toContain('12/12') // Unit tests
     expect(md).toContain('ALL GREEN') // or similar
     expect(md).toContain('Token') // token usage section
@@ -97,7 +109,7 @@ describe('formatJson', () => {
       projectName: 'App',
       platforms: ['swiftui'],
       designIterations: 1,
-      validation: { 'swiftui': sampleValidation },
+      validation: { swiftui: sampleValidation },
       fix: {},
       tokenUsage: {},
       totalDuration: 1000,

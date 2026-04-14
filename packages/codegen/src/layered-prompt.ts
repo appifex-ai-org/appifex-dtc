@@ -6,11 +6,13 @@ export function buildLayeredPrompt(input: CodegenInput): string {
   const specJson = JSON.stringify(input.spec, null, 2)
 
   const uiTestsSection = input.uiTestContent?.length
-    ? input.uiTestContent.map(t => `**${t.path}:**\n\`\`\`yaml\n${t.content}\n\`\`\``).join('\n\n')
+    ? input.uiTestContent
+        .map((t) => `**${t.path}:**\n\`\`\`yaml\n${t.content}\n\`\`\``)
+        .join('\n\n')
     : ''
 
   const unitTestsSection = input.unitTestContent?.length
-    ? input.unitTestContent.map(t => `**${t.path}:**\n\`\`\`\n${t.content}\n\`\`\``).join('\n\n')
+    ? input.unitTestContent.map((t) => `**${t.path}:**\n\`\`\`\n${t.content}\n\`\`\``).join('\n\n')
     : ''
 
   return `You are a senior ${input.spec.platform} developer generating a complete app using a LAYERED ARCHITECTURE approach.
@@ -21,7 +23,9 @@ You will generate code in 3 layers, in order. Each layer builds on the previous.
 
 ## STEP 1: Study the Design Image
 
-${input.designImagePath ? `The attached image shows the EXACT screens to build. Study it carefully BEFORE writing any code.
+${
+  input.designImagePath
+    ? `The attached image shows the EXACT screens to build. Study it carefully BEFORE writing any code.
 
 Count the screens. Note every visual element:
 - Tab bar items (how many tabs? what icons/labels?)
@@ -33,7 +37,9 @@ Count the screens. Note every visual element:
 - Settings screen (user profile, grouped settings rows with icons)
 - Floating action buttons, search bars, section headers
 
-DO NOT simplify. Reproduce EVERY screen and EVERY element from the design.` : 'No design image provided — follow the spec below.'}
+DO NOT simplify. Reproduce EVERY screen and EVERY element from the design.`
+    : 'No design image provided — follow the spec below.'
+}
 
 ---
 
@@ -88,18 +94,24 @@ Files go in \`Sources/ViewModels/\`.
 ---
 
 ## Platform Rules
-${input.spec.platform === 'swiftui' ? `- All files under Sources/ directory
+${
+  input.spec.platform === 'swiftui'
+    ? `- All files under Sources/ directory
 - Do NOT create @main App entry point (auto-generated)
 - Do NOT create project.yml, Info.plist, or .xcodeproj (managed by build pipeline)
 - Use @MainActor @Observable (NOT ObservableObject/@Published)
 - Use NavigationStack (NOT NavigationView)
 - Use .foregroundStyle() (NOT .foregroundColor())
-- Use .clipShape(.rect(cornerRadius:)) (NOT .cornerRadius())` : `- Files under src/ directory
+- Use .clipShape(.rect(cornerRadius:)) (NOT .cornerRadius())`
+    : `- Files under src/ directory
 - Use functional components with hooks
-- Include testID props on all interactive components`}
+- Include testID props on all interactive components`
+}
 
 ${input.skillPrompt ? `## Code Quality Guidelines\n${input.skillPrompt}\n` : ''}
-${input.baasAuthScreens ? `
+${
+  input.baasAuthScreens
+    ? `
 ## Auth Screens (DO NOT MODIFY WIRING)
 Auth screens already exist at Sources/Auth/ (LoginView.swift, SignupView.swift, ResetPasswordView.swift, NewPasswordView.swift).
 These screens have correct auth SDK wiring that MUST NOT be changed.
@@ -109,8 +121,12 @@ Your job for auth screens:
 - You may adjust layout, padding, font sizes, and colors
 - Do NOT change: any AuthManager method calls, auth state observation, NavigationLink targets, error handling logic, or deep link handling
 - Do NOT add new auth-related imports or remove existing ones
-` : ''}
-${input.baasContext?.schema ? `
+`
+    : ''
+}
+${
+  input.baasContext?.schema
+    ? `
 ## BaaS Data Layer
 
 DataService classes have been pre-generated at Sources/Services/. Each DataService wraps a repository protocol with @Observable loading/error state.
@@ -122,28 +138,39 @@ Rules:
 - In EACH ViewModel that displays or modifies data, add ONE @State private var [entity]Service = [Entity]DataService()
 - Call service.loadAll() in .task { } and service.create() / service.delete() for mutations
 - Import ONLY from repository protocol types — NEVER import FirebaseFirestore, Supabase, or any BaaS SDK directly
-- Available DataServices: ${input.baasContext.schema.entities.map(e => `${e.name}DataService`).join(', ')}
-- Inferred entities: ${input.baasContext.schema.entities.map(e => e.name).join(', ')}
-` : ''}
-${input.modificationPlan && input.modificationPlan.items.length > 0 ? `
+- Available DataServices: ${input.baasContext.schema.entities.map((e) => `${e.name}DataService`).join(', ')}
+- Inferred entities: ${input.baasContext.schema.entities.map((e) => e.name).join(', ')}
+`
+    : ''
+}
+${
+  input.modificationPlan && input.modificationPlan.items.length > 0
+    ? `
 ## Modification Plan (files you MUST modify)
 
 The following EXISTING files must be changed to integrate the new feature. Output the complete modified file using the same ===FILE: path=== / ===END_FILE=== format.
 
 DO NOT modify any files not listed here unless they import from a modified file.
 
-${input.modificationPlan.items.map(item => {
-  const lang = item.filePath.endsWith('.swift') ? 'swift'
-    : item.filePath.endsWith('.kt') ? 'kotlin' : ''
-  return `### ${item.screenName} (${item.changeType})
+${input.modificationPlan.items
+  .map((item) => {
+    const lang = item.filePath.endsWith('.swift')
+      ? 'swift'
+      : item.filePath.endsWith('.kt')
+        ? 'kotlin'
+        : ''
+    return `### ${item.screenName} (${item.changeType})
 **Change:** ${item.changeDescription}
 **File path:** ${item.filePath}
 
 \`\`\`${lang}
 ${item.fileContent}
 \`\`\``
-}).join('\n\n')}
-` : ''}
+  })
+  .join('\n\n')}
+`
+    : ''
+}
 ## Output Format
 Output EVERY file using this delimiter format:
 

@@ -74,7 +74,10 @@ class StitchToolAdapter implements DesignToolAdapter {
   readonly tool = 'stitch' as const
   private stitch: StitchAdapter
 
-  constructor(runner: Runner, opts: { apiKey: string; stitchClient?: unknown; fetchImpl?: typeof fetch }) {
+  constructor(
+    runner: Runner,
+    opts: { apiKey: string; stitchClient?: unknown; fetchImpl?: typeof fetch },
+  ) {
     this.stitch = new StitchAdapter(runner, opts as ConstructorParameters<typeof StitchAdapter>[1])
   }
 
@@ -125,7 +128,10 @@ export interface CreateDesignAdapterOpts {
 /**
  * Creates the appropriate DesignToolAdapter based on config.design.tool.
  */
-export function createDesignAdapter({ config, runner }: CreateDesignAdapterOpts): DesignToolAdapter {
+export function createDesignAdapter({
+  config,
+  runner,
+}: CreateDesignAdapterOpts): DesignToolAdapter {
   const tool = config.tool
   switch (tool) {
     case 'pencil': {

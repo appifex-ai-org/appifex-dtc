@@ -49,10 +49,14 @@ export class AscClient {
   /** Upload and distribute an IPA to TestFlight via `asc publish testflight` */
   async submitTestFlight(opts: SubmitTestFlightOpts): Promise<AscResult> {
     const args = [
-      'publish', 'testflight',
-      '--app', opts.appId,
-      '--ipa', opts.ipaPath,
-      '--group', opts.group ?? 'App Store Connect Users',
+      'publish',
+      'testflight',
+      '--app',
+      opts.appId,
+      '--ipa',
+      opts.ipaPath,
+      '--group',
+      opts.group ?? 'App Store Connect Users',
     ]
     if (opts.wait !== false) args.push('--wait')
 
@@ -69,9 +73,9 @@ export class AscClient {
 
   /** List all apps via `asc apps list --output json` */
   async listApps(): Promise<AppInfo[]> {
-    const result = await this.runner.exec('asc', [
-      'apps', 'list', '--output', 'json', '--pretty',
-    ], { env: this.env() })
+    const result = await this.runner.exec('asc', ['apps', 'list', '--output', 'json', '--pretty'], {
+      env: this.env(),
+    })
 
     if (result.exitCode !== 0) return []
     try {
@@ -83,9 +87,7 @@ export class AscClient {
 
   /** List provisioning profiles via `asc profiles list` */
   async listProfiles(): Promise<AscResult> {
-    const result = await this.runner.exec('asc', [
-      'profiles', 'list',
-    ], { env: this.env() })
+    const result = await this.runner.exec('asc', ['profiles', 'list'], { env: this.env() })
 
     if (result.exitCode !== 0) {
       return { success: false, error: result.stderr }
@@ -95,9 +97,9 @@ export class AscClient {
 
   /** Get the next valid build number for an app */
   async nextBuildNumber(appId: string): Promise<string | undefined> {
-    const result = await this.runner.exec('asc', [
-      'builds', 'next-build-number', '--app', appId,
-    ], { env: this.env() })
+    const result = await this.runner.exec('asc', ['builds', 'next-build-number', '--app', appId], {
+      env: this.env(),
+    })
 
     if (result.exitCode !== 0) return undefined
     return result.stdout.trim()

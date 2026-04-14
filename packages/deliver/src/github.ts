@@ -61,10 +61,7 @@ export async function createRepo(
   return parsed
 }
 
-async function resolveExistingRepo(
-  runner: Runner,
-  name: string,
-): Promise<CreateRepoResult> {
+async function resolveExistingRepo(runner: Runner, name: string): Promise<CreateRepoResult> {
   // If name includes owner (e.g. "owner/repo"), use it directly
   // Otherwise, look up the authenticated user
   let fullName = name
@@ -102,12 +99,18 @@ export async function createPullRequest(
   opts: PullRequestOpts,
 ): Promise<PullRequestResult> {
   const result = await runner.exec('gh', [
-    'pr', 'create',
-    '--repo', `${opts.owner}/${opts.repo}`,
-    '--title', opts.title,
-    '--body', opts.body,
-    '--head', opts.head,
-    '--base', opts.base,
+    'pr',
+    'create',
+    '--repo',
+    `${opts.owner}/${opts.repo}`,
+    '--title',
+    opts.title,
+    '--body',
+    opts.body,
+    '--head',
+    opts.head,
+    '--base',
+    opts.base,
   ])
 
   if (result.exitCode !== 0) {
@@ -126,12 +129,21 @@ export async function createPullRequest(
  */
 export async function mergePullRequest(
   runner: Runner,
-  opts: { owner: string; repo: string; prNumber: number; method?: MergeMethod; deleteBranch?: boolean },
+  opts: {
+    owner: string
+    repo: string
+    prNumber: number
+    method?: MergeMethod
+    deleteBranch?: boolean
+  },
 ): Promise<void> {
   const method = opts.method ?? 'squash'
   const args = [
-    'pr', 'merge', String(opts.prNumber),
-    '--repo', `${opts.owner}/${opts.repo}`,
+    'pr',
+    'merge',
+    String(opts.prNumber),
+    '--repo',
+    `${opts.owner}/${opts.repo}`,
     `--${method}`,
   ]
   if (opts.deleteBranch ?? true) args.push('--delete-branch')

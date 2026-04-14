@@ -50,7 +50,7 @@ struct ContentView: View {
 }`,
     })
     const result = await buildNavGraph('/project', 'swiftui', runner)
-    const tabNode = result.nodes.find(n => n.type === 'tab')
+    const tabNode = result.nodes.find((n) => n.type === 'tab')
     expect(tabNode).toBeDefined()
     expect(tabNode!.targets).toContain('HomeView')
     expect(tabNode!.targets).toContain('SettingsView')
@@ -69,7 +69,7 @@ struct ListView: View {
 }`,
     })
     const result = await buildNavGraph('/project', 'swiftui', runner)
-    const pushNode = result.nodes.find(n => n.type === 'push')
+    const pushNode = result.nodes.find((n) => n.type === 'push')
     expect(pushNode).toBeDefined()
     expect(pushNode!.targets).toContain('DetailView')
   })
@@ -89,7 +89,7 @@ struct MainView: View {
 }`,
     })
     const result = await buildNavGraph('/project', 'swiftui', runner)
-    const modalNode = result.nodes.find(n => n.type === 'modal')
+    const modalNode = result.nodes.find((n) => n.type === 'modal')
     expect(modalNode).toBeDefined()
     expect(modalNode!.targets).toContain('ModalView')
   })
@@ -109,7 +109,7 @@ struct SidebarView: View {
 }`,
     })
     const result = await buildNavGraph('/project', 'swiftui', runner)
-    const drawerNode = result.nodes.find(n => n.type === 'drawer')
+    const drawerNode = result.nodes.find((n) => n.type === 'drawer')
     expect(drawerNode).toBeDefined()
   })
 
@@ -125,7 +125,8 @@ struct MyApp: App {
     }
   }
 }`,
-      '/project/ContentView.swift': 'struct ContentView: View { var body: some View { Text("Hi") } }',
+      '/project/ContentView.swift':
+        'struct ContentView: View { var body: some View { Text("Hi") } }',
     })
     const result = await buildNavGraph('/project', 'swiftui', runner)
     expect(result.entryPoint).toBe('ContentView')
@@ -145,9 +146,9 @@ fun AppNavigation() {
 }`,
     })
     const result = await buildNavGraph('/project', 'kotlin-compose', runner)
-    const pushNodes = result.nodes.filter(n => n.type === 'push')
+    const pushNodes = result.nodes.filter((n) => n.type === 'push')
     expect(pushNodes.length).toBeGreaterThanOrEqual(1)
-    const allTargets = pushNodes.flatMap(n => n.targets)
+    const allTargets = pushNodes.flatMap((n) => n.targets)
     expect(allTargets).toContain('home')
     expect(allTargets).toContain('profile')
     expect(allTargets).toContain('settings')
@@ -171,7 +172,7 @@ fun MainScreen() {
 }`,
     })
     const result = await buildNavGraph('/project', 'kotlin-compose', runner)
-    const tabNode = result.nodes.find(n => n.type === 'tab')
+    const tabNode = result.nodes.find((n) => n.type === 'tab')
     expect(tabNode).toBeDefined()
   })
 
@@ -186,7 +187,7 @@ struct HomeView: View {
 }`,
     })
     const result = await buildNavGraph('/project', 'swiftui', runner)
-    const node = result.nodes.find(n => n.type === 'push')
+    const node = result.nodes.find((n) => n.type === 'push')
     expect(node).toBeDefined()
     expect(node!.screenId).toBe('Sources/Views/HomeView.swift')
   })

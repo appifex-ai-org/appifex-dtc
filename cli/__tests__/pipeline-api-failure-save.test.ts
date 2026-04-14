@@ -41,7 +41,9 @@ async function runApiPathWithFailureSave(
     // D-06: err.message only — ctxBuilder.build('failed') captures recorded phases, no stack traces
     try {
       await saveRunContext(outputDir, ctxBuilder.build('failed'))
-    } catch { /* context save must not block re-throw */ }
+    } catch {
+      /* context save must not block re-throw */
+    }
     throw apiErr
   }
 }
@@ -56,7 +58,11 @@ async function runSuccessSave(
   outputDir: string,
   apiRunStatus: 'completed' | 'budget_exceeded' | 'failed',
 ): Promise<void> {
-  try { await saveRunContext(outputDir, ctxBuilder.build(apiRunStatus)) } catch { /* must not block return */ }
+  try {
+    await saveRunContext(outputDir, ctxBuilder.build(apiRunStatus))
+  } catch {
+    /* must not block return */
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -81,14 +87,17 @@ describe('API path failure save', () => {
     const apiBlock = vi.fn().mockRejectedValue(thrownError)
 
     await expect(
-      runApiPathWithFailureSave(mockSave, ctxBuilder, '/tmp/output', apiBlock)
+      runApiPathWithFailureSave(mockSave, ctxBuilder, '/tmp/output', apiBlock),
     ).rejects.toThrow('Build failed: linker error')
 
     // saveRunContext must have been called
     expect(mockSave).toHaveBeenCalledTimes(1)
-    expect(mockSave).toHaveBeenCalledWith('/tmp/output', expect.objectContaining({
-      status: 'failed',
-    }))
+    expect(mockSave).toHaveBeenCalledWith(
+      '/tmp/output',
+      expect.objectContaining({
+        status: 'failed',
+      }),
+    )
   })
 
   // Test 2: Saved context captures recorded phases (no stack traces)
@@ -101,7 +110,7 @@ describe('API path failure save', () => {
     const apiBlock = vi.fn().mockRejectedValue(thrownError)
 
     await expect(
-      runApiPathWithFailureSave(mockSave, ctxBuilder, '/tmp/output', apiBlock)
+      runApiPathWithFailureSave(mockSave, ctxBuilder, '/tmp/output', apiBlock),
     ).rejects.toThrow('Unexpected token')
 
     expect(mockSave).toHaveBeenCalledTimes(1)
@@ -136,7 +145,7 @@ describe('API path failure save', () => {
       ctxBuilder,
       '/tmp/output',
       apiBlock,
-    ).catch(e => e)
+    ).catch((e) => e)
 
     // The original error (not the save error) must propagate
     expect(thrown).toBe(originalError)
