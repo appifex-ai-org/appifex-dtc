@@ -46,8 +46,12 @@ export class LocalRunner implements Runner {
 
       let stdout = ''
       let stderr = ''
-      child.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString() })
-      child.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString() })
+      child.stdout.on('data', (chunk: Buffer) => {
+        stdout += chunk.toString()
+      })
+      child.stderr.on('data', (chunk: Buffer) => {
+        stderr += chunk.toString()
+      })
 
       let timedOut = false
       let timer: ReturnType<typeof setTimeout> | undefined
@@ -60,9 +64,10 @@ export class LocalRunner implements Runner {
 
       child.on('error', (err: NodeJS.ErrnoException) => {
         if (timer) clearTimeout(timer)
-        const msg = err.code === 'ENOENT'
-          ? `Command not found: ${command}. Is it installed and in your PATH? (cwd: ${opts?.cwd ?? this.defaultCwd})`
-          : err.message
+        const msg =
+          err.code === 'ENOENT'
+            ? `Command not found: ${command}. Is it installed and in your PATH? (cwd: ${opts?.cwd ?? this.defaultCwd})`
+            : err.message
         resolve({
           command: shellCommand,
           exitCode: 127,

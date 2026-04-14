@@ -34,7 +34,9 @@ export function checkMockParity(result: MockCheckResult): MockParityResult {
         parityViolations.push({
           passingPlatform: platformA,
           failingPlatform: platformB,
-          failingViolationTypes: [...new Set(violationsB.map(v => v.type))] as MockViolationType[],
+          failingViolationTypes: [
+            ...new Set(violationsB.map((v) => v.type)),
+          ] as MockViolationType[],
           remediation: `Platform ${platformB} has mock layer violations while ${platformA} passes. Fix ${platformB} mock layer.`,
         })
       }

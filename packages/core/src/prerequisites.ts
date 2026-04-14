@@ -35,8 +35,12 @@ function checkMacOS(): PrereqCheck {
     description: 'macOS is required for SwiftUI development',
     severity: 'critical',
     status: isDarwin ? 'pass' : 'fail',
-    message: isDarwin ? `${process.platform} ${execCapture('sw_vers -productVersion') ?? ''}`.trim() : `Current platform: ${process.platform}`,
-    installHint: isDarwin ? undefined : 'SwiftUI development requires macOS. Use --platform kotlin-compose for non-Mac systems.',
+    message: isDarwin
+      ? `${process.platform} ${execCapture('sw_vers -productVersion') ?? ''}`.trim()
+      : `Current platform: ${process.platform}`,
+    installHint: isDarwin
+      ? undefined
+      : 'SwiftUI development requires macOS. Use --platform kotlin-compose for non-Mac systems.',
   }
 }
 
@@ -72,10 +76,20 @@ function checkXcodegen(): PrereqCheck {
 function checkSimulatorRuntime(): PrereqCheck {
   try {
     const raw = execCapture('xcrun simctl list runtimes -j')
-    if (!raw) return { name: 'iOS Simulator', description: '', severity: 'critical', status: 'fail', message: 'Could not query simulator runtimes', installHint: 'Install Xcode first, then: open Xcode > Settings > Platforms > Download iOS' }
+    if (!raw)
+      return {
+        name: 'iOS Simulator',
+        description: '',
+        severity: 'critical',
+        status: 'fail',
+        message: 'Could not query simulator runtimes',
+        installHint: 'Install Xcode first, then: open Xcode > Settings > Platforms > Download iOS',
+      }
 
-    const data = JSON.parse(raw) as { runtimes: Array<{ name: string; isAvailable: boolean; identifier: string }> }
-    const iosRuntimes = data.runtimes.filter(r => r.isAvailable && r.identifier.includes('iOS'))
+    const data = JSON.parse(raw) as {
+      runtimes: Array<{ name: string; isAvailable: boolean; identifier: string }>
+    }
+    const iosRuntimes = data.runtimes.filter((r) => r.isAvailable && r.identifier.includes('iOS'))
 
     if (iosRuntimes.length === 0) {
       return {
@@ -181,7 +195,9 @@ function checkGradle(): PrereqCheck {
     description: 'Build system for Kotlin Compose (projects use gradlew wrapper)',
     severity: 'warning',
     status: has ? 'pass' : 'fail',
-    message: has ? 'installed globally' : 'Not installed globally (projects will use bundled gradlew wrapper)',
+    message: has
+      ? 'installed globally'
+      : 'Not installed globally (projects will use bundled gradlew wrapper)',
     installHint: 'Optional: brew install gradle',
   }
 }
@@ -190,7 +206,7 @@ function checkAndroidDevice(): PrereqCheck {
   // Check for running emulator or connected device
   const adbOutput = execCapture('adb devices')
   if (adbOutput) {
-    const lines = adbOutput.split('\n').filter(l => l.includes('device') && !l.startsWith('List'))
+    const lines = adbOutput.split('\n').filter((l) => l.includes('device') && !l.startsWith('List'))
     if (lines.length > 0) {
       return {
         name: 'Android device',
@@ -285,7 +301,9 @@ function checkDesignTool(config?: DtcConfig): PrereqCheck {
   const { tool } = config.design
   if (tool === 'pencil') {
     const arch = process.arch === 'arm64' ? 'arm64' : 'x64'
-    const has = existsSync(`/Applications/Pencil.app/Contents/Resources/app.asar.unpacked/out/mcp-server-darwin-${arch}`)
+    const has = existsSync(
+      `/Applications/Pencil.app/Contents/Resources/app.asar.unpacked/out/mcp-server-darwin-${arch}`,
+    )
     return {
       name: 'Design tool',
       description: 'Pencil design application',
@@ -360,13 +378,18 @@ function checkAgentCli(config?: DtcConfig): PrereqCheck {
     const hasClaude = which('claude')
     const hasCodex = which('codex')
     const hasGemini = which('gemini')
-    const found = [hasClaude && 'claude', hasCodex && 'codex', hasGemini && 'gemini'].filter(Boolean)
+    const found = [hasClaude && 'claude', hasCodex && 'codex', hasGemini && 'gemini'].filter(
+      Boolean,
+    )
     return {
       name: 'Agent CLI',
       description: 'AI agent CLI for code generation',
       severity: 'info',
       status: found.length > 0 ? 'pass' : 'fail',
-      message: found.length > 0 ? `Available: ${found.join(', ')}` : 'No agent CLI found (will fall back to API)',
+      message:
+        found.length > 0
+          ? `Available: ${found.join(', ')}`
+          : 'No agent CLI found (will fall back to API)',
       installHint: 'Install one: npm i -g @anthropic-ai/claude-code, or npx codex, or gemini',
     }
   }
@@ -378,16 +401,24 @@ function checkAgentCli(config?: DtcConfig): PrereqCheck {
     severity: 'info',
     status: has ? 'pass' : 'fail',
     message: has ? `${type} installed` : `${type} not found`,
-    installHint: type === 'claude' ? 'npm install -g @anthropic-ai/claude-code'
-      : type === 'codex' ? 'npm install -g @openai/codex'
-      : type === 'gemini' ? 'npm install -g @anthropic-ai/gemini-cli'
-      : `Install ${type}`,
+    installHint:
+      type === 'claude'
+        ? 'npm install -g @anthropic-ai/claude-code'
+        : type === 'codex'
+          ? 'npm install -g @openai/codex'
+          : type === 'gemini'
+            ? 'npm install -g @anthropic-ai/gemini-cli'
+            : `Install ${type}`,
   }
 }
 
 // ── Main Entry Points ──
 
-function buildChecks(platform: Platform, config?: DtcConfig, criticalOnly?: boolean): PrereqCheck[] {
+function buildChecks(
+  platform: Platform,
+  config?: DtcConfig,
+  criticalOnly?: boolean,
+): PrereqCheck[] {
   const checks: PrereqCheck[] = []
 
   if (platform === 'swiftui') {
@@ -420,8 +451,8 @@ function buildReport(platform: Platform, checks: PrereqCheck[]): PrereqReport {
   return {
     platform,
     checks,
-    hasCriticalFailures: checks.some(c => c.status === 'fail' && c.severity === 'critical'),
-    hasWarnings: checks.some(c => c.status === 'fail' && c.severity === 'warning'),
+    hasCriticalFailures: checks.some((c) => c.status === 'fail' && c.severity === 'critical'),
+    hasWarnings: checks.some((c) => c.status === 'fail' && c.severity === 'warning'),
   }
 }
 

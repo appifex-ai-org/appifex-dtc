@@ -1,4 +1,14 @@
-import type { Runner, Platform, SemgrepResult, BaasContext, BaasIntegrationResult, BaasParityResult, MockCheckResult, MockParityResult, MockCheckContext } from '@appifex/core'
+import type {
+  Runner,
+  Platform,
+  SemgrepResult,
+  BaasContext,
+  BaasIntegrationResult,
+  BaasParityResult,
+  MockCheckResult,
+  MockParityResult,
+  MockCheckContext,
+} from '@appifex/core'
 import { checkBaasIntegration, checkBaasParity } from '@appifex/baas-check'
 import { checkMockLayer, checkMockParity } from '@appifex/mock-check'
 import { runMaestro, type MaestroResult } from './maestro.js'
@@ -28,7 +38,10 @@ export interface ValidationResult {
   allPassed: boolean
 }
 
-export async function validateAll(runner: Runner, opts: ValidateAllOpts): Promise<ValidationResult> {
+export async function validateAll(
+  runner: Runner,
+  opts: ValidateAllOpts,
+): Promise<ValidationResult> {
   const ui = await runMaestro(runner, {
     flowDir: opts.flowDir,
     projectDir: opts.projectDir,

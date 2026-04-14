@@ -90,7 +90,10 @@ export async function writePreAgentSnapshotSidecar(
  * keys, or contains unsafe (absolute/traversal) path entries.
  */
 export class SidecarCorruptError extends Error {
-  constructor(message: string, public readonly path: string) {
+  constructor(
+    message: string,
+    public readonly path: string,
+  ) {
     super(message)
     this.name = 'SidecarCorruptError'
   }
@@ -103,16 +106,15 @@ export class SidecarCorruptError extends Error {
  * Security: rejects any path entry that is absolute or contains `..` segments
  * (path traversal). Throws `SidecarCorruptError` for any structural violation.
  */
-export async function readPreAgentSnapshotSidecar(absolutePath: string): Promise<SnapshotSidecarPayload> {
+export async function readPreAgentSnapshotSidecar(
+  absolutePath: string,
+): Promise<SnapshotSidecarPayload> {
   // Read file
   let raw: string
   try {
     raw = await readFile(absolutePath, 'utf-8')
   } catch (err) {
-    throw new SidecarCorruptError(
-      `Sidecar file not readable: ${String(err)}`,
-      absolutePath,
-    )
+    throw new SidecarCorruptError(`Sidecar file not readable: ${String(err)}`, absolutePath)
   }
 
   // Parse JSON
@@ -145,16 +147,9 @@ export async function readPreAgentSnapshotSidecar(absolutePath: string): Promise
   const payload = parsed as SnapshotSidecarPayload
 
   // Path-traversal validation: reject absolute paths or `..` segments
-  const allKeys = [
-    ...Object.keys(payload.files),
-    ...Object.keys(payload.sha256PerFile),
-  ]
+  const allKeys = [...Object.keys(payload.files), ...Object.keys(payload.sha256PerFile)]
   for (const key of allKeys) {
-    if (
-      isAbsolute(key) ||
-      key.split('/').includes('..') ||
-      key.split('\\').includes('..')
-    ) {
+    if (isAbsolute(key) || key.split('/').includes('..') || key.split('\\').includes('..')) {
       throw new SidecarCorruptError(
         `Sidecar contains unsafe path: ${key} at ${absolutePath}`,
         absolutePath,

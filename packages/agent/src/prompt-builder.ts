@@ -1,10 +1,32 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { relative } from 'node:path'
-import type { Platform, PlatformSpec, PlatformScreenSpec, PlatformComponentSpec, RunContext, RunMode, BackendContext, AppContext } from '@appifex/core'
+import type {
+  Platform,
+  PlatformSpec,
+  PlatformScreenSpec,
+  PlatformComponentSpec,
+  RunContext,
+  RunMode,
+  BackendContext,
+  AppContext,
+} from '@appifex/core'
 import { buildAppContextSummary, enforceTokenCap } from '@appifex/analysis'
 import { buildContextSummary, buildBackendPromptSection } from '@appifex/core'
-import { buildTestIdReference, buildDesignTokensSection, buildExistingDesignTokensSection, buildModificationPlanSection, buildIconReference } from './prompt-sections-design.js'
-import { inlineMaestroFlows, buildUnitTestInstructions, buildSkillsSection, buildArchitectureRules, buildInstructions, buildWorkflow } from './prompt-sections-platform.js'
+import {
+  buildTestIdReference,
+  buildDesignTokensSection,
+  buildExistingDesignTokensSection,
+  buildModificationPlanSection,
+  buildIconReference,
+} from './prompt-sections-design.js'
+import {
+  inlineMaestroFlows,
+  buildUnitTestInstructions,
+  buildSkillsSection,
+  buildArchitectureRules,
+  buildInstructions,
+  buildWorkflow,
+} from './prompt-sections-platform.js'
 
 export interface PromptBuilderOpts {
   /** User's original prompt */
@@ -46,8 +68,7 @@ export function buildAgentPrompt(opts: PromptBuilderOpts): string {
   const sections: string[] = []
 
   // ── Header ──
-  const platformLabel = opts.platform === 'swiftui' ? 'SwiftUI'
-    : 'Kotlin Compose'
+  const platformLabel = opts.platform === 'swiftui' ? 'SwiftUI' : 'Kotlin Compose'
   sections.push(`# Task: Build a ${platformLabel} App
 
 You are building a mobile app that EXACTLY matches a design mockup. Your #1 priority is visual fidelity to the design.
@@ -87,11 +108,17 @@ You are refactoring an existing, working app — do NOT change visible behavior.
 
   // ── Existing Design Tokens (add-feature only — constrains codegen to match existing style) ──
   if (opts.existingDesignTokens && opts.runMode === 'add-feature') {
-    sections.push(buildExistingDesignTokensSection(opts.existingDesignTokens as PlatformSpec['designTokens']))
+    sections.push(
+      buildExistingDesignTokensSection(opts.existingDesignTokens as PlatformSpec['designTokens']),
+    )
   }
 
   // ── Modification Plan (add-feature only — files the agent must modify, per D-05) ──
-  if (opts.modificationPlan && opts.modificationPlan.items.length > 0 && opts.runMode === 'add-feature') {
+  if (
+    opts.modificationPlan &&
+    opts.modificationPlan.items.length > 0 &&
+    opts.runMode === 'add-feature'
+  ) {
     sections.push(buildModificationPlanSection(opts.modificationPlan))
   }
 
@@ -138,13 +165,19 @@ If Pencil MCP tools are not available, rely on the spec JSON below for the desig
   if (existsSync(opts.specPath)) {
     const specJson = readFileSync(opts.specPath, 'utf-8')
     let spec: PlatformSpec | null = null
-    try { spec = JSON.parse(specJson) as PlatformSpec } catch { /* fallback */ }
+    try {
+      spec = JSON.parse(specJson) as PlatformSpec
+    } catch {
+      /* fallback */
+    }
 
     if (spec) {
       sections.push(buildTestIdReference(spec))
 
       // Check if tokens were extracted from design (have real color data) or are LLM-generated
-      const colorCount = spec.designTokens?.colors ? Object.keys(spec.designTokens.colors).length : 0
+      const colorCount = spec.designTokens?.colors
+        ? Object.keys(spec.designTokens.colors).length
+        : 0
       const hasExtractedTokens = colorCount > 0
       if (spec.designTokens) {
         sections.push(buildDesignTokensSection(spec.designTokens, !!hasExtractedTokens))

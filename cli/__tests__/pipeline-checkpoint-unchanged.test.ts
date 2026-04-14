@@ -18,10 +18,14 @@ import { runFullFreshAppPipeline, normalizeRunContext } from './helpers/phase-13
 describe('Phase 13: fresh-app regression (pure instrumentation invariant)', () => {
   it('fresh-app run produces byte-identical run-context.json vs pre-Phase-13 golden', async () => {
     const { dtcDir } = await runFullFreshAppPipeline()
-    const actual = normalizeRunContext(JSON.parse(await readFile(join(dtcDir, 'run-context.json'), 'utf8')))
-    const golden = normalizeRunContext(JSON.parse(await readFile(
-      join(__dirname, '__fixtures__/phase-13-golden/run-context.json'), 'utf8',
-    )))
+    const actual = normalizeRunContext(
+      JSON.parse(await readFile(join(dtcDir, 'run-context.json'), 'utf8')),
+    )
+    const golden = normalizeRunContext(
+      JSON.parse(
+        await readFile(join(__dirname, '__fixtures__/phase-13-golden/run-context.json'), 'utf8'),
+      ),
+    )
     expect(actual).toEqual(golden)
   })
 })

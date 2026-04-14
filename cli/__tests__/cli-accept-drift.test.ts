@@ -11,20 +11,37 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 
 describe('--accept-drift flag parsing', () => {
   it('parseArgs parses --accept-drift as a boolean flag', () => {
-    const parsed = parseArgs(['run', '--prompt', 'Add dark mode', '--platform', 'swiftui', '--out', './app', '--accept-drift'])
+    const parsed = parseArgs([
+      'run',
+      '--prompt',
+      'Add dark mode',
+      '--platform',
+      'swiftui',
+      '--out',
+      './app',
+      '--accept-drift',
+    ])
     expect(parsed.command).toBe('run')
     expect(parsed.flags['accept-drift']).toBe(true)
   })
 
   it('parseArgs does not set accept-drift when flag is absent', () => {
-    const parsed = parseArgs(['run', '--prompt', 'Add dark mode', '--platform', 'swiftui', '--out', './app'])
+    const parsed = parseArgs([
+      'run',
+      '--prompt',
+      'Add dark mode',
+      '--platform',
+      'swiftui',
+      '--out',
+      './app',
+    ])
     expect(parsed.flags['accept-drift']).toBeUndefined()
   })
 
   it('entry.ts source contains --accept-drift flag extraction code', () => {
     const entryPath = join(__dirname, '..', 'src', 'entry.ts')
     const src = readFileSync(entryPath, 'utf8')
-    expect(src).toContain("accept-drift")
+    expect(src).toContain('accept-drift')
     expect(src).toContain('acceptDrift')
   })
 

@@ -41,8 +41,10 @@ async function trySkipSpec(
   checkpointRunId: string,
   specPath: string,
 ): Promise<{ skipped: boolean; platformSpec: PlatformSpec | null }> {
-  if (canSkip && await runner.exists(specPath)) {
-    const saved = checkpoint.getPhase(checkpointRunId, 'spec') as { platformSpec: PlatformSpec } | null
+  if (canSkip && (await runner.exists(specPath))) {
+    const saved = checkpoint.getPhase(checkpointRunId, 'spec') as {
+      platformSpec: PlatformSpec
+    } | null
     if (saved?.platformSpec) {
       return { skipped: true, platformSpec: saved.platformSpec }
     }
@@ -62,8 +64,12 @@ async function trySkipTestGen(
   checkpointRunId: string,
   flowDir: string,
   testDir: string,
-): Promise<{ skipped: boolean; uiTests: { fileName: string }[]; unitTests: { fileName: string }[] }> {
-  if (canSkip && await runner.exists(flowDir) && await runner.exists(testDir)) {
+): Promise<{
+  skipped: boolean
+  uiTests: { fileName: string }[]
+  unitTests: { fileName: string }[]
+}> {
+  if (canSkip && (await runner.exists(flowDir)) && (await runner.exists(testDir))) {
     const saved = checkpoint.getPhase(checkpointRunId, 'test_gen') as {
       uiTestFileNames: string[]
       unitTestFileNames: string[]
@@ -71,8 +77,8 @@ async function trySkipTestGen(
       unitTestCount: number
     } | null
     if (saved) {
-      const uiTests = saved.uiTestFileNames.map(fn => ({ fileName: fn }))
-      const unitTests = saved.unitTestFileNames.map(fn => ({ fileName: fn }))
+      const uiTests = saved.uiTestFileNames.map((fn) => ({ fileName: fn }))
+      const unitTests = saved.unitTestFileNames.map((fn) => ({ fileName: fn }))
       return { skipped: true, uiTests, unitTests }
     }
     // Checkpoint data missing — fall through to re-run
@@ -217,7 +223,12 @@ describe('test_gen skip gate', () => {
     }
 
     const result = await trySkipTestGen(
-      true, runner, checkpoint, 'run-abc', '/out/.maestro', '/out/__tests__',
+      true,
+      runner,
+      checkpoint,
+      'run-abc',
+      '/out/.maestro',
+      '/out/__tests__',
     )
 
     expect(result.skipped).toBe(true)
@@ -237,7 +248,12 @@ describe('test_gen skip gate', () => {
     }
 
     const result = await trySkipTestGen(
-      true, runner, checkpoint, 'run-abc', '/out/.maestro', '/out/__tests__',
+      true,
+      runner,
+      checkpoint,
+      'run-abc',
+      '/out/.maestro',
+      '/out/__tests__',
     )
 
     expect(result.skipped).toBe(false)
@@ -257,7 +273,12 @@ describe('test_gen skip gate', () => {
     }
 
     const result = await trySkipTestGen(
-      true, runner, checkpoint, 'run-abc', '/out/.maestro', '/out/__tests__',
+      true,
+      runner,
+      checkpoint,
+      'run-abc',
+      '/out/.maestro',
+      '/out/__tests__',
     )
 
     expect(result.skipped).toBe(false)
@@ -277,7 +298,12 @@ describe('test_gen skip gate', () => {
     }
 
     const result = await trySkipTestGen(
-      true, runner, checkpoint, 'run-abc', '/out/.maestro', '/out/__tests__',
+      true,
+      runner,
+      checkpoint,
+      'run-abc',
+      '/out/.maestro',
+      '/out/__tests__',
     )
 
     expect(result.skipped).toBe(false)
@@ -293,7 +319,12 @@ describe('test_gen skip gate', () => {
     }
 
     const result = await trySkipTestGen(
-      false, runner, checkpoint, 'run-abc', '/out/.maestro', '/out/__tests__',
+      false,
+      runner,
+      checkpoint,
+      'run-abc',
+      '/out/.maestro',
+      '/out/__tests__',
     )
 
     expect(result.skipped).toBe(false)
@@ -358,8 +389,16 @@ describe('checkpoint cleanup', () => {
     const sigintHandler = async (exit: (code: number) => void) => {
       if (sigintFlushed) return
       sigintFlushed = true
-      try { await mockSave('/tmp/output', ctxBuilder.build('failed')) } catch { /* best effort */ }
-      try { mockClose() } catch { /* best effort */ }
+      try {
+        await mockSave('/tmp/output', ctxBuilder.build('failed'))
+      } catch {
+        /* best effort */
+      }
+      try {
+        mockClose()
+      } catch {
+        /* best effort */
+      }
       exit(130)
     }
 
@@ -372,15 +411,25 @@ describe('checkpoint cleanup', () => {
   it('checkpoint.close errors are swallowed silently', async () => {
     const ctxBuilder = new RunContextBuilder({ prompt: 'Test', platform: 'swiftui', mode: 'fresh' })
     const mockSave = vi.fn().mockResolvedValue(undefined)
-    const mockClose = vi.fn().mockImplementation(() => { throw new Error('close failed') })
+    const mockClose = vi.fn().mockImplementation(() => {
+      throw new Error('close failed')
+    })
     const exitCalls: number[] = []
 
     let sigintFlushed = false
     const sigintHandler = async (exit: (code: number) => void) => {
       if (sigintFlushed) return
       sigintFlushed = true
-      try { await mockSave('/tmp/output', ctxBuilder.build('failed')) } catch { /* best effort */ }
-      try { mockClose() } catch { /* best effort */ }
+      try {
+        await mockSave('/tmp/output', ctxBuilder.build('failed'))
+      } catch {
+        /* best effort */
+      }
+      try {
+        mockClose()
+      } catch {
+        /* best effort */
+      }
       exit(130)
     }
 
@@ -396,7 +445,11 @@ describe('checkpoint cleanup', () => {
     const process = { removeListener: mockRemoveListener }
 
     // Simulate normal return path
-    try { mockClose() } catch { /* ignore */ }
+    try {
+      mockClose()
+    } catch {
+      /* ignore */
+    }
     process.removeListener('SIGINT', () => {})
     process.removeListener('exit', () => {})
 

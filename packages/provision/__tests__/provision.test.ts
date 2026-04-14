@@ -9,7 +9,13 @@ function mockRunner(overrides: Partial<{ exec: unknown }> = {}): Runner {
     writeFile: vi.fn().mockResolvedValue(undefined),
     exists: vi.fn().mockResolvedValue(true),
     glob: vi.fn().mockResolvedValue([]),
-    capabilities: { hasMaestro: true, hasXcode: true, hasNode: true, hasSemgrep: false, platform: 'darwin' },
+    capabilities: {
+      hasMaestro: true,
+      hasXcode: true,
+      hasNode: true,
+      hasSemgrep: false,
+      platform: 'darwin',
+    },
     ...overrides,
   }
 }
@@ -18,15 +24,35 @@ describe('AscClient', () => {
   describe('submitTestFlight', () => {
     it('calls asc publish testflight with app ID and IPA path', async () => {
       const runner = mockRunner({
-        exec: vi.fn().mockResolvedValue({ exitCode: 0, stdout: 'Submitted v1.0.0', stderr: '', duration: 5000 }),
+        exec: vi.fn().mockResolvedValue({
+          exitCode: 0,
+          stdout: 'Submitted v1.0.0',
+          stderr: '',
+          duration: 5000,
+        }),
       })
-      const client = new AscClient(runner, { keyId: 'KEY1', issuerId: 'ISS1', keyPath: '/keys/auth.p8' })
+      const client = new AscClient(runner, {
+        keyId: 'KEY1',
+        issuerId: 'ISS1',
+        keyPath: '/keys/auth.p8',
+      })
 
-      const result = await client.submitTestFlight({ appId: '123456789', ipaPath: '/build/App.ipa' })
+      const result = await client.submitTestFlight({
+        appId: '123456789',
+        ipaPath: '/build/App.ipa',
+      })
 
       expect(runner.exec).toHaveBeenCalledWith(
         'asc',
-        expect.arrayContaining(['publish', 'testflight', '--app', '123456789', '--ipa', '/build/App.ipa', '--wait']),
+        expect.arrayContaining([
+          'publish',
+          'testflight',
+          '--app',
+          '123456789',
+          '--ipa',
+          '/build/App.ipa',
+          '--wait',
+        ]),
         expect.objectContaining({
           env: expect.objectContaining({
             ASC_KEY_ID: 'KEY1',
@@ -41,7 +67,9 @@ describe('AscClient', () => {
 
     it('returns failure on non-zero exit', async () => {
       const runner = mockRunner({
-        exec: vi.fn().mockResolvedValue({ exitCode: 1, stdout: '', stderr: 'Invalid IPA', duration: 1000 }),
+        exec: vi
+          .fn()
+          .mockResolvedValue({ exitCode: 1, stdout: '', stderr: 'Invalid IPA', duration: 1000 }),
       })
       const client = new AscClient(runner, { keyId: 'K', issuerId: 'I', keyPath: '/k.p8' })
 
@@ -53,7 +81,9 @@ describe('AscClient', () => {
 
     it('omits --wait when wait is false', async () => {
       const runner = mockRunner({
-        exec: vi.fn().mockResolvedValue({ exitCode: 0, stdout: 'Uploaded', stderr: '', duration: 3000 }),
+        exec: vi
+          .fn()
+          .mockResolvedValue({ exitCode: 0, stdout: 'Uploaded', stderr: '', duration: 3000 }),
       })
       const client = new AscClient(runner, { keyId: 'K', issuerId: 'I', keyPath: '/k.p8' })
 
@@ -71,7 +101,9 @@ describe('AscClient', () => {
         { id: '456', name: 'Other App', bundleId: 'com.example.other' },
       ])
       const runner = mockRunner({
-        exec: vi.fn().mockResolvedValue({ exitCode: 0, stdout: jsonOutput, stderr: '', duration: 500 }),
+        exec: vi
+          .fn()
+          .mockResolvedValue({ exitCode: 0, stdout: jsonOutput, stderr: '', duration: 500 }),
       })
       const client = new AscClient(runner, { keyId: 'K', issuerId: 'I', keyPath: '/k.p8' })
 
@@ -86,17 +118,15 @@ describe('AscClient', () => {
   describe('listProfiles', () => {
     it('calls asc profiles list', async () => {
       const runner = mockRunner({
-        exec: vi.fn().mockResolvedValue({ exitCode: 0, stdout: 'Profile list', stderr: '', duration: 2000 }),
+        exec: vi
+          .fn()
+          .mockResolvedValue({ exitCode: 0, stdout: 'Profile list', stderr: '', duration: 2000 }),
       })
       const client = new AscClient(runner, { keyId: 'K', issuerId: 'I', keyPath: '/k.p8' })
 
       const result = await client.listProfiles()
 
-      expect(runner.exec).toHaveBeenCalledWith(
-        'asc',
-        ['profiles', 'list'],
-        expect.anything(),
-      )
+      expect(runner.exec).toHaveBeenCalledWith('asc', ['profiles', 'list'], expect.anything())
       expect(result.success).toBe(true)
     })
   })

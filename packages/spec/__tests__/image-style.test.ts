@@ -42,18 +42,25 @@ describe('inferAppImageStyle', () => {
 
       const penDoc = JSON.stringify({
         version: '1',
-        children: [{
-          type: 'frame', name: 'Home', width: 390, height: 844,
-          children: [
-            {
-              type: 'frame', name: 'Hero',
-              width: 390, height: 220,
-              fills: [{ type: 'image', url: './hero.png', mode: 'fill' }],
-              children: [],
-            },
-            { type: 'text', name: 'Title', content: 'Hello' },
-          ],
-        }],
+        children: [
+          {
+            type: 'frame',
+            name: 'Home',
+            width: 390,
+            height: 844,
+            children: [
+              {
+                type: 'frame',
+                name: 'Hero',
+                width: 390,
+                height: 220,
+                fills: [{ type: 'image', url: './hero.png', mode: 'fill' }],
+                children: [],
+              },
+              { type: 'text', name: 'Title', content: 'Hello' },
+            ],
+          },
+        ],
       })
 
       const spec = extractSpecFromPen(penDoc)
@@ -75,14 +82,22 @@ describe('inferAppImageStyle', () => {
 
       const penDoc = JSON.stringify({
         version: '1',
-        children: [{
-          type: 'frame', name: 'Home', width: 390, height: 844,
-          children: [{
-            type: 'frame', name: 'Hero',
-            fills: [{ type: 'image', url: './hero.png', mode: 'fill' }],
-            children: [],
-          }],
-        }],
+        children: [
+          {
+            type: 'frame',
+            name: 'Home',
+            width: 390,
+            height: 844,
+            children: [
+              {
+                type: 'frame',
+                name: 'Hero',
+                fills: [{ type: 'image', url: './hero.png', mode: 'fill' }],
+                children: [],
+              },
+            ],
+          },
+        ],
       })
 
       const spec = extractSpecFromPen(penDoc)

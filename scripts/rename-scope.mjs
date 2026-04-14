@@ -7,7 +7,16 @@ import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
 const ROOT = process.cwd()
-const IGNORED_DIRS = new Set(['node_modules', 'dist', '.git', '.planning', '.dtc', '.dtc-debug', '.dtc-report', '__fixtures__'])
+const IGNORED_DIRS = new Set([
+  'node_modules',
+  'dist',
+  '.git',
+  '.planning',
+  '.dtc',
+  '.dtc-debug',
+  '.dtc-report',
+  '__fixtures__',
+])
 
 function* walk(dir) {
   for (const entry of readdirSync(dir)) {

@@ -1,18 +1,16 @@
 import { buildReport, formatMarkdown, formatJson } from '@appifex/report'
 import type { Platform } from '@appifex/core'
 
-export async function handleReport(
-  args: {
-    projectName: string
-    platforms: string[]
-    validationJson: string
-    fixJson?: string
-    tokenUsageJson?: string
-    totalDuration?: number
-    designIterations?: number
-    format?: string
-  },
-): Promise<{ text: string; isError: boolean }> {
+export async function handleReport(args: {
+  projectName: string
+  platforms: string[]
+  validationJson: string
+  fixJson?: string
+  tokenUsageJson?: string
+  totalDuration?: number
+  designIterations?: number
+  format?: string
+}): Promise<{ text: string; isError: boolean }> {
   try {
     const validation: Record<string, unknown> = {}
     const fix: Record<string, unknown> = {}

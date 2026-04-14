@@ -8,7 +8,11 @@ export function formatMarkdown(report: PipelineReport): string {
 
   // Summary
   const s = report.summary
-  const status = s.allGreen ? 'ALL GREEN' : s.totalTests === 0 ? 'BUILD FAILED' : `${s.totalFailed} FAILING`
+  const status = s.allGreen
+    ? 'ALL GREEN'
+    : s.totalTests === 0
+      ? 'BUILD FAILED'
+      : `${s.totalFailed} FAILING`
   lines.push(`**Status:** ${status}`)
   lines.push(`**Tests:** ${s.totalPassed}/${s.totalTests}`)
   lines.push(`**Design iterations:** ${s.designIterations}`)
@@ -40,7 +44,9 @@ export function formatMarkdown(report: PipelineReport): string {
     }
 
     if (report.agent.stopReason === 'budget_exceeded' && report.agent.sessionId) {
-      lines.push(`> **Resume:** \`dtc run --resume ${report.agent.sessionId} --platform ${report.platforms[0]} --out <dir>\``)
+      lines.push(
+        `> **Resume:** \`dtc run --resume ${report.agent.sessionId} --platform ${report.platforms[0]} --out <dir>\``,
+      )
       lines.push('')
     }
 
@@ -64,12 +70,16 @@ export function formatMarkdown(report: PipelineReport): string {
     lines.push(`| UI   | ${pr.uiTests.passed}/${pr.uiTests.total} | ${pr.uiTests.total} |`)
     lines.push(`| Unit | ${pr.unitTests.passed}/${pr.unitTests.total} | ${pr.unitTests.total} |`)
     if (pr.securityTests) {
-      lines.push(`| Security | ${pr.securityTests.passed}/${pr.securityTests.total} | ${pr.securityTests.total} |`)
+      lines.push(
+        `| Security | ${pr.securityTests.passed}/${pr.securityTests.total} | ${pr.securityTests.total} |`,
+      )
     }
     lines.push('')
 
     if (pr.fixResult) {
-      lines.push(`**Fix:** ${pr.fixResult.status} (${pr.fixResult.attempts.length} attempt${pr.fixResult.attempts.length !== 1 ? 's' : ''}, ${pr.fixResult.totalTokensUsed.toLocaleString()} tokens)`)
+      lines.push(
+        `**Fix:** ${pr.fixResult.status} (${pr.fixResult.attempts.length} attempt${pr.fixResult.attempts.length !== 1 ? 's' : ''}, ${pr.fixResult.totalTokensUsed.toLocaleString()} tokens)`,
+      )
       if (pr.fixResult.circuitBreakReason) {
         lines.push(`**Stopped:** ${pr.fixResult.circuitBreakReason}`)
       }
@@ -84,7 +94,9 @@ export function formatMarkdown(report: PipelineReport): string {
         for (const attempt of pr.fixResult.attempts) {
           const before = `${attempt.testsBefore.passed}/${attempt.testsBefore.total}`
           const after = `${attempt.testsAfter.passed}/${attempt.testsAfter.total}`
-          lines.push(`- **Attempt ${attempt.attempt}**: ${before} → ${after} (${attempt.tokensUsed.toLocaleString()} tokens, ${attempt.filesChanged.length} files changed)`)
+          lines.push(
+            `- **Attempt ${attempt.attempt}**: ${before} → ${after} (${attempt.tokensUsed.toLocaleString()} tokens, ${attempt.filesChanged.length} files changed)`,
+          )
         }
         lines.push('')
       }

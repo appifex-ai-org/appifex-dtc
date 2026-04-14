@@ -22,27 +22,43 @@ export async function handleFix(
   const testDir = args.testDir ?? join(projectDir, '__tests__')
   const reportDir = join(projectDir, '.dtc-report')
 
-  const buildFn = async () => platform === 'swiftui'
-    ? buildSwift(runner, { projectDir, scheme: 'App' })
-    : buildKotlin(runner, { projectDir })
+  const buildFn = async () =>
+    platform === 'swiftui'
+      ? buildSwift(runner, { projectDir, scheme: 'App' })
+      : buildKotlin(runner, { projectDir })
 
-  const validateFn = async () => validateAll(runner, {
-    platform, projectDir, flowDir, testDir, reportDir,
-  })
+  const validateFn = async () =>
+    validateAll(runner, {
+      platform,
+      projectDir,
+      flowDir,
+      testDir,
+      reportDir,
+    })
 
   // Get initial validation
   const initialValidation = await validateFn()
   if (initialValidation.allPassed) {
     return {
-      text: JSON.stringify({ status: 'all_green', message: 'All tests already passing', attempts: [] }, null, 2),
+      text: JSON.stringify(
+        { status: 'all_green', message: 'All tests already passing', attempts: [] },
+        null,
+        2,
+      ),
       isError: false,
     }
   }
 
   // Create fix function
-  const fixFn = config.llm.provider === 'claude-cli'
-    ? createClaudeCliFixFn({ runner, projectDir, model: config.llm.model })
-    : createDefaultFixFn({ apiKey: config.llm.apiKey ?? '', runner, projectDir, model: config.llm.model })
+  const fixFn =
+    config.llm.provider === 'claude-cli'
+      ? createClaudeCliFixFn({ runner, projectDir, model: config.llm.model })
+      : createDefaultFixFn({
+          apiKey: config.llm.apiKey ?? '',
+          runner,
+          projectDir,
+          model: config.llm.model,
+        })
 
   const result = await fixLoop(initialValidation, {
     fixFn,

@@ -1,7 +1,18 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
-import type { BaasContext, DesignDeltaReport, DesignTokens, ModificationPlan, ModifiedScreens, PhaseId, PhaseOutcome, Platform, RunContext, RunMode } from './types.js'
+import type {
+  BaasContext,
+  DesignDeltaReport,
+  DesignTokens,
+  ModificationPlan,
+  ModifiedScreens,
+  PhaseId,
+  PhaseOutcome,
+  Platform,
+  RunContext,
+  RunMode,
+} from './types.js'
 
 const CONTEXT_DIR = '.dtc'
 const CONTEXT_FILE = 'run-context.json'
@@ -19,7 +30,12 @@ export async function loadRunContext(outputDir: string): Promise<RunContext | nu
     const raw = await readFile(join(outputDir, CONTEXT_DIR, CONTEXT_FILE), 'utf-8')
     const parsed = JSON.parse(raw)
     // Structural validation — reject corrupted or unrelated JSON
-    if (!parsed || typeof parsed.runId !== 'string' || typeof parsed.platform !== 'string' || typeof parsed.phases !== 'object') {
+    if (
+      !parsed ||
+      typeof parsed.runId !== 'string' ||
+      typeof parsed.platform !== 'string' ||
+      typeof parsed.phases !== 'object'
+    ) {
       return null
     }
     return parsed as RunContext
@@ -28,7 +44,25 @@ export async function loadRunContext(outputDir: string): Promise<RunContext | nu
   }
 }
 
-export const PHASE_ORDER: PhaseId[] = ['analysis', 'design', 'spec', 'design_delta', 'baas_recommend', 'baas_schema', 'baas_auth', 'mock_service', 'test_gen', 'codegen', 'test_regen', 'build', 'validate', 'security', 'fix', 'deliver', 'report']
+export const PHASE_ORDER: PhaseId[] = [
+  'analysis',
+  'design',
+  'spec',
+  'design_delta',
+  'baas_recommend',
+  'baas_schema',
+  'baas_auth',
+  'mock_service',
+  'test_gen',
+  'codegen',
+  'test_regen',
+  'build',
+  'validate',
+  'security',
+  'fix',
+  'deliver',
+  'report',
+]
 
 const STATUS_LABEL: Record<string, string> = {
   completed: 'completed',
@@ -101,7 +135,12 @@ export class RunContextBuilder {
     detail?: unknown,
     artifacts?: Record<string, string>,
   ): void {
-    this.phases[phase] = { status, summary, ...(detail !== undefined && { detail }), ...(artifacts && { artifacts }) }
+    this.phases[phase] = {
+      status,
+      summary,
+      ...(detail !== undefined && { detail }),
+      ...(artifacts && { artifacts }),
+    }
   }
 
   setFilesGenerated(files: string[]): void {
@@ -146,7 +185,9 @@ export class RunContextBuilder {
       ...(this.modifiedScreens !== undefined && { modifiedScreens: this.modifiedScreens }),
       ...(this.designDelta !== undefined && { designDelta: this.designDelta }),
       ...(this.modificationPlan !== undefined && { modificationPlan: this.modificationPlan }),
-      ...(this.baselineDesignTokens !== undefined && { baselineDesignTokens: this.baselineDesignTokens }),
+      ...(this.baselineDesignTokens !== undefined && {
+        baselineDesignTokens: this.baselineDesignTokens,
+      }),
       ...(this.baasContext !== undefined && { baasContext: this.baasContext }),
     }
   }

@@ -23,8 +23,8 @@ const EXCLUDED_RULES: Record<Platform, string[]> = {
     // Launcher activity must be exported — always a false positive
     'java.android.security.exported_activity.exported_activity',
   ],
-  'swiftui': [],
-  'react': [],
+  swiftui: [],
+  react: [],
 }
 
 async function ensureSemgrep(runner: Runner): Promise<boolean> {
@@ -44,22 +44,27 @@ async function ensureSemgrep(runner: Runner): Promise<boolean> {
 export async function runSemgrep(runner: Runner, opts: SemgrepOpts): Promise<SemgrepResult> {
   const installed = await ensureSemgrep(runner)
   if (!installed) {
-    return { total: 0, passed: 0, failed: 0, findings: [], error: 'semgrep install failed — skipped' }
+    return {
+      total: 0,
+      passed: 0,
+      failed: 0,
+      findings: [],
+      error: 'semgrep install failed — skipped',
+    }
   }
 
   const configs = opts.configArg ? [opts.configArg] : defaultConfigsForPlatform(opts.platform)
-  const configFlags = configs.flatMap(c => ['--config', c])
-  const excludeFlags = (opts.platform ? EXCLUDED_RULES[opts.platform] : [])
-    .flatMap(r => ['--exclude-rule', r])
+  const configFlags = configs.flatMap((c) => ['--config', c])
+  const excludeFlags = (opts.platform ? EXCLUDED_RULES[opts.platform] : []).flatMap((r) => [
+    '--exclude-rule',
+    r,
+  ])
 
-  const result = await runner.exec('semgrep', [
-    'scan',
-    ...configFlags,
-    ...excludeFlags,
-    '--json',
-    '--quiet',
-    opts.projectDir,
-  ], { cwd: opts.projectDir })
+  const result = await runner.exec(
+    'semgrep',
+    ['scan', ...configFlags, ...excludeFlags, '--json', '--quiet', opts.projectDir],
+    { cwd: opts.projectDir },
+  )
 
   try {
     const output = JSON.parse(result.stdout) as {
@@ -72,7 +77,7 @@ export async function runSemgrep(runner: Runner, opts: SemgrepOpts): Promise<Sem
       }>
     }
 
-    const findings: SemgrepFinding[] = (output.results ?? []).map(r => ({
+    const findings: SemgrepFinding[] = (output.results ?? []).map((r) => ({
       ruleId: r.check_id,
       severity: r.extra.severity.toUpperCase() as SemgrepFinding['severity'],
       message: r.extra.message,

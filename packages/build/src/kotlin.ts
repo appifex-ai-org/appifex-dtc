@@ -124,7 +124,7 @@ export async function patchBuildGradle(
 
   // 2. Patch app/build.gradle.kts — add BaaS dependencies
   const appGradlePath = `${projectDir}/app/build.gradle.kts`
-  if (!await runner.exists(appGradlePath)) return
+  if (!(await runner.exists(appGradlePath))) return
 
   let appGradle = await runner.readFile(appGradlePath)
 
@@ -171,15 +171,19 @@ export async function buildKotlin(runner: Runner, opts: KotlinBuildOpts): Promis
   const appIdPath = appId.replace(/\./g, '/')
 
   // Ensure Gradle project structure exists
-  if (!await runner.exists(`${projectDir}/settings.gradle.kts`)) {
+  if (!(await runner.exists(`${projectDir}/settings.gradle.kts`))) {
     await runner.writeFile(`${projectDir}/settings.gradle.kts`, DEFAULT_SETTINGS_GRADLE)
   }
-  if (!await runner.exists(`${projectDir}/build.gradle.kts`)) {
+  if (!(await runner.exists(`${projectDir}/build.gradle.kts`))) {
     await runner.writeFile(`${projectDir}/build.gradle.kts`, DEFAULT_ROOT_BUILD_GRADLE)
   }
-  if (!await runner.exists(`${projectDir}/app/build.gradle.kts`)) {
+  if (!(await runner.exists(`${projectDir}/app/build.gradle.kts`))) {
     const { mkdir } = await import('node:fs/promises')
-    try { await mkdir(`${projectDir}/app`, { recursive: true }) } catch { /* may exist */ }
+    try {
+      await mkdir(`${projectDir}/app`, { recursive: true })
+    } catch {
+      /* may exist */
+    }
     await runner.writeFile(`${projectDir}/app/build.gradle.kts`, buildGradle(appId))
   }
 
@@ -188,7 +192,11 @@ export async function buildKotlin(runner: Runner, opts: KotlinBuildOpts): Promis
   if (existingActivities.length === 0) {
     const mainActivityPath = `${projectDir}/app/src/main/java/${appIdPath}/MainActivity.kt`
     const { mkdir: mkdirFs } = await import('node:fs/promises')
-    try { await mkdirFs(`${projectDir}/app/src/main/java/${appIdPath}`, { recursive: true }) } catch { /* may exist */ }
+    try {
+      await mkdirFs(`${projectDir}/app/src/main/java/${appIdPath}`, { recursive: true })
+    } catch {
+      /* may exist */
+    }
     await runner.writeFile(mainActivityPath, mainActivity(appId))
   }
 
@@ -198,7 +206,7 @@ export async function buildKotlin(runner: Runner, opts: KotlinBuildOpts): Promis
   }
 
   // Run Gradle assembleDebug
-  const gradlew = await runner.exists(`${projectDir}/gradlew`) ? './gradlew' : 'gradle'
+  const gradlew = (await runner.exists(`${projectDir}/gradlew`)) ? './gradlew' : 'gradle'
   const result = await runner.exec(gradlew, ['assembleDebug', '--no-daemon'], {
     cwd: projectDir,
     timeout: 300_000, // 5 minutes
@@ -206,9 +214,13 @@ export async function buildKotlin(runner: Runner, opts: KotlinBuildOpts): Promis
 
   if (result.exitCode !== 0) {
     const errors = parseKotlinErrors(result.stdout + '\n' + result.stderr)
-    const errorSummary = errors.length > 0
-      ? errors.map(e => `${e.file}:${e.line}: ${e.message}`).join('\n')
-      : result.stderr.split('\n').filter(l => l.includes('error:') || l.includes('FAILURE')).join('\n') || result.stderr.slice(-500)
+    const errorSummary =
+      errors.length > 0
+        ? errors.map((e) => `${e.file}:${e.line}: ${e.message}`).join('\n')
+        : result.stderr
+            .split('\n')
+            .filter((l) => l.includes('error:') || l.includes('FAILURE'))
+            .join('\n') || result.stderr.slice(-500)
 
     return { success: false, error: errorSummary, errors, duration: Date.now() - startTime }
   }

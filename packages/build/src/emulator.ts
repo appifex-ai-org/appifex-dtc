@@ -25,7 +25,10 @@ export async function findBestEmulator(runner: Runner): Promise<string | null> {
     const apiMatch = avd.match(/API_(\d+)/)
     if (apiMatch) score += parseInt(apiMatch[1], 10)
     if (avd.toLowerCase().includes('pixel')) score += 5
-    if (score > bestScore) { bestScore = score; best = avd }
+    if (score > bestScore) {
+      bestScore = score
+      best = avd
+    }
   }
   return best
 }
@@ -36,7 +39,7 @@ export async function findOrBootEmulator(runner: Runner): Promise<string | null>
   const devices = await runner.exec('adb', ['devices'])
   if (devices.exitCode === 0) {
     const lines = devices.stdout.trim().split('\n').slice(1)
-    const emulator = lines.find(l => l.includes('emulator') && l.includes('device'))
+    const emulator = lines.find((l) => l.includes('emulator') && l.includes('device'))
     if (emulator) return emulator.split('\t')[0]
   }
 
@@ -45,20 +48,31 @@ export async function findOrBootEmulator(runner: Runner): Promise<string | null>
   if (!avd) return null
 
   // Launch emulator in the background via sh — runner.exec would kill it on timeout
-  await runner.exec('sh', ['-c', `nohup emulator -avd ${avd} -no-window -no-audio -no-boot-anim </dev/null >/dev/null 2>&1 &`])
+  await runner.exec('sh', [
+    '-c',
+    `nohup emulator -avd ${avd} -no-window -no-audio -no-boot-anim </dev/null >/dev/null 2>&1 &`,
+  ])
 
   // Wait for device to come online
   const waitResult = await runner.exec('adb', ['wait-for-device'], { timeout: 60_000 })
   if (waitResult.exitCode !== 0) return null
 
   // Poll for boot completion
-  const bootResult = await runner.exec('adb', ['shell', 'while [ "$(getprop sys.boot_completed)" != "1" ]; do sleep 1; done; echo 1'], {
-    timeout: 120_000,
-  })
+  const bootResult = await runner.exec(
+    'adb',
+    ['shell', 'while [ "$(getprop sys.boot_completed)" != "1" ]; do sleep 1; done; echo 1'],
+    {
+      timeout: 120_000,
+    },
+  )
 
   if (bootResult.exitCode === 0 && bootResult.stdout.trim().includes('1')) {
     const devicesAfter = await runner.exec('adb', ['devices'])
-    const line = devicesAfter.stdout.trim().split('\n').slice(1).find(l => l.includes('emulator'))
+    const line = devicesAfter.stdout
+      .trim()
+      .split('\n')
+      .slice(1)
+      .find((l) => l.includes('emulator'))
     if (line) return line.split('\t')[0]
   }
 

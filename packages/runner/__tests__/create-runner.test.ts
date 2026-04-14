@@ -11,10 +11,7 @@ describe('createRunner', () => {
   })
 
   it('creates E2BRunner for type "e2b"', () => {
-    const runner = createRunner(
-      { type: 'e2b', sandboxId: 'sbx-1' },
-      { e2bApiKey: 'key' },
-    )
+    const runner = createRunner({ type: 'e2b', sandboxId: 'sbx-1' }, { e2bApiKey: 'key' })
     expect(runner).toBeInstanceOf(E2BRunner)
   })
 

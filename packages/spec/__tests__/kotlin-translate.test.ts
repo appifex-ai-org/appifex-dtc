@@ -4,20 +4,22 @@ import type { DesignSpec } from '@appifex/core'
 
 const sampleSpec: DesignSpec = {
   version: '1.0',
-  screens: [{
-    id: 'screen-home',
-    name: 'Home',
-    description: 'Home screen',
-    components: [
-      { id: 'c1', type: 'text', name: 'Title Text', props: {}, style: {}, children: [] },
-      { id: 'c2', type: 'button', name: 'Start Button', props: {}, style: {}, children: [] },
-      { id: 'c3', type: 'input', name: 'Search Field', props: {}, style: {}, children: [] },
-      { id: 'c4', type: 'list', name: 'Item List', props: {}, style: {}, children: [] },
-      { id: 'c5', type: 'tab-bar', name: 'Tab Bar', props: {}, style: {}, children: [] },
-      { id: 'c6', type: 'card', name: 'Info Card', props: {}, style: {}, children: [] },
-    ],
-    layout: { type: 'stack' },
-  }],
+  screens: [
+    {
+      id: 'screen-home',
+      name: 'Home',
+      description: 'Home screen',
+      components: [
+        { id: 'c1', type: 'text', name: 'Title Text', props: {}, style: {}, children: [] },
+        { id: 'c2', type: 'button', name: 'Start Button', props: {}, style: {}, children: [] },
+        { id: 'c3', type: 'input', name: 'Search Field', props: {}, style: {}, children: [] },
+        { id: 'c4', type: 'list', name: 'Item List', props: {}, style: {}, children: [] },
+        { id: 'c5', type: 'tab-bar', name: 'Tab Bar', props: {}, style: {}, children: [] },
+        { id: 'c6', type: 'card', name: 'Info Card', props: {}, style: {}, children: [] },
+      ],
+      layout: { type: 'stack' },
+    },
+  ],
   designTokens: { colors: {}, typography: {}, spacing: {}, borderRadius: {} },
 }
 
@@ -25,8 +27,15 @@ describe('translateSpec for kotlin-compose', () => {
   it('maps component types to Compose equivalents', () => {
     const result = translateSpec(sampleSpec, 'kotlin-compose')
 
-    const types = result.screens[0].components.map(c => c.platformType)
-    expect(types).toEqual(['Text', 'Button', 'OutlinedTextField', 'LazyColumn', 'NavigationBar', 'Card'])
+    const types = result.screens[0].components.map((c) => c.platformType)
+    expect(types).toEqual([
+      'Text',
+      'Button',
+      'OutlinedTextField',
+      'LazyColumn',
+      'NavigationBar',
+      'Card',
+    ])
   })
 
   it('uses Screen suffix for component names', () => {
@@ -51,21 +60,32 @@ describe('translateSpec for kotlin-compose', () => {
   it('attaches composeModifiers when style has properties', () => {
     const specWithStyle: DesignSpec = {
       ...sampleSpec,
-      screens: [{
-        ...sampleSpec.screens[0],
-        components: [{
-          id: 'c1', type: 'view', name: 'Box', props: {},
-          style: { padding: { top: 16, right: 16, bottom: 16, left: 16 }, width: 'fill_container', backgroundColor: '#FF5722' },
-          children: [],
-        }],
-      }],
+      screens: [
+        {
+          ...sampleSpec.screens[0],
+          components: [
+            {
+              id: 'c1',
+              type: 'view',
+              name: 'Box',
+              props: {},
+              style: {
+                padding: { top: 16, right: 16, bottom: 16, left: 16 },
+                width: 'fill_container',
+                backgroundColor: '#FF5722',
+              },
+              children: [],
+            },
+          ],
+        },
+      ],
     }
     const result = translateSpec(specWithStyle, 'kotlin-compose')
     const mods = result.screens[0].components[0].props.composeModifiers as string[]
     expect(mods).toBeDefined()
-    expect(mods.some(m => m.includes('padding'))).toBe(true)
-    expect(mods.some(m => m.includes('fillMaxWidth'))).toBe(true)
-    expect(mods.some(m => m.includes('background'))).toBe(true)
+    expect(mods.some((m) => m.includes('padding'))).toBe(true)
+    expect(mods.some((m) => m.includes('fillMaxWidth'))).toBe(true)
+    expect(mods.some((m) => m.includes('background'))).toBe(true)
   })
 })
 
@@ -102,7 +122,9 @@ describe('generateComposeModifiers', () => {
   })
 
   it('generates shadow modifier', () => {
-    const mods = generateComposeModifiers({ shadow: { color: '#000', offsetX: 0, offsetY: 2, blur: 4 } })
+    const mods = generateComposeModifiers({
+      shadow: { color: '#000', offsetX: 0, offsetY: 2, blur: 4 },
+    })
     expect(mods[0]).toContain('.shadow')
     expect(mods[0]).toContain('4.dp')
   })

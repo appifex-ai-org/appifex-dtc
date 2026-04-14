@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 // 1x1 transparent PNG for screenshot mock
 const TINY_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12NgAAIABQAB' +
-  'Nl7BcQAAAABJRU5ErkJggg==',
+    'Nl7BcQAAAABJRU5ErkJggg==',
   'base64',
 )
 
@@ -25,7 +25,14 @@ const cannedSpec = {
       name: 'Home',
       description: 'Main screen',
       components: [
-        { id: 'comp-title', type: 'text', name: 'Title', props: { label: 'Hello' }, children: [], style: {} },
+        {
+          id: 'comp-title',
+          type: 'text',
+          name: 'Title',
+          props: { label: 'Hello' },
+          children: [],
+          style: {},
+        },
       ],
       layout: { type: 'stack', direction: 'vertical', spacing: 16 },
     },
@@ -63,7 +70,8 @@ describe('extractSpecFromFigmaMake', () => {
     const createMessage = mockCreateMessage(cannedSpec)
 
     const result = await extractSpecFromFigmaMake({
-      codeContent: '<div class="bg-white p-4"><h1 class="text-2xl font-bold text-blue-600">Hello</h1></div>',
+      codeContent:
+        '<div class="bg-white p-4"><h1 class="text-2xl font-bold text-blue-600">Hello</h1></div>',
       metadata: { fileName: 'TestApp', nodeCount: 5 },
       screenshotPaths: [join(tmpDir, 'screen-0.png')],
       prompt: 'A todo app',
@@ -79,7 +87,8 @@ describe('extractSpecFromFigmaMake', () => {
   it('includes Figma code in the LLM prompt', async () => {
     const { extractSpecFromFigmaMake } = await import('../src/figma-make-extractor.js')
     const createMessage = mockCreateMessage(cannedSpec)
-    const figmaCode = '<div class="flex flex-col gap-4"><button class="bg-blue-500">Click</button></div>'
+    const figmaCode =
+      '<div class="flex flex-col gap-4"><button class="bg-blue-500">Click</button></div>'
 
     await extractSpecFromFigmaMake({
       codeContent: figmaCode,
@@ -93,7 +102,7 @@ describe('extractSpecFromFigmaMake', () => {
     const promptText = createMessage.mock.calls[0][0].messages[0].content
     // Code should be embedded in the prompt (either as string or array with text)
     const textContent = Array.isArray(promptText)
-      ? promptText.find((c: any) => c.type === 'text')?.text ?? ''
+      ? (promptText.find((c: any) => c.type === 'text')?.text ?? '')
       : promptText
     expect(textContent).toContain('bg-blue-500')
   })

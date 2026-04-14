@@ -84,12 +84,14 @@ export async function runSetup(configDir: string, answers: SetupAnswers): Promis
       serviceAccountKeyPath: answers.androidServiceAccountKeyPath,
       packageName: answers.androidPackageName,
       playTrack: answers.androidPlayTrack || undefined,
-      ...(answers.androidKeystorePath ? {
-        keystorePath: answers.androidKeystorePath,
-        keystorePassword: answers.androidKeystorePassword ?? '',
-        keyAlias: answers.androidKeyAlias ?? 'release',
-        keyPassword: answers.androidKeyPassword ?? '',
-      } : {}),
+      ...(answers.androidKeystorePath
+        ? {
+            keystorePath: answers.androidKeystorePath,
+            keystorePassword: answers.androidKeystorePassword ?? '',
+            keyAlias: answers.androidKeyAlias ?? 'release',
+            keyPassword: answers.androidKeyPassword ?? '',
+          }
+        : {}),
     }
   }
 
@@ -137,7 +139,10 @@ function ensurePencilMcp(): void {
   let mcpPath: string | null = null
   while (true) {
     const candidate = join(dir, '.mcp.json')
-    if (existsSync(candidate)) { mcpPath = candidate; break }
+    if (existsSync(candidate)) {
+      mcpPath = candidate
+      break
+    }
     const parent = join(dir, '..')
     if (parent === dir) break
     dir = parent

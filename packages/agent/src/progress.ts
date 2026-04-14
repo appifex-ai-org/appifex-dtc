@@ -9,10 +9,14 @@ export interface ProgressParser {
 /** Create a progress parser for the given agent type */
 export function createProgressParser(agentType: AgentType): ProgressParser {
   switch (agentType) {
-    case 'claude': return new ClaudeStreamJsonParser()
-    case 'codex': return new CodexProgressParser()
-    case 'gemini': return new GeminiProgressParser()
-    default: return new GenericProgressParser()
+    case 'claude':
+      return new ClaudeStreamJsonParser()
+    case 'codex':
+      return new CodexProgressParser()
+    case 'gemini':
+      return new GeminiProgressParser()
+    default:
+      return new GenericProgressParser()
   }
 }
 
@@ -41,7 +45,9 @@ class ClaudeStreamJsonParser implements ProgressParser {
         const event = JSON.parse(line)
         const parsed = this.parseEvent(event)
         if (parsed) events.push(parsed)
-      } catch { /* not valid JSON, skip */ }
+      } catch {
+        /* not valid JSON, skip */
+      }
     }
 
     return events
@@ -172,10 +178,17 @@ class CodexProgressParser implements ProgressParser {
         const event = JSON.parse(line) as { type?: string; tool?: string; args?: string }
         if (event.type === 'tool_call') {
           if (event.tool === 'shell' && event.args?.includes('xcodebuild')) {
-            events.push({ phase: 'build', status: 'running', message: 'Building', timestamp: Date.now() })
+            events.push({
+              phase: 'build',
+              status: 'running',
+              message: 'Building',
+              timestamp: Date.now(),
+            })
           }
         }
-      } catch { /* not JSON, skip */ }
+      } catch {
+        /* not JSON, skip */
+      }
     }
     return events
   }
@@ -188,7 +201,12 @@ class GeminiProgressParser implements ProgressParser {
       events.push({ phase: 'build', status: 'running', message: 'Building', timestamp: Date.now() })
     }
     if (chunk.includes('xcodebuild test')) {
-      events.push({ phase: 'validate', status: 'running', message: 'Running tests', timestamp: Date.now() })
+      events.push({
+        phase: 'validate',
+        status: 'running',
+        message: 'Running tests',
+        timestamp: Date.now(),
+      })
     }
     return events
   }

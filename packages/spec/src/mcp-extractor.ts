@@ -24,7 +24,11 @@ export function extractSpecFromMcp(
     penDoc = { version: '1.0', children: [result], variables }
   } else if (result.children && Array.isArray(result.children)) {
     // Document-like structure (has children but is not itself a frame)
-    penDoc = { version: (result.version as string) ?? '1.0', children: result.children as unknown[], variables }
+    penDoc = {
+      version: (result.version as string) ?? '1.0',
+      children: result.children as unknown[],
+      variables,
+    }
   } else {
     // Unknown structure — wrap as sole child
     penDoc = { version: '1.0', children: [result], variables }

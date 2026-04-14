@@ -3,7 +3,13 @@ import type { Runner, Platform } from '@appifex/core'
 import { join } from 'node:path'
 
 export async function handleValidate(
-  args: { platform: string; projectDir: string; flowDir?: string; testDir?: string; runSecurity?: boolean },
+  args: {
+    platform: string
+    projectDir: string
+    flowDir?: string
+    testDir?: string
+    runSecurity?: boolean
+  },
   runner: Runner,
 ): Promise<{ text: string; isError: boolean }> {
   const result = await validateAll(runner, {
@@ -15,12 +21,23 @@ export async function handleValidate(
     runSecurity: args.runSecurity ?? true,
   })
   return {
-    text: JSON.stringify({
-      allPassed: result.allPassed,
-      ui: { total: result.ui.total, passed: result.ui.passed, failed: result.ui.failed },
-      unit: { total: result.unit.total, passed: result.unit.passed, failed: result.unit.failed },
-      security: result.security ? { total: result.security.total, passed: result.security.passed, failed: result.security.failed, findings: result.security.findings } : undefined,
-    }, null, 2),
+    text: JSON.stringify(
+      {
+        allPassed: result.allPassed,
+        ui: { total: result.ui.total, passed: result.ui.passed, failed: result.ui.failed },
+        unit: { total: result.unit.total, passed: result.unit.passed, failed: result.unit.failed },
+        security: result.security
+          ? {
+              total: result.security.total,
+              passed: result.security.passed,
+              failed: result.security.failed,
+              findings: result.security.findings,
+            }
+          : undefined,
+      },
+      null,
+      2,
+    ),
     isError: !result.allPassed,
   }
 }

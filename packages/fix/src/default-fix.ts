@@ -1,14 +1,20 @@
 import type { Runner } from '@appifex/core'
 
 function extractJson(text: string): string {
-  let cleaned = text.replace(/```(?:json)?\s*/g, '').replace(/```/g, '')
+  const cleaned = text.replace(/```(?:json)?\s*/g, '').replace(/```/g, '')
   const start = cleaned.indexOf('{')
   if (start === -1) throw new Error('No JSON object found')
   let depth = 0
   let end = -1
   for (let i = start; i < cleaned.length; i++) {
     if (cleaned[i] === '{') depth++
-    else if (cleaned[i] === '}') { depth--; if (depth === 0) { end = i; break } }
+    else if (cleaned[i] === '}') {
+      depth--
+      if (depth === 0) {
+        end = i
+        break
+      }
+    }
   }
   if (end === -1) throw new Error('Unclosed JSON object')
   return cleaned.slice(start, end + 1).replace(/,\s*([}\]])/g, '$1')
@@ -41,19 +47,24 @@ export interface DefaultFixOpts {
   verbose?: boolean
 }
 
-function buildFixPrompt(failures: ValidationResult, failingFilesCode: string, skillPrompt?: string): string {
+function buildFixPrompt(
+  failures: ValidationResult,
+  failingFilesCode: string,
+  skillPrompt?: string,
+): string {
   const uiFailures = failures.ui.results
-    .filter(r => !r.passed)
-    .map(r => `- UI: ${r.flowName}: ${r.error}`)
+    .filter((r) => !r.passed)
+    .map((r) => `- UI: ${r.flowName}: ${r.error}`)
     .join('\n')
 
   const unitFailures = failures.unit.failures
-    .map(f => `- ${f.suiteName}: ${f.testName}: ${f.error}`)
+    .map((f) => `- ${f.suiteName}: ${f.testName}: ${f.error}`)
     .join('\n')
 
-  const securityFindings = failures.security?.findings
-    ?.map(f => `- SECURITY [${f.severity}] ${f.ruleId}: ${f.file}:${f.line} — ${f.message}`)
-    ?.join('\n') ?? ''
+  const securityFindings =
+    failures.security?.findings
+      ?.map((f) => `- SECURITY [${f.severity}] ${f.ruleId}: ${f.file}:${f.line} — ${f.message}`)
+      ?.join('\n') ?? ''
 
   const hierarchy = failures.ui.hierarchy
     ? `\n## Actual iOS Accessibility Hierarchy (what Maestro sees at runtime)\n\`\`\`\n${failures.ui.hierarchy}\n\`\`\`\nUse resource-id values to understand which identifiers Maestro can discover. If an expected id is missing, the .accessibilityIdentifier() is not working — likely hidden by a container identifier or .accessibilityElement().\n`
@@ -85,13 +96,17 @@ When a UI test fails with "id: X is visible" or "Assertion is false: id: X is vi
 - Every view mentioned in the Maestro flow MUST have its accessibility identifier set
 - NEVER use .accessibilityElement() anywhere — no .ignore, .combine, or any variant. It breaks Maestro. Just use .accessibilityIdentifier() alone.
 
-${skillPrompt ? skillPrompt : `## Common Swift fixes (apply if relevant)
+${
+  skillPrompt
+    ? skillPrompt
+    : `## Common Swift fixes (apply if relevant)
 - Codable with UUID default: add explicit CodingKeys enum or use custom init(from:)
 - 'does not conform to Decodable/Encodable': add CodingKeys or remove Codable
 - 'does not conform to Hashable': add Hashable conformance or use id for comparison
 - Type shadowing Swift.Task: rename to TodoTask, AppTask, etc.
 - Missing import: add 'import SwiftUI' or 'import Foundation'
-- @Published in struct: use @Observable class or @State in view`}
+- @Published in struct: use @Observable class or @State in view`
+}
 
 ## Output Format
 ===FIX: Sources/path/to/File.swift===
@@ -104,12 +119,12 @@ Only include files that need changes. Use the exact file paths from the Current 
 // Keep old JSON format parser as fallback
 function buildFixPromptJson(failures: ValidationResult, existingCode: string): string {
   const uiFailures = failures.ui.results
-    .filter(r => !r.passed)
-    .map(r => `- UI: ${r.flowName}: ${r.error}`)
+    .filter((r) => !r.passed)
+    .map((r) => `- UI: ${r.flowName}: ${r.error}`)
     .join('\n')
 
   const unitFailures = failures.unit.failures
-    .map(f => `- Unit: ${f.testName}: ${f.error}`)
+    .map((f) => `- Unit: ${f.testName}: ${f.error}`)
     .join('\n')
 
   return `Fix these errors in the code:
@@ -129,20 +144,27 @@ Respond with ONLY JSON:
 Generate the fixes now.`
 }
 
-export function createDefaultFixFn(opts: DefaultFixOpts): (failures: ValidationResult) => Promise<FixFnResult> {
+export function createDefaultFixFn(
+  opts: DefaultFixOpts,
+): (failures: ValidationResult) => Promise<FixFnResult> {
   const model = opts.model ?? 'claude-sonnet-4-20250514'
 
-  const createMessage: CreateMessageFn = opts.createMessage ?? (async (params) => {
-    const Anthropic = (await import('@anthropic-ai/sdk')).default
-    const client = new Anthropic({ apiKey: opts.apiKey })
-    // Use streaming to avoid timeout on long-running requests
-    const stream = client.messages.stream(params as Parameters<typeof client.messages.stream>[0])
-    const finalMessage = await stream.finalMessage()
-    return {
-      content: finalMessage.content.map(c => ({ type: c.type, text: c.type === 'text' ? c.text : '' })),
-      usage: finalMessage.usage,
-    }
-  })
+  const createMessage: CreateMessageFn =
+    opts.createMessage ??
+    (async (params) => {
+      const Anthropic = (await import('@anthropic-ai/sdk')).default
+      const client = new Anthropic({ apiKey: opts.apiKey })
+      // Use streaming to avoid timeout on long-running requests
+      const stream = client.messages.stream(params as Parameters<typeof client.messages.stream>[0])
+      const finalMessage = await stream.finalMessage()
+      return {
+        content: finalMessage.content.map((c) => ({
+          type: c.type,
+          text: c.type === 'text' ? c.text : '',
+        })),
+        usage: finalMessage.usage,
+      }
+    })
 
   return async (failures: ValidationResult): Promise<FixFnResult> => {
     try {
@@ -151,7 +173,7 @@ export function createDefaultFixFn(opts: DefaultFixOpts): (failures: ValidationR
       for (const f of failures.unit.failures) {
         if (f.file) errorFiles.add(f.file)
         const pathMatch = f.error.match(/(Sources\/[^\s:]+|src\/[^\s:]+)/g)
-        if (pathMatch) pathMatch.forEach(p => errorFiles.add(p))
+        if (pathMatch) pathMatch.forEach((p) => errorFiles.add(p))
       }
 
       // Add files flagged by Semgrep
@@ -164,7 +186,7 @@ export function createDefaultFixFn(opts: DefaultFixOpts): (failures: ValidationR
       const errorTypeNames = new Set<string>()
       for (const f of failures.unit.failures) {
         const typeMatch = f.error.match(/type '(\w+)'/g)
-        if (typeMatch) typeMatch.forEach(m => errorTypeNames.add(m.replace(/type '|'/g, '')))
+        if (typeMatch) typeMatch.forEach((m) => errorTypeNames.add(m.replace(/type '|'/g, '')))
       }
 
       if (errorTypeNames.size > 0) {
@@ -174,9 +196,14 @@ export function createDefaultFixFn(opts: DefaultFixOpts): (failures: ValidationR
           try {
             const content = await opts.runner.readFile(file)
             for (const typeName of errorTypeNames) {
-              if (content.includes(typeName)) { errorFiles.add(file); break }
+              if (content.includes(typeName)) {
+                errorFiles.add(file)
+                break
+              }
             }
-          } catch { /* skip */ }
+          } catch {
+            /* skip */
+          }
         }
       }
 
@@ -194,7 +221,9 @@ export function createDefaultFixFn(opts: DefaultFixOpts): (failures: ValidationR
         try {
           const content = await opts.runner.readFile(fullPath)
           codeChunks.push(`// ${file}\n${content}`)
-        } catch { /* file may not exist */ }
+        } catch {
+          /* file may not exist */
+        }
       }
       const failingFilesCode = codeChunks.join('\n\n')
       const fixPromptText = buildFixPrompt(failures, failingFilesCode, opts.skillPrompt)
@@ -207,7 +236,9 @@ export function createDefaultFixFn(opts: DefaultFixOpts): (failures: ValidationR
           const header = `\n${'='.repeat(80)}\n## Fix Attempt at ${new Date().toISOString()}\n${'='.repeat(80)}\n`
           if (!existsSync(logPath)) writeFileSync(logPath, '')
           appendFileSync(logPath, header + fixPromptText + '\n')
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
 
       const response = await createMessage({
@@ -217,14 +248,16 @@ export function createDefaultFixFn(opts: DefaultFixOpts): (failures: ValidationR
       })
 
       const tokensUsed = response.usage.input_tokens + response.usage.output_tokens
-      const text = response.content.find(c => c.type === 'text')?.text ?? ''
+      const text = response.content.find((c) => c.type === 'text')?.text ?? ''
 
       // Log fix response for debugging
       if (opts.verbose) {
         try {
           const { appendFileSync } = await import('node:fs')
           appendFileSync(`${opts.projectDir}/fix-prompts.log`, `\n--- RESPONSE ---\n${text}\n`)
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
 
       // Try 1: Delimiter format ===FIX: path=== ... ===END_FIX===
@@ -243,7 +276,9 @@ export function createDefaultFixFn(opts: DefaultFixOpts): (failures: ValidationR
           const json = extractJson(text)
           const parsed = JSON.parse(json) as { fixes: Array<{ path: string; content: string }> }
           if (Array.isArray(parsed.fixes)) fixes.push(...parsed.fixes)
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
 
       if (fixes.length === 0) {

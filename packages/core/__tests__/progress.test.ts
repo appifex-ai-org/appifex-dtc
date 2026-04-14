@@ -59,7 +59,7 @@ describe('ProgressEmitter', () => {
     const lines: string[] = []
     const emitter = new ProgressEmitter()
 
-    emitter.on(terminalProgressListener(line => lines.push(line)))
+    emitter.on(terminalProgressListener((line) => lines.push(line)))
     emitter.emit({ phase: 'build', status: 'started', message: 'Building app', timestamp: 1 })
 
     expect(lines).toHaveLength(1)

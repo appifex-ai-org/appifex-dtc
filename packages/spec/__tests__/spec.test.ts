@@ -31,8 +31,20 @@ const sampleSpec: DesignSpec = {
               props: {},
               style: { borderRadius: 12 },
               children: [
-                { id: 'comp-img', type: 'image', name: 'PetImage', props: { aspectRatio: 1 }, style: {} },
-                { id: 'comp-name', type: 'text', name: 'PetName', props: {}, style: { fontSize: 16, fontWeight: 'bold' } },
+                {
+                  id: 'comp-img',
+                  type: 'image',
+                  name: 'PetImage',
+                  props: { aspectRatio: 1 },
+                  style: {},
+                },
+                {
+                  id: 'comp-name',
+                  type: 'text',
+                  name: 'PetName',
+                  props: {},
+                  style: { fontSize: 16, fontWeight: 'bold' },
+                },
               ],
             },
           ],

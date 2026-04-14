@@ -8,7 +8,8 @@ function parseMarkdownFiles(text: string, platform: string): GeneratedFile[] {
   // Pattern 2: `path/File.swift` followed by code block
   // Pattern 3: ### path/File.swift followed by code block
   // Pattern 4: code block with filename comment on first line
-  const blockRegex = /(?:(?:\*\*|`|#{1,4}\s*)([^\n*`#]+\.(?:swift|tsx?|ts|js))\s*(?:\*\*|`)?[^\n]*\n)?```(?:swift|typescript|tsx?|javascript)?\n([\s\S]*?)```/g
+  const blockRegex =
+    /(?:(?:\*\*|`|#{1,4}\s*)([^\n*`#]+\.(?:swift|tsx?|ts|js))\s*(?:\*\*|`)?[^\n]*\n)?```(?:swift|typescript|tsx?|javascript)?\n([\s\S]*?)```/g
 
   let match: RegExpExecArray | null
   while ((match = blockRegex.exec(text)) !== null) {
@@ -28,8 +29,15 @@ function parseMarkdownFiles(text: string, platform: string): GeneratedFile[] {
 
     // Still no path? Generate one from content
     if (!path) {
-      const structMatch = content.match(/struct\s+(\w+)|class\s+(\w+)|function\s+(\w+)|export\s+(?:default\s+)?(?:function|class)\s+(\w+)/)
-      const name = structMatch?.[1] ?? structMatch?.[2] ?? structMatch?.[3] ?? structMatch?.[4] ?? `File${files.length + 1}`
+      const structMatch = content.match(
+        /struct\s+(\w+)|class\s+(\w+)|function\s+(\w+)|export\s+(?:default\s+)?(?:function|class)\s+(\w+)/,
+      )
+      const name =
+        structMatch?.[1] ??
+        structMatch?.[2] ??
+        structMatch?.[3] ??
+        structMatch?.[4] ??
+        `File${files.length + 1}`
       path = platform === 'swiftui' ? `Sources/${name}.swift` : `src/${name}.tsx`
     }
 
@@ -59,14 +67,20 @@ function parseDelimitedFiles(text: string): GeneratedFile[] {
 }
 
 function extractJson(text: string): string {
-  let cleaned = text.replace(/```(?:json)?\s*/g, '').replace(/```/g, '')
+  const cleaned = text.replace(/```(?:json)?\s*/g, '').replace(/```/g, '')
   const start = cleaned.indexOf('{')
   if (start === -1) throw new Error('No JSON object found')
   let depth = 0
   let end = -1
   for (let i = start; i < cleaned.length; i++) {
     if (cleaned[i] === '{') depth++
-    else if (cleaned[i] === '}') { depth--; if (depth === 0) { end = i; break } }
+    else if (cleaned[i] === '}') {
+      depth--
+      if (depth === 0) {
+        end = i
+        break
+      }
+    }
   }
   if (end === -1) throw new Error('Unclosed JSON object')
   return cleaned.slice(start, end + 1).replace(/,\s*([}\]])/g, '$1')
@@ -103,14 +117,14 @@ These Maestro flows WILL be executed against your app. Every \`assertVisible\` c
 
 Your code MUST satisfy every assertion below:
 
-${input.uiTestContent.map(t => `**${t.path}:**\n\`\`\`yaml\n${t.content}\n\`\`\``).join('\n\n')}`
+${input.uiTestContent.map((t) => `**${t.path}:**\n\`\`\`yaml\n${t.content}\n\`\`\``).join('\n\n')}`
     : ''
 
   const unitTestsSection = input.unitTestContent?.length
     ? `### Unit Tests
 These tests WILL be compiled into the Xcode project and executed. They must compile and pass.
 
-${input.unitTestContent.map(t => `**${t.path}:**\n\`\`\`\n${t.content}\n\`\`\``).join('\n\n')}`
+${input.unitTestContent.map((t) => `**${t.path}:**\n\`\`\`\n${t.content}\n\`\`\``).join('\n\n')}`
     : ''
 
   return `You are a test-driven code generation expert. Your PRIMARY goal is to generate code that PASSES ALL TESTS below. The design image is a visual reference — tests are the contract.
@@ -137,7 +151,9 @@ ${specJson}
 
 ## 3. Platform Rules
 - Platform: ${input.spec.platform}
-${input.spec.platform === 'swiftui' ? `- All .swift files MUST go in Sources/ directory
+${
+  input.spec.platform === 'swiftui'
+    ? `- All .swift files MUST go in Sources/ directory
 - Include a ContentView.swift as the main view
 - Do NOT include an @main App entry point (it will be auto-generated)
 - Do NOT generate project.yml, Info.plist, or .xcodeproj files (managed by build pipeline)
@@ -149,11 +165,15 @@ ${input.spec.platform === 'swiftui' ? `- All .swift files MUST go in Sources/ di
   4. Example: HStack { Button("−"){}.accessibilityIdentifier("Dec") Button("+"){}.accessibilityIdentifier("Inc") } — NO identifier on HStack
   5. Every interactive component in the spec's testIds map MUST have .accessibilityIdentifier()
   6. For display-only components (Text showing a count), wrap in a VStack with NO identifier on the VStack, identifier on the Text
-` : `
+`
+    : `
 ## Kotlin Compose
 - Include Modifier.testTag() on all interactive composables
-`}
-${input.baasAuthScreens ? `
+`
+}
+${
+  input.baasAuthScreens
+    ? `
 ## Auth Screens (DO NOT MODIFY WIRING)
 Auth screens already exist at Sources/Auth/ (LoginView.swift, SignupView.swift, ResetPasswordView.swift, NewPasswordView.swift).
 These screens have correct auth SDK wiring that MUST NOT be changed.
@@ -163,8 +183,12 @@ Your job for auth screens:
 - You may adjust layout, padding, font sizes, and colors
 - Do NOT change: any AuthManager method calls, auth state observation, NavigationLink targets, error handling logic, or deep link handling
 - Do NOT add new auth-related imports or remove existing ones
-` : ''}
-${input.baasContext?.schema ? `
+`
+    : ''
+}
+${
+  input.baasContext?.schema
+    ? `
 ## BaaS Repository Layer
 
 A repository layer has been pre-generated for this app. The following rules MUST be followed:
@@ -173,8 +197,10 @@ A repository layer has been pre-generated for this app. The following rules MUST
 - ViewModels receive repository protocols via constructor injection (not singletons)
 - Do NOT generate \`AppEntry.swift\` — it is pre-generated by the BaaS layer
 - Do NOT generate \`Sources/Repositories/\` files — they are pre-generated
-- Inferred entities: ${input.baasContext.schema.entities.map(e => e.name).join(', ')}
-` : ''}
+- Inferred entities: ${input.baasContext.schema.entities.map((e) => e.name).join(', ')}
+`
+    : ''
+}
 ${input.skillPrompt ? `${input.skillPrompt}\n` : ''}## Output Format
 Output each file using this exact delimiter format (NOT JSON — use delimiters):
 
@@ -191,20 +217,27 @@ import Foundation
 Generate ALL files needed for a complete, compilable app. Use the delimiter format exactly as shown.`
 }
 
-export function createDefaultGenerateFn(opts: DefaultGenerateOpts): (input: CodegenInput) => Promise<CodegenResult> {
+export function createDefaultGenerateFn(
+  opts: DefaultGenerateOpts,
+): (input: CodegenInput) => Promise<CodegenResult> {
   const model = opts.model ?? 'claude-sonnet-4-20250514'
 
-  const createMessage: CreateMessageFn = opts.createMessage ?? (async (params) => {
-    const Anthropic = (await import('@anthropic-ai/sdk')).default
-    const client = new Anthropic({ apiKey: opts.apiKey })
-    // Use streaming to avoid timeout on long-running requests
-    const stream = client.messages.stream(params as Parameters<typeof client.messages.stream>[0])
-    const finalMessage = await stream.finalMessage()
-    return {
-      content: finalMessage.content.map(c => ({ type: c.type, text: c.type === 'text' ? c.text : '' })),
-      usage: finalMessage.usage,
-    }
-  })
+  const createMessage: CreateMessageFn =
+    opts.createMessage ??
+    (async (params) => {
+      const Anthropic = (await import('@anthropic-ai/sdk')).default
+      const client = new Anthropic({ apiKey: opts.apiKey })
+      // Use streaming to avoid timeout on long-running requests
+      const stream = client.messages.stream(params as Parameters<typeof client.messages.stream>[0])
+      const finalMessage = await stream.finalMessage()
+      return {
+        content: finalMessage.content.map((c) => ({
+          type: c.type,
+          text: c.type === 'text' ? c.text : '',
+        })),
+        usage: finalMessage.usage,
+      }
+    })
 
   return async (input: CodegenInput): Promise<CodegenResult> => {
     try {
@@ -218,7 +251,9 @@ export function createDefaultGenerateFn(opts: DefaultGenerateOpts): (input: Code
           const imageBuffer = readFileSync(input.designImagePath)
           imageBase64 = imageBuffer.toString('base64')
           imageMimeType = input.designImagePath.endsWith('.png') ? 'image/png' : 'image/jpeg'
-        } catch { /* image not available */ }
+        } catch {
+          /* image not available */
+        }
       }
 
       const textPrompt = buildPromptText(input)
@@ -231,13 +266,18 @@ export function createDefaultGenerateFn(opts: DefaultGenerateOpts): (input: Code
           response = await createMessage({
             model,
             max_tokens: 16384,
-            messages: [{
-              role: 'user',
-              content: [
-                { type: 'image_url', image_url: { url: `data:${imageMimeType};base64,${imageBase64}` } },
-                { type: 'text', text: textPrompt },
-              ],
-            }],
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  {
+                    type: 'image_url',
+                    image_url: { url: `data:${imageMimeType};base64,${imageBase64}` },
+                  },
+                  { type: 'text', text: textPrompt },
+                ],
+              },
+            ],
           })
         } catch {
           // Multimodal not supported — fall back to text with image description
@@ -256,13 +296,15 @@ export function createDefaultGenerateFn(opts: DefaultGenerateOpts): (input: Code
       }
 
       const tokensUsed = response.usage.input_tokens + response.usage.output_tokens
-      const text = response.content.find(c => c.type === 'text')?.text ?? ''
+      const text = response.content.find((c) => c.type === 'text')?.text ?? ''
 
       // Save raw response for debugging
       try {
         const { writeFileSync } = await import('node:fs')
         writeFileSync(input.outputDir + '/codegen-response.txt', text, 'utf-8')
-      } catch { /* ignore if dir doesn't exist */ }
+      } catch {
+        /* ignore if dir doesn't exist */
+      }
 
       // Try 1: Delimiter format ===FILE: path=== ... ===END_FILE===
       let files = parseDelimitedFiles(text)
@@ -281,16 +323,29 @@ export function createDefaultGenerateFn(opts: DefaultGenerateOpts): (input: Code
           if (Array.isArray(parsed.files) && parsed.files.length > 0) {
             files = parsed.files
           }
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
 
       if (files.length === 0) {
-        return { success: false, files: [], tokensUsed, error: 'Could not parse LLM response into files. Raw response saved to codegen-response.txt' }
+        return {
+          success: false,
+          files: [],
+          tokensUsed,
+          error:
+            'Could not parse LLM response into files. Raw response saved to codegen-response.txt',
+        }
       }
 
       return { success: true, files, tokensUsed }
     } catch (err) {
-      return { success: false, files: [], tokensUsed: 0, error: String(err instanceof Error ? err.message : err) }
+      return {
+        success: false,
+        files: [],
+        tokensUsed: 0,
+        error: String(err instanceof Error ? err.message : err),
+      }
     }
   }
 }

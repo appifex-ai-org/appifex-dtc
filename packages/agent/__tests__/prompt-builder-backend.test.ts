@@ -9,7 +9,16 @@ function makeTempProject(): string {
   const dir = mkdtempSync(join(tmpdir(), 'dtc-prompt-be-'))
   const spec = {
     platform: 'swiftui',
-    screens: [{ id: 's1', name: 'Home', componentName: 'HomeView', description: 'Home', components: [], testIds: {} }],
+    screens: [
+      {
+        id: 's1',
+        name: 'Home',
+        componentName: 'HomeView',
+        description: 'Home',
+        components: [],
+        testIds: {},
+      },
+    ],
     designTokens: { colors: {}, typography: {}, spacing: {}, borderRadius: {} },
     imports: [],
   }
@@ -30,7 +39,7 @@ function makeBackendContext(): BackendContext {
       { method: 'POST', path: '/api/pets', description: 'Create a pet' },
     ],
     models: {
-      'Pet': 'struct Pet: Codable {\n  let id: UUID\n  var name: String\n}',
+      Pet: 'struct Pet: Codable {\n  let id: UUID\n  var name: String\n}',
     },
     auth: { type: 'bearer', description: 'JWT token' },
   }

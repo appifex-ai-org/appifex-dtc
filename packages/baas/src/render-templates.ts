@@ -71,7 +71,8 @@ export function renderBaasTemplates(
 
   // Security rules — single file for all entities (skip for mock — no cloud backend)
   if (provider !== 'mock') {
-    const rulesTemplate = provider === 'firebase' ? './security.rules.eta' : './rls-policies.sql.eta'
+    const rulesTemplate =
+      provider === 'firebase' ? './security.rules.eta' : './rls-policies.sql.eta'
     const rulesPath = provider === 'firebase' ? 'firestore.rules' : 'supabase/rls-policies.sql'
     files.push({ path: rulesPath, content: eta.render(rulesTemplate, { schema }) })
   }

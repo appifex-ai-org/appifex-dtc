@@ -3,19 +3,23 @@ import { fixLoop } from '@appifex/fix'
 import type { ValidationResult } from '@appifex/validate'
 import type { SemgrepFinding } from '@appifex/core'
 
-function makeValidation(overrides: {
-  uiPassed?: boolean
-  unitPassed?: boolean
-  securityFindings?: SemgrepFinding[]
-} = {}): ValidationResult {
+function makeValidation(
+  overrides: {
+    uiPassed?: boolean
+    unitPassed?: boolean
+    securityFindings?: SemgrepFinding[]
+  } = {},
+): ValidationResult {
   const findings = overrides.securityFindings ?? []
   return {
     ui: { total: 1, passed: 1, failed: 0, results: [{ flowName: 'test', passed: true }] },
     unit: { total: 1, passed: 1, failed: 0, failures: [] },
-    security: findings.length > 0
-      ? { total: findings.length, passed: 0, failed: findings.length, findings }
-      : { total: 0, passed: 1, failed: 0, findings: [] },
-    allPassed: findings.length === 0 && (overrides.uiPassed !== false) && (overrides.unitPassed !== false),
+    security:
+      findings.length > 0
+        ? { total: findings.length, passed: 0, failed: findings.length, findings }
+        : { total: 0, passed: 1, failed: 0, findings: [] },
+    allPassed:
+      findings.length === 0 && overrides.uiPassed !== false && overrides.unitPassed !== false,
   }
 }
 
@@ -78,27 +82,28 @@ describe('fix loop with security findings', () => {
 
   it('includes security findings in error signature for dedup', async () => {
     const finding1: SemgrepFinding = { ...hardcodedPasswordFinding, line: 10 }
-    const finding2: SemgrepFinding = { ...hardcodedPasswordFinding, ruleId: 'swift.lang.security.sql-injection', line: 20 }
+    const finding2: SemgrepFinding = {
+      ...hardcodedPasswordFinding,
+      ruleId: 'swift.lang.security.sql-injection',
+      line: 20,
+    }
     let callCount = 0
 
-    const result = await fixLoop(
-      makeValidation({ securityFindings: [finding1] }),
-      {
-        fixFn: async () => {
-          callCount++
-          return { filesChanged: ['Sources/TaskStore.swift'], tokensUsed: 500 }
-        },
-        buildFn: async () => ({ success: true, duration: 100 }),
-        // Alternates between two different findings — not "same error repeated"
-        validateFn: async () => {
-          return makeValidation({
-            securityFindings: [callCount % 2 === 0 ? finding1 : finding2],
-          })
-        },
-        maxAttempts: 5,
-        tokenBudget: 50_000,
+    const result = await fixLoop(makeValidation({ securityFindings: [finding1] }), {
+      fixFn: async () => {
+        callCount++
+        return { filesChanged: ['Sources/TaskStore.swift'], tokensUsed: 500 }
       },
-    )
+      buildFn: async () => ({ success: true, duration: 100 }),
+      // Alternates between two different findings — not "same error repeated"
+      validateFn: async () => {
+        return makeValidation({
+          securityFindings: [callCount % 2 === 0 ? finding1 : finding2],
+        })
+      },
+      maxAttempts: 5,
+      tokenBudget: 50_000,
+    })
 
     // Should hit no_progress (different errors but no improvement) rather than same_error_repeated
     expect(result.status).toBe('stuck')

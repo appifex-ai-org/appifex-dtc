@@ -9,7 +9,16 @@ function makeTempProject(): string {
   const dir = mkdtempSync(join(tmpdir(), 'dtc-prompt-mod-'))
   const spec = {
     platform: 'swiftui',
-    screens: [{ id: 's1', name: 'Home', componentName: 'HomeView', description: 'Home screen', components: [], testIds: {} }],
+    screens: [
+      {
+        id: 's1',
+        name: 'Home',
+        componentName: 'HomeView',
+        description: 'Home screen',
+        components: [],
+        testIds: {},
+      },
+    ],
     designTokens: { colors: {}, typography: {}, spacing: {}, borderRadius: {} },
     imports: [],
   }
@@ -29,7 +38,8 @@ const samplePlan: ModificationPlan = {
       screenName: 'ContentView',
       changeDescription: 'Add Settings tab to TabView',
       changeType: 'navigation',
-      fileContent: 'import SwiftUI\nstruct ContentView: View {\n  var body: some View { TabView { Text("Home") } }\n}',
+      fileContent:
+        'import SwiftUI\nstruct ContentView: View {\n  var body: some View { TabView { Text("Home") } }\n}',
     },
   ],
 }

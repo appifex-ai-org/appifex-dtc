@@ -151,13 +151,16 @@ describe('handleAddFeature', () => {
     it('runs pipeline directly when confirmed is absent and prompt is specific', async () => {
       mockIsFeaturePromptVague.mockReturnValue(false)
 
-      await handleAddFeature({ prompt: 'Add a settings screen with dark mode toggle to the tab bar', outputDir: '/tmp/app' })
+      await handleAddFeature({
+        prompt: 'Add a settings screen with dark mode toggle to the tab bar',
+        outputDir: '/tmp/app',
+      })
 
       expect(mockHandleRunPipeline).toHaveBeenCalled()
     })
 
     it('runs pipeline when confirmed=true regardless of prompt vagueness', async () => {
-      mockIsFeaturePromptVague.mockReturnValue(true)  // would be vague, but confirmed overrides
+      mockIsFeaturePromptVague.mockReturnValue(true) // would be vague, but confirmed overrides
 
       await handleAddFeature({ prompt: 'add stuff', outputDir: '/tmp/app', confirmed: true })
 
@@ -168,7 +171,11 @@ describe('handleAddFeature', () => {
     it('validates project existence BEFORE confirmed check', async () => {
       mockLoadRunContext.mockResolvedValue(null)
 
-      const result = await handleAddFeature({ prompt: 'add stuff', outputDir: '/tmp/app', confirmed: true })
+      const result = await handleAddFeature({
+        prompt: 'add stuff',
+        outputDir: '/tmp/app',
+        confirmed: true,
+      })
 
       expect(result.isError).toBe(true)
       const parsed = JSON.parse(result.text)
@@ -237,14 +244,21 @@ describe('handleAddFeature', () => {
       mockIsFeaturePromptVague.mockReturnValue(false)
       mockHandleRunPipeline.mockResolvedValue({ text: '{}', isError: false })
 
-      await handleAddFeature({ prompt: 'Add a settings screen with dark mode toggle', outputDir: '/tmp/app' })
+      await handleAddFeature({
+        prompt: 'Add a settings screen with dark mode toggle',
+        outputDir: '/tmp/app',
+      })
 
       expect(mockScanProject).not.toHaveBeenCalled()
       expect(mockBuildNavGraph).not.toHaveBeenCalled()
     })
 
     it('uses provided platform arg for scanning', async () => {
-      await handleAddFeature({ prompt: 'add stuff', outputDir: '/tmp/app', platform: 'kotlin-compose' })
+      await handleAddFeature({
+        prompt: 'add stuff',
+        outputDir: '/tmp/app',
+        platform: 'kotlin-compose',
+      })
 
       expect(mockScanProject).toHaveBeenCalledWith('/tmp/app', 'kotlin-compose', expect.anything())
     })

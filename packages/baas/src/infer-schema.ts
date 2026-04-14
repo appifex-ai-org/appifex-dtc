@@ -6,7 +6,14 @@ type CreateMessageFn = (params: {
   messages: Array<{ role: 'user' | 'assistant'; content: string }>
 }) => Promise<{ content: Array<{ type: string; text?: string }> }>
 
-const VALID_FIELD_TYPES: readonly BaasFieldType[] = ['string', 'number', 'boolean', 'date', 'reference', 'array'] as const
+const VALID_FIELD_TYPES: readonly BaasFieldType[] = [
+  'string',
+  'number',
+  'boolean',
+  'date',
+  'reference',
+  'array',
+] as const
 const VALID_RELATIONSHIP_TYPES = ['belongs_to', 'has_many'] as const
 
 export const SCHEMA_INFERENCE_PROMPT = `You are a backend data architect. Analyze the following app design specification and infer the data entities, fields, and relationships needed for a {provider} backend.
@@ -45,7 +52,7 @@ Respond with ONLY a valid JSON object (no markdown, no explanation):
 /** Extract the outermost JSON object from LLM text that may include markdown fences */
 function extractJson(text: string): string {
   // Strip markdown code fences
-  let cleaned = text.replace(/```(?:json)?\s*/g, '').replace(/```/g, '')
+  const cleaned = text.replace(/```(?:json)?\s*/g, '').replace(/```/g, '')
 
   // Find the first { and match braces to find the complete object
   const start = cleaned.indexOf('{')
@@ -57,7 +64,10 @@ function extractJson(text: string): string {
     if (cleaned[i] === '{') depth++
     else if (cleaned[i] === '}') {
       depth--
-      if (depth === 0) { end = i; break }
+      if (depth === 0) {
+        end = i
+        break
+      }
     }
   }
   if (end === -1) throw new Error('Unclosed JSON object in response')
@@ -118,7 +128,9 @@ function parseSchemaJson(raw: unknown): BaasSchema {
       }
 
       if (typeof f.type !== 'string' || !validFieldTypeSet.has(f.type)) {
-        throw new Error(`Field "${f.name}" in entity "${e.name}" has invalid type "${f.type}". Must be one of: ${VALID_FIELD_TYPES.join(', ')}`)
+        throw new Error(
+          `Field "${f.name}" in entity "${e.name}" has invalid type "${f.type}". Must be one of: ${VALID_FIELD_TYPES.join(', ')}`,
+        )
       }
 
       return {
@@ -140,7 +152,9 @@ function parseSchemaJson(raw: unknown): BaasSchema {
           }
 
           if (typeof r.type !== 'string' || !validRelTypeSet.has(r.type)) {
-            throw new Error(`Relationship to "${r.target}" in entity "${e.name}" has invalid type "${r.type}". Must be: belongs_to or has_many`)
+            throw new Error(
+              `Relationship to "${r.target}" in entity "${e.name}" has invalid type "${r.type}". Must be: belongs_to or has_many`,
+            )
           }
 
           return {
@@ -165,9 +179,10 @@ export async function inferBaasSchema(opts: {
   const model = opts.model ?? 'claude-sonnet-4-20250514'
   const specJson = JSON.stringify(opts.spec, null, 2)
 
-  const prompt = SCHEMA_INFERENCE_PROMPT
-    .replace('{spec}', specJson)
-    .replaceAll('{provider}', opts.provider)
+  const prompt = SCHEMA_INFERENCE_PROMPT.replace('{spec}', specJson).replaceAll(
+    '{provider}',
+    opts.provider,
+  )
 
   const response = await opts.createMessage({
     model,
@@ -175,7 +190,7 @@ export async function inferBaasSchema(opts: {
     messages: [{ role: 'user', content: prompt }],
   })
 
-  const text = response.content.find(c => c.type === 'text')?.text ?? ''
+  const text = response.content.find((c) => c.type === 'text')?.text ?? ''
   if (!text) {
     throw new Error('Schema inference received empty response from LLM')
   }

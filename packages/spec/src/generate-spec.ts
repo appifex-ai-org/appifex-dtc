@@ -136,7 +136,7 @@ export interface GenerateSpecOpts {
 /** Extract the outermost JSON object from LLM text that may include markdown fences */
 function extractJson(text: string): string {
   // Strip markdown code fences
-  let cleaned = text.replace(/```(?:json)?\s*/g, '').replace(/```/g, '')
+  const cleaned = text.replace(/```(?:json)?\s*/g, '').replace(/```/g, '')
 
   // Find the first { and match braces to find the complete object
   const start = cleaned.indexOf('{')
@@ -148,7 +148,10 @@ function extractJson(text: string): string {
     if (cleaned[i] === '{') depth++
     else if (cleaned[i] === '}') {
       depth--
-      if (depth === 0) { end = i; break }
+      if (depth === 0) {
+        end = i
+        break
+      }
     }
   }
   if (end === -1) throw new Error('Unclosed JSON object in response')
@@ -161,20 +164,21 @@ function extractJson(text: string): string {
   return json
 }
 
-export async function generateSpecFromPrompt(opts: GenerateSpecOpts): Promise<{ spec: DesignSpec; tokensUsed: number }> {
+export async function generateSpecFromPrompt(
+  opts: GenerateSpecOpts,
+): Promise<{ spec: DesignSpec; tokensUsed: number }> {
   // Use the image-specific prompt when a design image is provided
   const template = opts.designImagePath ? IMAGE_SPEC_PROMPT : SPEC_PROMPT
 
-  let filledPrompt = template
-    .replace('{prompt}', opts.prompt)
-    .replace('{platform}', opts.platform)
+  let filledPrompt = template.replace('{prompt}', opts.prompt).replace('{platform}', opts.platform)
 
   if (opts.skillPrompt) {
     filledPrompt = `${opts.skillPrompt}\n\n${filledPrompt}`
   }
 
   // Build message content — include image when a design image path is provided
-  let messageContent: string | Array<{ type: string; text?: string; image_url?: { url: string } }> = filledPrompt
+  let messageContent: string | Array<{ type: string; text?: string; image_url?: { url: string } }> =
+    filledPrompt
   if (opts.designImagePath) {
     const { readFileSync, statSync } = await import('node:fs')
     const stat = statSync(opts.designImagePath)
@@ -197,10 +201,20 @@ export async function generateSpecFromPrompt(opts: GenerateSpecOpts): Promise<{ 
       writeFileSync(`${opts.outputDir}/spec-prompt.md`, filledPrompt, 'utf-8')
       // Log whether image was included in message content
       const contentShape = Array.isArray(messageContent)
-        ? messageContent.map(p => ({ type: p.type, hasImage: !!p.image_url, textLen: p.text?.length ?? 0 }))
+        ? messageContent.map((p) => ({
+            type: p.type,
+            hasImage: !!p.image_url,
+            textLen: p.text?.length ?? 0,
+          }))
         : 'string'
-      writeFileSync(`${opts.outputDir}/spec-message-shape.json`, JSON.stringify(contentShape, null, 2), 'utf-8')
-    } catch { /* ignore */ }
+      writeFileSync(
+        `${opts.outputDir}/spec-message-shape.json`,
+        JSON.stringify(contentShape, null, 2),
+        'utf-8',
+      )
+    } catch {
+      /* ignore */
+    }
   }
 
   const maxAttempts = 2
@@ -215,15 +229,21 @@ export async function generateSpecFromPrompt(opts: GenerateSpecOpts): Promise<{ 
     })
 
     totalTokens += response.usage.input_tokens + response.usage.output_tokens
-    const text = response.content.find(c => c.type === 'text')?.text ?? ''
+    const text = response.content.find((c) => c.type === 'text')?.text ?? ''
 
     // Always log response for debugging (spec failures are hard to diagnose without it)
     if (opts.outputDir) {
       try {
         const { writeFileSync } = await import('node:fs')
         const suffix = attempt > 0 ? `.attempt${attempt + 1}` : ''
-        writeFileSync(`${opts.outputDir}/spec-response${suffix}.txt`, text || '[empty response]', 'utf-8')
-      } catch { /* ignore */ }
+        writeFileSync(
+          `${opts.outputDir}/spec-response${suffix}.txt`,
+          text || '[empty response]',
+          'utf-8',
+        )
+      } catch {
+        /* ignore */
+      }
     }
 
     try {
@@ -236,7 +256,7 @@ export async function generateSpecFromPrompt(opts: GenerateSpecOpts): Promise<{ 
     } catch (e) {
       const preview = text ? text.slice(0, 200) : '[empty response]'
       lastError = new Error(
-        `Failed to parse design spec JSON (attempt ${attempt + 1}/${maxAttempts}): ${e instanceof Error ? e.message : e}\nResponse preview: ${preview}`
+        `Failed to parse design spec JSON (attempt ${attempt + 1}/${maxAttempts}): ${e instanceof Error ? e.message : e}\nResponse preview: ${preview}`,
       )
       // Retry once — LLMs occasionally produce preamble or empty responses
     }

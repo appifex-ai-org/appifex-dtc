@@ -1,6 +1,12 @@
 import type { Runner } from '@appifex/core'
 import type { BundleOpts, BundleResult } from './types.js'
-import { parseKotlinErrors, DEFAULT_SETTINGS_GRADLE, DEFAULT_ROOT_BUILD_GRADLE, buildGradle, mainActivity } from './kotlin.js'
+import {
+  parseKotlinErrors,
+  DEFAULT_SETTINGS_GRADLE,
+  DEFAULT_ROOT_BUILD_GRADLE,
+  buildGradle,
+  mainActivity,
+} from './kotlin.js'
 
 /**
  * Build a release AAB (Android App Bundle) with signing for Play Console distribution.
@@ -15,15 +21,19 @@ export async function bundleKotlin(runner: Runner, opts: BundleOpts): Promise<Bu
   const commands: string[] = []
 
   // Ensure Gradle project structure exists (same scaffolding as buildKotlin)
-  if (!await runner.exists(`${projectDir}/settings.gradle.kts`)) {
+  if (!(await runner.exists(`${projectDir}/settings.gradle.kts`))) {
     await runner.writeFile(`${projectDir}/settings.gradle.kts`, DEFAULT_SETTINGS_GRADLE)
   }
-  if (!await runner.exists(`${projectDir}/build.gradle.kts`)) {
+  if (!(await runner.exists(`${projectDir}/build.gradle.kts`))) {
     await runner.writeFile(`${projectDir}/build.gradle.kts`, DEFAULT_ROOT_BUILD_GRADLE)
   }
-  if (!await runner.exists(`${projectDir}/app/build.gradle.kts`)) {
+  if (!(await runner.exists(`${projectDir}/app/build.gradle.kts`))) {
     const { mkdir } = await import('node:fs/promises')
-    try { await mkdir(`${projectDir}/app`, { recursive: true }) } catch { /* may exist */ }
+    try {
+      await mkdir(`${projectDir}/app`, { recursive: true })
+    } catch {
+      /* may exist */
+    }
     await runner.writeFile(`${projectDir}/app/build.gradle.kts`, buildGradle(appId))
   }
 
@@ -32,7 +42,11 @@ export async function bundleKotlin(runner: Runner, opts: BundleOpts): Promise<Bu
   if (existingActivities.length === 0) {
     const mainActivityPath = `${projectDir}/app/src/main/java/${appIdPath}/MainActivity.kt`
     const { mkdir: mkdirFs } = await import('node:fs/promises')
-    try { await mkdirFs(`${projectDir}/app/src/main/java/${appIdPath}`, { recursive: true }) } catch { /* may exist */ }
+    try {
+      await mkdirFs(`${projectDir}/app/src/main/java/${appIdPath}`, { recursive: true })
+    } catch {
+      /* may exist */
+    }
     await runner.writeFile(mainActivityPath, mainActivity(appId))
   }
 
@@ -86,7 +100,9 @@ export async function bundleKotlin(runner: Runner, opts: BundleOpts): Promise<Bu
 
   // Write signing credentials to gradle.properties (temporary, cleaned up after build)
   const gradlePropsPath = `${projectDir}/gradle.properties`
-  const existingProps = await runner.exists(gradlePropsPath) ? await runner.readFile(gradlePropsPath) : ''
+  const existingProps = (await runner.exists(gradlePropsPath))
+    ? await runner.readFile(gradlePropsPath)
+    : ''
   const signingProps = [
     '',
     '# DTC signing config (temporary — removed after build)',
@@ -98,7 +114,7 @@ export async function bundleKotlin(runner: Runner, opts: BundleOpts): Promise<Bu
   await runner.writeFile(gradlePropsPath, existingProps + signingProps)
 
   // Build release AAB
-  const gradlew = await runner.exists(`${projectDir}/gradlew`) ? './gradlew' : 'gradle'
+  const gradlew = (await runner.exists(`${projectDir}/gradlew`)) ? './gradlew' : 'gradle'
   let result: Awaited<ReturnType<typeof runner.exec>> | undefined
   try {
     result = await runner.exec(gradlew, ['bundleRelease', '--no-daemon'], {
@@ -116,16 +132,25 @@ export async function bundleKotlin(runner: Runner, opts: BundleOpts): Promise<Bu
 
   if (result!.exitCode !== 0) {
     const errors = parseKotlinErrors(result!.stdout + '\n' + result!.stderr)
-    const errorSummary = errors.length > 0
-      ? errors.map(e => `${e.file}:${e.line}: ${e.message}`).join('\n')
-      : result!.stderr.split('\n').filter(l => l.includes('error:') || l.includes('FAILURE')).join('\n') || result!.stderr.slice(-500)
+    const errorSummary =
+      errors.length > 0
+        ? errors.map((e) => `${e.file}:${e.line}: ${e.message}`).join('\n')
+        : result!.stderr
+            .split('\n')
+            .filter((l) => l.includes('error:') || l.includes('FAILURE'))
+            .join('\n') || result!.stderr.slice(-500)
     return { success: false, error: errorSummary, duration: Date.now() - startTime, commands }
   }
 
   // Find the output .aab
   const aabs = await runner.glob(`${projectDir}/app/build/outputs/bundle/release/*.aab`)
   if (aabs.length === 0) {
-    return { success: false, error: 'Build succeeded but no .aab found in output', duration: Date.now() - startTime, commands }
+    return {
+      success: false,
+      error: 'Build succeeded but no .aab found in output',
+      duration: Date.now() - startTime,
+      commands,
+    }
   }
 
   return { success: true, aabPath: aabs[0], duration: Date.now() - startTime, commands }

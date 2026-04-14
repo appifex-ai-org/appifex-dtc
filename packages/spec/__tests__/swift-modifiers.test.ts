@@ -25,7 +25,7 @@ describe('generateSwiftModifiers', () => {
       expect(mods).toContain('.padding(.leading, 20)')
       expect(mods).toContain('.padding(.trailing, 20)')
       // top is 0, should be omitted
-      expect(mods.find(m => m.includes('.top'))).toBeUndefined()
+      expect(mods.find((m) => m.includes('.top'))).toBeUndefined()
     })
   })
 
@@ -132,16 +132,24 @@ describe('generateSwiftModifiers', () => {
 
       const penDoc = JSON.stringify({
         version: '1',
-        children: [{
-          type: 'frame', name: 'Home', width: 390, height: 844,
-          children: [{
-            type: 'frame', name: 'Card',
-            padding: [20, 20, 20, 20],
-            cornerRadius: 12,
-            fills: [{ color: '#F4F4F5' }],
-            children: [{ type: 'text', name: 'Title', content: 'Hello' }],
-          }],
-        }],
+        children: [
+          {
+            type: 'frame',
+            name: 'Home',
+            width: 390,
+            height: 844,
+            children: [
+              {
+                type: 'frame',
+                name: 'Card',
+                padding: [20, 20, 20, 20],
+                cornerRadius: 12,
+                fills: [{ color: '#F4F4F5' }],
+                children: [{ type: 'text', name: 'Title', content: 'Hello' }],
+              },
+            ],
+          },
+        ],
       })
 
       const spec = extractSpecFromPen(penDoc)
@@ -160,13 +168,23 @@ describe('generateSwiftModifiers', () => {
 
       const penDoc = JSON.stringify({
         version: '1',
-        children: [{
-          type: 'frame', name: 'Home', width: 390, height: 844,
-          children: [{
-            type: 'frame', name: 'Card', padding: 16, cornerRadius: 12,
-            children: [{ type: 'text', name: 'Title', content: 'Hello' }],
-          }],
-        }],
+        children: [
+          {
+            type: 'frame',
+            name: 'Home',
+            width: 390,
+            height: 844,
+            children: [
+              {
+                type: 'frame',
+                name: 'Card',
+                padding: 16,
+                cornerRadius: 12,
+                children: [{ type: 'text', name: 'Title', content: 'Hello' }],
+              },
+            ],
+          },
+        ],
       })
 
       const spec = extractSpecFromPen(penDoc)
