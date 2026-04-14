@@ -17,9 +17,13 @@
     "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test",
     "clean": "pnpm -r run clean",
     "setup": "node scripts/build-and-link.mjs",
-    "prepare": "lefthook install"
+    "prepare": "lefthook install",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "pnpm build && changeset publish"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.30.0",
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0",
     "@eslint/js": "^9.39.4",
