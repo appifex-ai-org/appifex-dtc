@@ -1,0 +1,17 @@
+{
+  "provider": "mock",
+  "auth": {
+    "providers": ["email"]
+  },
+  "data": {
+    "collections": [
+      {
+        "name": "items",
+        "fields": [
+          { "name": "id", "type": "string" },
+          { "name": "title", "type": "string" }
+        ]
+      }
+    ]
+  }
+}
