@@ -1,5 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
-import { ClaudeAdapter, type CodegenAdapter, type CodegenInput, type CodegenResult } from '../src/index.js'
+import {
+  ClaudeAdapter,
+  type CodegenAdapter,
+  type CodegenInput,
+  type CodegenResult,
+} from '../src/index.js'
 import type { Runner } from '@appifex/core'
 
 function mockRunner(): Runner {
@@ -9,17 +14,29 @@ function mockRunner(): Runner {
     writeFile: vi.fn().mockResolvedValue(undefined),
     exists: vi.fn().mockResolvedValue(true),
     glob: vi.fn().mockResolvedValue([]),
-    capabilities: { hasMaestro: false, hasXcode: false, hasNode: true, hasSemgrep: false, platform: 'darwin' },
+    capabilities: {
+      hasMaestro: false,
+      hasXcode: false,
+      hasNode: true,
+      hasSemgrep: false,
+      platform: 'darwin',
+    },
   }
 }
 
 const sampleInput: CodegenInput = {
   spec: {
     platform: 'swiftui',
-    screens: [{
-      id: 's1', name: 'Home', componentName: 'HomeView',
-      description: 'Main screen', components: [], testIds: {},
-    }],
+    screens: [
+      {
+        id: 's1',
+        name: 'Home',
+        componentName: 'HomeView',
+        description: 'Main screen',
+        components: [],
+        testIds: {},
+      },
+    ],
     designTokens: { colors: {}, typography: {}, spacing: {}, borderRadius: {} },
     imports: ['SwiftUI'],
   },
@@ -65,9 +82,7 @@ describe('ClaudeAdapter', () => {
     expect(result.success).toBe(true)
     expect(result.files).toHaveLength(2)
     expect(result.tokensUsed).toBe(5000)
-    expect(mockGenerate).toHaveBeenCalledWith(
-      expect.objectContaining({ spec: sampleInput.spec }),
-    )
+    expect(mockGenerate).toHaveBeenCalledWith(expect.objectContaining({ spec: sampleInput.spec }))
   })
 
   it('returns failure when generation fails', async () => {

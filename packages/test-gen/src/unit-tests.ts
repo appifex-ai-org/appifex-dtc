@@ -5,7 +5,7 @@ function toFunctionName(requirement: string): string {
     .replace(/[^a-zA-Z0-9\s]/g, '')
     .trim()
     .replace(/\s+(.)/g, (_, c) => c.toUpperCase())
-    .replace(/^\w/, c => c.toLowerCase())
+    .replace(/^\w/, (c) => c.toLowerCase())
 }
 
 function toSwiftFunctionName(requirement: string): string {
@@ -14,7 +14,7 @@ function toSwiftFunctionName(requirement: string): string {
 }
 
 function generateXCTestFile(requirements: string[]): TestFile {
-  const tests = requirements.map(req => {
+  const tests = requirements.map((req) => {
     const fnName = toSwiftFunctionName(req)
     return `    func ${fnName}() {\n        // TODO: implement\n        XCTAssertTrue(true)\n    }`
   })
@@ -36,7 +36,7 @@ ${tests.join('\n\n')}
 }
 
 function generateKotlinTestFile(requirements: string[]): TestFile {
-  const tests = requirements.map(req => {
+  const tests = requirements.map((req) => {
     const fnName = toFunctionName(req)
     return `    @Test\n    fun ${fnName}() {\n        // TODO: implement — write a real assertion\n        fail("Not yet implemented: ${req.replace(/"/g, '\\"')}")\n    }`
   })
@@ -75,10 +75,7 @@ export function generateUnitTests(requirements: string[], platform: Platform): T
  * (`ViewTests.swift` / `ScreenTest.kt`) for untouched screens is NEVER
  * opened or overwritten by test_regen. See Pitfall 3 in RESEARCH.md.
  */
-export function generateSpecUnitTests(
-  spec: PlatformSpec,
-  screenFilter?: Set<string>,
-): TestFile[] {
+export function generateSpecUnitTests(spec: PlatformSpec, screenFilter?: Set<string>): TestFile[] {
   // Backward-compat path: no filter → original behaviour, byte-identical.
   if (!screenFilter) {
     if (spec.platform === 'swiftui') {
@@ -137,7 +134,7 @@ function generateKotlinTestFromSpec(spec: PlatformSpec): TestFile {
 
     // Test interactive components are clickable
     const clickables = flattenAllComponents(screen.components)
-      .filter(c => ['Button', 'OutlinedTextField', 'Card'].includes(c.platformType) && c.testId)
+      .filter((c) => ['Button', 'OutlinedTextField', 'Card'].includes(c.platformType) && c.testId)
       .slice(0, 3)
     for (const comp of clickables) {
       tests.push(`    @Test
@@ -191,7 +188,7 @@ function generateXCTestFromSpec(spec: PlatformSpec): TestFile {
     // Test expected accessibility identifiers exist per screen
     const testIds = Object.values(screen.testIds)
     if (testIds.length > 0) {
-      const idList = testIds.map(id => `"${id}"`).join(', ')
+      const idList = testIds.map((id) => `"${id}"`).join(', ')
       tests.push(`    func test${viewName}AccessibilityIds() {
         let expectedIds: Set<String> = [${idList}]
         XCTAssertFalse(expectedIds.isEmpty, "${viewName} should declare accessibility identifiers")
@@ -231,7 +228,9 @@ ${tests.join('\n\n')}
   }
 }
 
-function flattenAllComponents(comps: import('@appifex/core').PlatformComponentSpec[]): import('@appifex/core').PlatformComponentSpec[] {
+function flattenAllComponents(
+  comps: import('@appifex/core').PlatformComponentSpec[],
+): import('@appifex/core').PlatformComponentSpec[] {
   const result: import('@appifex/core').PlatformComponentSpec[] = []
   for (const c of comps) {
     result.push(c)
@@ -239,4 +238,3 @@ function flattenAllComponents(comps: import('@appifex/core').PlatformComponentSp
   }
   return result
 }
-

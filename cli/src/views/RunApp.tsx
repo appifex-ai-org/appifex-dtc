@@ -124,8 +124,12 @@ function startSpinner(padded: string) {
   const phaseStart = Date.now()
   const cols = process.stdout.columns || 80
 
-  const tipTimer = setTimeout(() => { showTip = true }, 5_000)
-  const tipRotate = setInterval(() => { tipIdx++ }, 8_000)
+  const tipTimer = setTimeout(() => {
+    showTip = true
+  }, 5_000)
+  const tipRotate = setInterval(() => {
+    tipIdx++
+  }, 8_000)
 
   spinnerInterval = setInterval(() => {
     const elapsed = formatDuration(Date.now() - phaseStart)
@@ -134,11 +138,11 @@ function startSpinner(padded: string) {
     const tip = showTip ? chalk.dim(` · ${TIPS[tipIdx % TIPS.length]}`) : ''
     const line = `  ${frame} ${chalk.bold(padded)}${msgPart} ${chalk.dim(elapsed)}${tip}`
     const visible = line.replace(/\x1b\[[0-9;]*m/g, '')
-    const truncated = visible.length > cols ? line.slice(0, line.length - (visible.length - cols)) : line
+    const truncated =
+      visible.length > cols ? line.slice(0, line.length - (visible.length - cols)) : line
     process.stdout.write(`\r${truncated}\x1b[K`)
     frameIdx++
   }, 100)
-
   ;(spinnerInterval as any).__cleanup = () => {
     clearTimeout(tipTimer)
     clearInterval(tipRotate)
@@ -195,8 +199,7 @@ export async function renderRunApp(opts: PipelineOpts) {
       console.log(`  ${pr.platform.padEnd(16)} ${ui}  ${unit}`)
     }
 
-    const tokenEntries = Object.entries(result.report.tokenUsage)
-      .filter(([, v]) => v && v > 0)
+    const tokenEntries = Object.entries(result.report.tokenUsage).filter(([, v]) => v && v > 0)
     if (tokenEntries.length > 0) {
       console.log()
       console.log(chalk.dim(`  Token breakdown:`))
@@ -206,13 +209,20 @@ export async function renderRunApp(opts: PipelineOpts) {
     }
 
     console.log()
-    console.log(chalk.dim(`  Total: ${s.totalTokens.toLocaleString()} tokens  ${formatDuration(totalDuration)}  Design: ${s.designIterations} iteration${s.designIterations !== 1 ? 's' : ''}  Fix: ${s.fixAttempts} attempt${s.fixAttempts !== 1 ? 's' : ''}`))
+    console.log(
+      chalk.dim(
+        `  Total: ${s.totalTokens.toLocaleString()} tokens  ${formatDuration(totalDuration)}  Design: ${s.designIterations} iteration${s.designIterations !== 1 ? 's' : ''}  Fix: ${s.fixAttempts} attempt${s.fixAttempts !== 1 ? 's' : ''}`,
+      ),
+    )
     console.log()
   } catch (err) {
     stopSpinner()
     const totalDuration = Date.now() - pipelineStart
     console.log()
-    console.log(chalk.red(`  ✗ Pipeline failed: ${err instanceof Error ? err.message : err}`) + chalk.dim(` (${formatDuration(totalDuration)})`))
+    console.log(
+      chalk.red(`  ✗ Pipeline failed: ${err instanceof Error ? err.message : err}`) +
+        chalk.dim(` (${formatDuration(totalDuration)})`),
+    )
     console.log()
     process.exit(1)
   }

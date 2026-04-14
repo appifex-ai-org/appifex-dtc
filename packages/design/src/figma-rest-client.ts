@@ -51,7 +51,7 @@ export class FigmaRestClient implements FigmaMcpClientLike {
       throw new Error(`Figma API error ${resp.status}: ${body}`)
     }
 
-    const data = await resp.json() as FigmaFileResponse
+    const data = (await resp.json()) as FigmaFileResponse
 
     // Extract screen names from top-level frames
     const pages = data.document?.children ?? []
@@ -95,7 +95,7 @@ export class FigmaRestClient implements FigmaMcpClientLike {
       if (!fileResp.ok) {
         throw new Error(`Figma API error ${fileResp.status}`)
       }
-      const fileData = await fileResp.json() as FigmaFileResponse
+      const fileData = (await fileResp.json()) as FigmaFileResponse
       const firstFrame = findFirstFrame(fileData.document)
       if (!firstFrame) {
         throw new Error('No frames found in Figma file')
@@ -112,7 +112,7 @@ export class FigmaRestClient implements FigmaMcpClientLike {
       throw new Error(`Figma image API error ${imageResp.status}`)
     }
 
-    const imageData = await imageResp.json() as { images: Record<string, string | null> }
+    const imageData = (await imageResp.json()) as { images: Record<string, string | null> }
     const imageUrl = Object.values(imageData.images).find(Boolean)
     if (!imageUrl) {
       throw new Error('Figma returned no image URL')
@@ -186,24 +186,37 @@ function renderNode(node: FigmaNode, depth: number): string {
     return `${indent}<span${style}>${node.characters}</span>`
   }
 
-  const tag = node.type === 'TEXT' ? 'span'
-    : node.type === 'RECTANGLE' ? 'div'
-    : node.type === 'FRAME' || node.type === 'GROUP' ? 'div'
-    : node.type === 'COMPONENT' || node.type === 'INSTANCE' ? 'div'
-    : 'div'
+  const tag =
+    node.type === 'TEXT'
+      ? 'span'
+      : node.type === 'RECTANGLE'
+        ? 'div'
+        : node.type === 'FRAME' || node.type === 'GROUP'
+          ? 'div'
+          : node.type === 'COMPONENT' || node.type === 'INSTANCE'
+            ? 'div'
+            : 'div'
 
   if (!node.children?.length) {
     return `${indent}<${tag} data-name="${node.name}"${style} />`
   }
 
-  const children = node.children.map(c => renderNode(c, depth + 1)).join('\n')
+  const children = node.children.map((c) => renderNode(c, depth + 1)).join('\n')
   return `${indent}<${tag} data-name="${node.name}"${style}>\n${children}\n${indent}</${tag}>`
 }
 
 function extractColor(node: FigmaNode): string {
-  const fill = node.fills?.find(f => f.type === 'SOLID' && f.color)
+  const fill = node.fills?.find((f) => f.type === 'SOLID' && f.color)
   if (!fill?.color) return ''
   const { r, g, b } = fill.color
-  const hex = '#' + [r, g, b].map(c => Math.round(c * 255).toString(16).padStart(2, '0')).join('')
+  const hex =
+    '#' +
+    [r, g, b]
+      .map((c) =>
+        Math.round(c * 255)
+          .toString(16)
+          .padStart(2, '0'),
+      )
+      .join('')
   return `background-color: ${hex}`
 }

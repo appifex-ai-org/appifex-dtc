@@ -7,8 +7,8 @@ export function deriveAppName(prompt: string): string {
     .replace(/[^a-zA-Z0-9\s]/g, '')
     .trim()
     .split(/\s+/)
-    .filter(w => w.toLowerCase() !== 'app' && w.toLowerCase() !== 'application')
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .filter((w) => w.toLowerCase() !== 'app' && w.toLowerCase() !== 'application')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join('')
   if (!cleaned) return 'App'
   // Append "App" if the name doesn't already end with it
@@ -115,7 +115,7 @@ export async function patchProjectDependencies(
   // Strategy: insert a dependencies block before the *Tests target (always 2-space indented sibling).
   // This works whether or not the app target already has a dependencies key.
   const depsBlock = `    dependencies:\n${targetDeps}`
-  patched = patched.replace(/(\n  \w+Tests:)/m, `\n${depsBlock}\n$1`)
+  patched = patched.replace(/(\n {2}\w+Tests:)/m, `\n${depsBlock}\n$1`)
 
   await runner.writeFile(ymlPath, patched)
 }
@@ -129,7 +129,7 @@ async function detectSimulator(runner: Runner): Promise<string> {
 }
 
 export async function buildSwift(runner: Runner, opts: SwiftBuildOpts): Promise<BuildResult> {
-  const destination = opts.destination ?? await detectSimulator(runner)
+  const destination = opts.destination ?? (await detectSimulator(runner))
   const projectDir = opts.projectDir
 
   // Ensure Sources directory exists and has an app entry point
@@ -165,13 +165,18 @@ export async function buildSwift(runner: Runner, opts: SwiftBuildOpts): Promise<
   const appName = opts.scheme ?? 'App'
   const hasProjectYml = await runner.exists(`${projectDir}/project.yml`)
   if (!hasProjectYml) {
-    const yml = DEFAULT_PROJECT_YML.replace(/\bApp\b/g, appName).replace(/\bAppTests\b/g, `${appName}Tests`)
+    const yml = DEFAULT_PROJECT_YML.replace(/\bApp\b/g, appName).replace(
+      /\bAppTests\b/g,
+      `${appName}Tests`,
+    )
     await runner.writeFile(`${projectDir}/project.yml`, yml)
   } else if (appName !== 'App') {
     // Update existing project.yml to use the proper app name
     const existing = await runner.readFile(`${projectDir}/project.yml`)
     if (existing.includes('name: App')) {
-      const updated = existing.replace(/\bApp\b/g, appName).replace(/\bAppTests\b/g, `${appName}Tests`)
+      const updated = existing
+        .replace(/\bApp\b/g, appName)
+        .replace(/\bAppTests\b/g, `${appName}Tests`)
       await runner.writeFile(`${projectDir}/project.yml`, updated)
     }
   }
@@ -179,14 +184,24 @@ export async function buildSwift(runner: Runner, opts: SwiftBuildOpts): Promise<
   const commands: string[] = []
 
   // Clean stale build intermediates so xcodebuild does a fresh compile
-  const cleanResult = await runner.exec('rm', ['-rf', `${projectDir}/build/Build/Intermediates.noindex`])
+  const cleanResult = await runner.exec('rm', [
+    '-rf',
+    `${projectDir}/build/Build/Intermediates.noindex`,
+  ])
   commands.push(cleanResult.command)
 
   // Always regenerate .xcodeproj from project.yml to pick up source file changes
-  const genResult = await runner.exec('xcodegen', ['generate', '--spec', 'project.yml'], { cwd: projectDir })
+  const genResult = await runner.exec('xcodegen', ['generate', '--spec', 'project.yml'], {
+    cwd: projectDir,
+  })
   commands.push(genResult.command)
   if (genResult.exitCode !== 0) {
-    return { success: false, error: `xcodegen failed: ${genResult.stderr}`, duration: genResult.duration, commands }
+    return {
+      success: false,
+      error: `xcodegen failed: ${genResult.stderr}`,
+      duration: genResult.duration,
+      commands,
+    }
   }
 
   // Find the .xcodeproj
@@ -200,10 +215,14 @@ export async function buildSwift(runner: Runner, opts: SwiftBuildOpts): Promise<
   const buildDir = `${projectDir}/build/Build/Products`
 
   const args = [
-    '-project', projName,
-    '-scheme', scheme,
-    '-destination', destination,
-    '-derivedDataPath', 'build',
+    '-project',
+    projName,
+    '-scheme',
+    scheme,
+    '-destination',
+    destination,
+    '-derivedDataPath',
+    'build',
     '-allowProvisioningUpdates',
     'CONFIGURATION_BUILD_DIR=' + buildDir + '/Debug-iphonesimulator',
     'build',
@@ -223,9 +242,15 @@ export async function buildSwift(runner: Runner, opts: SwiftBuildOpts): Promise<
     }
 
     // Build a concise error summary instead of dumping raw stderr
-    const errorSummary = errors.length > 0
-      ? errors.map(e => `${e.file.split('/').slice(-2).join('/')}:${e.line}: ${e.message}`).join('\n')
-      : result.stderr.split('\n').filter(l => l.includes('error:')).join('\n') || result.stderr
+    const errorSummary =
+      errors.length > 0
+        ? errors
+            .map((e) => `${e.file.split('/').slice(-2).join('/')}:${e.line}: ${e.message}`)
+            .join('\n')
+        : result.stderr
+            .split('\n')
+            .filter((l) => l.includes('error:'))
+            .join('\n') || result.stderr
 
     return { success: false, error: errorSummary, errors, duration: result.duration, commands }
   }

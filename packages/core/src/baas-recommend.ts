@@ -1,8 +1,29 @@
 import type { PlatformSpec, BaasRecommendation } from './types.js'
 
 // Platform-specific component type sets for structural signal extraction
-const LIST_TYPES = new Set(['List', 'LazyVGrid', 'LazyVStack', 'ForEach', 'ScrollView', 'FlatList', 'LazyColumn', 'RecyclerView'])
-const INPUT_TYPES = new Set(['TextField', 'SecureField', 'TextEditor', 'Toggle', 'Picker', 'Slider', 'Stepper', 'DatePicker', 'TextInput', 'Switch', 'OutlinedTextField'])
+const LIST_TYPES = new Set([
+  'List',
+  'LazyVGrid',
+  'LazyVStack',
+  'ForEach',
+  'ScrollView',
+  'FlatList',
+  'LazyColumn',
+  'RecyclerView',
+])
+const INPUT_TYPES = new Set([
+  'TextField',
+  'SecureField',
+  'TextEditor',
+  'Toggle',
+  'Picker',
+  'Slider',
+  'Stepper',
+  'DatePicker',
+  'TextInput',
+  'Switch',
+  'OutlinedTextField',
+])
 const AGGREGATE_KEYWORDS = ['total', 'sum', 'aggregate', 'analytics', 'report', 'dashboard', 'stat']
 
 // Suffixes stripped when extracting entity names for self-referential pattern detection
@@ -49,7 +70,7 @@ function extractEntityName(screenName: string): string | null {
   const lower = screenName.toLowerCase()
   const words = lower.split(/\s+/)
   // Remove trailing words that are common screen-role suffixes
-  const filtered = words.filter(w => !SCREEN_SUFFIXES.includes(w))
+  const filtered = words.filter((w) => !SCREEN_SUFFIXES.includes(w))
   const entity = filtered.join(' ').trim()
   return entity.length > 3 ? entity : null
 }
@@ -63,13 +84,15 @@ export function extractBaasSignals(spec: PlatformSpec): BaasSignals {
   const screenCount = screens.length
 
   // hasAggregateDescriptions: any screen description contains an aggregate keyword
-  const hasAggregateDescriptions = screens.some(s =>
-    AGGREGATE_KEYWORDS.some(kw => s.description.toLowerCase().includes(kw)),
+  const hasAggregateDescriptions = screens.some((s) =>
+    AGGREGATE_KEYWORDS.some((kw) => s.description.toLowerCase().includes(kw)),
   )
 
   // hasListDetailPairs: any screen has a LIST_TYPE component AND another screen name contains 'detail' or 'item'
-  const hasScreenWithList = screens.some(s => anyComponent(s.components, t => LIST_TYPES.has(t)))
-  const hasScreenWithDetailOrItem = screens.some(s => {
+  const hasScreenWithList = screens.some((s) =>
+    anyComponent(s.components, (t) => LIST_TYPES.has(t)),
+  )
+  const hasScreenWithDetailOrItem = screens.some((s) => {
     const lower = s.name.toLowerCase()
     return lower.includes('detail') || lower.includes('item')
   })
@@ -83,12 +106,12 @@ export function extractBaasSignals(spec: PlatformSpec): BaasSignals {
       entityCounts.set(entity, (entityCounts.get(entity) ?? 0) + 1)
     }
   }
-  const hasSelfReferentialPatterns = Array.from(entityCounts.values()).some(count => count >= 2)
+  const hasSelfReferentialPatterns = Array.from(entityCounts.values()).some((count) => count >= 2)
 
   // avgInputsPerScreen: total INPUT_TYPE components / screenCount
   let totalInputs = 0
   for (const s of screens) {
-    totalInputs += countComponents(s.components, t => INPUT_TYPES.has(t))
+    totalInputs += countComponents(s.components, (t) => INPUT_TYPES.has(t))
   }
   const avgInputsPerScreen = screenCount > 0 ? totalInputs / screenCount : 0
 
@@ -111,7 +134,13 @@ export function extractBaasSignals(spec: PlatformSpec): BaasSignals {
  */
 export function assessBaasAppropriateness(spec: PlatformSpec): BaasRecommendation {
   const signals = extractBaasSignals(spec)
-  const { screenCount, hasListDetailPairs, hasSelfReferentialPatterns, hasAggregateDescriptions, avgInputsPerScreen } = signals
+  const {
+    screenCount,
+    hasListDetailPairs,
+    hasSelfReferentialPatterns,
+    hasAggregateDescriptions,
+    avgInputsPerScreen,
+  } = signals
 
   if (screenCount > 15 || hasAggregateDescriptions || hasSelfReferentialPatterns) {
     const reasons: string[] = []
@@ -127,7 +156,8 @@ export function assessBaasAppropriateness(spec: PlatformSpec): BaasRecommendatio
   if (screenCount > 8 || (hasListDetailPairs && avgInputsPerScreen > 3)) {
     const reasons: string[] = []
     if (screenCount > 8) reasons.push(`${screenCount} screens may strain BaaS query model`)
-    if (hasListDetailPairs && avgInputsPerScreen > 3) reasons.push(`list-detail pairs with ${avgInputsPerScreen.toFixed(1)} avg inputs/screen`)
+    if (hasListDetailPairs && avgInputsPerScreen > 3)
+      reasons.push(`list-detail pairs with ${avgInputsPerScreen.toFixed(1)} avg inputs/screen`)
     return {
       tier: 'caveats',
       reason: `BaaS appropriate with caveats: ${reasons.join('; ')}`,

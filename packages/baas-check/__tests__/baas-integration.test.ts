@@ -13,9 +13,15 @@ function mockRunner(files: Record<string, string> = {}): Runner {
     exists: vi.fn().mockResolvedValue(true),
     glob: vi.fn((pattern: string) => {
       const ext = pattern.endsWith('.swift') ? '.swift' : '.kt'
-      return Promise.resolve(Object.keys(files).filter(f => f.endsWith(ext)))
+      return Promise.resolve(Object.keys(files).filter((f) => f.endsWith(ext)))
     }),
-    capabilities: { hasMaestro: false, hasXcode: false, hasNode: true, hasSemgrep: false, platform: 'darwin' },
+    capabilities: {
+      hasMaestro: false,
+      hasXcode: false,
+      hasNode: true,
+      hasSemgrep: false,
+      platform: 'darwin',
+    },
   } as Runner
 }
 
@@ -41,7 +47,7 @@ class AuthManager {
 
       const result = await checkBaasIntegration(runner, '/project', firebaseBaasContext)
 
-      const violations = result.violations.filter(v => v.type === 'missing_import')
+      const violations = result.violations.filter((v) => v.type === 'missing_import')
       expect(violations).toHaveLength(1)
       expect(violations[0].file).toBe('AuthManager.swift')
       expect(violations[0].platform).toBe('swiftui')
@@ -64,7 +70,7 @@ class AuthManager {
 
       const result = await checkBaasIntegration(runner, '/project', firebaseBaasContext)
 
-      const violations = result.violations.filter(v => v.type === 'missing_import')
+      const violations = result.violations.filter((v) => v.type === 'missing_import')
       expect(violations).toHaveLength(0)
     })
 
@@ -78,7 +84,7 @@ class AuthManager {}`,
 
       const result = await checkBaasIntegration(runner, '/project', firebaseBaasContext)
 
-      const violations = result.violations.filter(v => v.type === 'missing_import')
+      const violations = result.violations.filter((v) => v.type === 'missing_import')
       expect(violations).toHaveLength(0)
     })
 
@@ -92,7 +98,7 @@ class AuthManager {
 
       const result = await checkBaasIntegration(runner, '/project', firebaseBaasContext)
 
-      const violations = result.violations.filter(v => v.type === 'missing_import')
+      const violations = result.violations.filter((v) => v.type === 'missing_import')
       expect(violations).toHaveLength(1)
       expect(violations[0].file).toBe('AuthManager.kt')
       expect(violations[0].platform).toBe('kotlin-compose')
@@ -113,7 +119,7 @@ class AuthManager {
 
       const result = await checkBaasIntegration(runner, '/project', firebaseBaasContext)
 
-      const violations = result.violations.filter(v => v.type === 'missing_import')
+      const violations = result.violations.filter((v) => v.type === 'missing_import')
       expect(violations).toHaveLength(0)
     })
   })
@@ -134,7 +140,7 @@ class AuthViewModel {
 
       const result = await checkBaasIntegration(runner, '/project', firebaseBaasContext)
 
-      const violations = result.violations.filter(v => v.type === 'facade_auth')
+      const violations = result.violations.filter((v) => v.type === 'facade_auth')
       expect(violations).toHaveLength(1)
       expect(violations[0].file).toBe('AuthViewModel.swift')
       expect(violations[0].platform).toBe('swiftui')
@@ -158,7 +164,7 @@ class AuthViewModel {
 
       const result = await checkBaasIntegration(runner, '/project', firebaseBaasContext)
 
-      const violations = result.violations.filter(v => v.type === 'facade_auth')
+      const violations = result.violations.filter((v) => v.type === 'facade_auth')
       expect(violations).toHaveLength(0)
     })
 
@@ -176,7 +182,7 @@ struct ProfileView: View {
 
       const result = await checkBaasIntegration(runner, '/project', firebaseBaasContext)
 
-      const violations = result.violations.filter(v => v.type === 'facade_auth')
+      const violations = result.violations.filter((v) => v.type === 'facade_auth')
       expect(violations).toHaveLength(0)
     })
 
@@ -192,7 +198,7 @@ class AuthViewModel {
 
       const result = await checkBaasIntegration(runner, '/project', firebaseBaasContext)
 
-      const violations = result.violations.filter(v => v.type === 'facade_auth')
+      const violations = result.violations.filter((v) => v.type === 'facade_auth')
       expect(violations).toHaveLength(1)
       expect(violations[0].file).toBe('AuthViewModel.kt')
       expect(violations[0].platform).toBe('kotlin-compose')
@@ -211,7 +217,7 @@ class AuthViewModel {
 
       const result = await checkBaasIntegration(runner, '/project', firebaseBaasContext)
 
-      const violations = result.violations.filter(v => v.type === 'facade_auth')
+      const violations = result.violations.filter((v) => v.type === 'facade_auth')
       expect(violations).toHaveLength(0)
     })
   })
@@ -233,7 +239,7 @@ class AuthViewModel {
 
       const result = await checkBaasIntegration(runner, '/project', firebaseBaasContext)
 
-      const violations = result.violations.filter(v => v.type === 'facade_auth')
+      const violations = result.violations.filter((v) => v.type === 'facade_auth')
       expect(violations).toHaveLength(1)
       expect(violations[0].matched).toContain('isAuthenticated')
     })
@@ -252,7 +258,7 @@ class AuthViewModel {
 
       const result = await checkBaasIntegration(runner, '/project', firebaseBaasContext)
 
-      const violations = result.violations.filter(v => v.type === 'facade_auth')
+      const violations = result.violations.filter((v) => v.type === 'facade_auth')
       expect(violations).toHaveLength(1)
     })
 
@@ -272,7 +278,7 @@ class AuthViewModel {
 
       const result = await checkBaasIntegration(runner, '/project', firebaseBaasContext)
 
-      const violations = result.violations.filter(v => v.type === 'facade_auth')
+      const violations = result.violations.filter((v) => v.type === 'facade_auth')
       expect(violations).toHaveLength(0)
     })
   })
@@ -282,7 +288,8 @@ class AuthViewModel {
   describe('DET-04: template overwrite', () => {
     it('wiringMetadata with templateHashes, content changed -> template_overwritten violation', async () => {
       const originalContent = 'import FirebaseAuth\nclass AuthManager {}'
-      const modifiedContent = 'import FirebaseAuth\nclass AuthManager { var isAuthenticated = true }'
+      const modifiedContent =
+        'import FirebaseAuth\nclass AuthManager { var isAuthenticated = true }'
       const originalHash = createHash('sha256').update(originalContent).digest('hex')
 
       const runner = mockRunner({
@@ -300,7 +307,7 @@ class AuthViewModel {
 
       const result = await checkBaasIntegration(runner, '/project', baasContext)
 
-      const violations = result.violations.filter(v => v.type === 'template_overwritten')
+      const violations = result.violations.filter((v) => v.type === 'template_overwritten')
       expect(violations).toHaveLength(1)
       expect(violations[0].file).toBe('AuthManager.swift')
       expect(violations[0].type).toBe('template_overwritten')
@@ -327,7 +334,7 @@ class AuthViewModel {
 
       const result = await checkBaasIntegration(runner, '/project', baasContext)
 
-      const violations = result.violations.filter(v => v.type === 'template_overwritten')
+      const violations = result.violations.filter((v) => v.type === 'template_overwritten')
       expect(violations).toHaveLength(0)
     })
 
@@ -344,7 +351,7 @@ class AuthViewModel {
       await expect(checkBaasIntegration(runner, '/project', baasContext)).resolves.not.toThrow()
 
       const result = await checkBaasIntegration(runner, '/project', baasContext)
-      const violations = result.violations.filter(v => v.type === 'template_overwritten')
+      const violations = result.violations.filter((v) => v.type === 'template_overwritten')
       expect(violations).toHaveLength(0)
     })
 
@@ -359,12 +366,14 @@ class AuthViewModel {
       }
 
       const result = await checkBaasIntegration(runner, '/project', baasContext)
-      const violations = result.violations.filter(v => v.type === 'template_overwritten')
+      const violations = result.violations.filter((v) => v.type === 'template_overwritten')
       expect(violations).toHaveLength(0)
     })
 
     it('template file deleted (empty content from readFile) -> template_overwritten violation', async () => {
-      const originalHash = createHash('sha256').update('import FirebaseAuth\nclass AuthManager {}').digest('hex')
+      const originalHash = createHash('sha256')
+        .update('import FirebaseAuth\nclass AuthManager {}')
+        .digest('hex')
 
       // File exists in glob but readFile returns empty string (deleted/empty)
       const runner = mockRunner({
@@ -382,7 +391,7 @@ class AuthViewModel {
 
       const result = await checkBaasIntegration(runner, '/project', baasContext)
 
-      const violations = result.violations.filter(v => v.type === 'template_overwritten')
+      const violations = result.violations.filter((v) => v.type === 'template_overwritten')
       expect(violations).toHaveLength(1)
       expect(violations[0].file).toBe('AuthManager.swift')
     })
@@ -425,7 +434,8 @@ class AuthManager {
       const runner = mockRunner({
         '/project/AuthManager.swift': 'import FirebaseAuth\nclass AuthManager {}',
         '/project/ProfileView.swift': 'import FirebaseAuth\nstruct ProfileView {}',
-        '/project/AuthViewModel.kt': 'import com.google.firebase.auth.FirebaseAuth\nclass AuthViewModel {}',
+        '/project/AuthViewModel.kt':
+          'import com.google.firebase.auth.FirebaseAuth\nclass AuthViewModel {}',
       })
 
       const result = await checkBaasIntegration(runner, '/project', firebaseBaasContext)
@@ -476,7 +486,7 @@ class AuthManager {
 
       const result = await checkBaasIntegration(runner, '/project', firebaseBaasContext)
 
-      const violations = result.violations.filter(v => v.type === 'missing_sdk_call')
+      const violations = result.violations.filter((v) => v.type === 'missing_sdk_call')
       expect(violations).toHaveLength(1)
       expect(violations[0].file).toBe('AuthManager.swift')
       expect(violations[0].platform).toBe('swiftui')

@@ -37,7 +37,9 @@ export function checkBaasParity(result: BaasIntegrationResult): BaasParityResult
         parityViolations.push({
           passingPlatform: platformA,
           failingPlatform: platformB,
-          failingViolationTypes: [...new Set(violationsB.map(v => v.type))] as BaasViolationType[],
+          failingViolationTypes: [
+            ...new Set(violationsB.map((v) => v.type)),
+          ] as BaasViolationType[],
           remediation: `Platform ${platformB} has integration violations while ${platformA} passes. Fix ${platformB} to use real Firebase Auth.`,
         })
       }

@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { StitchAdapter, type StitchClientLike, type StitchScreenLike } from '../src/stitch-adapter.js'
+import {
+  StitchAdapter,
+  type StitchClientLike,
+  type StitchScreenLike,
+} from '../src/stitch-adapter.js'
 import type { Runner, ExecResult } from '@appifex/core'
 
 // Mock fs/promises to avoid real file writes in tests
@@ -10,12 +14,25 @@ vi.mock('node:fs/promises', () => ({
 
 function mockRunner(execResult: Partial<ExecResult> = {}): Runner {
   return {
-    exec: vi.fn().mockResolvedValue({ exitCode: 0, stdout: '', stderr: '', duration: 100, command: '', ...execResult }),
+    exec: vi.fn().mockResolvedValue({
+      exitCode: 0,
+      stdout: '',
+      stderr: '',
+      duration: 100,
+      command: '',
+      ...execResult,
+    }),
     readFile: vi.fn().mockResolvedValue(''),
     writeFile: vi.fn().mockResolvedValue(undefined),
     exists: vi.fn().mockResolvedValue(true),
     glob: vi.fn().mockResolvedValue([]),
-    capabilities: { hasMaestro: false, hasXcode: false, hasNode: true, hasSemgrep: false, platform: 'darwin' },
+    capabilities: {
+      hasMaestro: false,
+      hasXcode: false,
+      hasNode: true,
+      hasSemgrep: false,
+      platform: 'darwin',
+    },
   }
 }
 
@@ -42,7 +59,8 @@ function mockFetchImpl(htmlContent = '<html></html>', imageContent = 'PNG'): typ
   return vi.fn().mockImplementation(async (url: string) => ({
     ok: true,
     text: async () => htmlContent,
-    arrayBuffer: async () => new TextEncoder().encode(url.includes('.png') ? imageContent : htmlContent).buffer,
+    arrayBuffer: async () =>
+      new TextEncoder().encode(url.includes('.png') ? imageContent : htmlContent).buffer,
   })) as unknown as typeof fetch
 }
 
@@ -140,7 +158,9 @@ describe('StitchAdapter', () => {
   })
 
   it('create() returns success:false when download fails', async () => {
-    const failFetch = vi.fn().mockResolvedValue({ ok: false, status: 403 }) as unknown as typeof fetch
+    const failFetch = vi
+      .fn()
+      .mockResolvedValue({ ok: false, status: 403 }) as unknown as typeof fetch
 
     const adapter = new StitchAdapter(runner, {
       apiKey: 'test-key',

@@ -32,9 +32,7 @@ describe('generateAuthTemplates — AuthManager', () => {
   // Test 3: Firebase Kotlin AuthManager at correct path with object and StateFlow
   it('generates Firebase Kotlin AuthManager with object and StateFlow', () => {
     const result = generateAuthTemplates('firebase', ['kotlin'])
-    const kotlin = result.find(
-      (f) => f.path === 'app/src/main/java/auth/AuthManager.kt',
-    )
+    const kotlin = result.find((f) => f.path === 'app/src/main/java/auth/AuthManager.kt')
     expect(kotlin).toBeDefined()
     expect(kotlin!.content).toContain('object AuthManager')
     expect(kotlin!.content).toContain('StateFlow')
@@ -51,9 +49,7 @@ describe('generateAuthTemplates — AuthManager', () => {
   // Test 5: Supabase Kotlin AuthManager uses signInWith(Email) DSL
   it('Supabase Kotlin AuthManager uses signInWith(Email)', () => {
     const result = generateAuthTemplates('supabase', ['kotlin'])
-    const kotlin = result.find(
-      (f) => f.path === 'app/src/main/java/auth/AuthManager.kt',
-    )
+    const kotlin = result.find((f) => f.path === 'app/src/main/java/auth/AuthManager.kt')
     expect(kotlin).toBeDefined()
     expect(kotlin!.content).toContain('signInWith(Email)')
   })
@@ -105,9 +101,7 @@ describe('generateAuthTemplates — AuthManager', () => {
   // Test 10: Firebase Kotlin AuthManager contains awaitClose for listener cleanup
   it('Firebase Kotlin AuthManager uses awaitClose in callbackFlow', () => {
     const result = generateAuthTemplates('firebase', ['kotlin'])
-    const kotlin = result.find(
-      (f) => f.path === 'app/src/main/java/auth/AuthManager.kt',
-    )
+    const kotlin = result.find((f) => f.path === 'app/src/main/java/auth/AuthManager.kt')
     expect(kotlin).toBeDefined()
     expect(kotlin!.content).toContain('awaitClose')
   })
@@ -206,9 +200,7 @@ describe('generateAuthTemplates — Screen Templates', () => {
   // Test 8: Kotlin LoginScreen contains AuthManager.signIn and Compose structure
   it('Kotlin LoginScreen contains AuthManager.signIn and Compose structure', () => {
     const result = generateAuthTemplates('firebase', ['kotlin'])
-    const login = result.find(
-      (f) => f.path === 'app/src/main/java/auth/LoginScreen.kt',
-    )
+    const login = result.find((f) => f.path === 'app/src/main/java/auth/LoginScreen.kt')
     expect(login).toBeDefined()
     expect(login!.content).toContain('AuthManager.signIn')
     expect(login!.content).toContain('@Composable')
@@ -218,9 +210,7 @@ describe('generateAuthTemplates — Screen Templates', () => {
   it('all Kotlin screen templates contain Text(error for inline error display', () => {
     const result = generateAuthTemplates('firebase', ['kotlin'])
     const screens = result.filter(
-      (f) =>
-        f.path.startsWith('app/src/main/java/auth/') &&
-        !f.path.includes('AuthManager'),
+      (f) => f.path.startsWith('app/src/main/java/auth/') && !f.path.includes('AuthManager'),
     )
     expect(screens.length).toBe(4)
     for (const screen of screens) {

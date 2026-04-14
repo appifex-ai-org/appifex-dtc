@@ -111,8 +111,8 @@ describe('Phase 13: generic savePhase + lastCompletedPhase', () => {
   it('lastCompletedPhase returns highest-rowid completed across mixed trail', () => {
     const ckpt = new Checkpoint(':memory:')
     ckpt.savePhase('r', 'analysis', { status: 'completed', completedAt: 'a' })
-    ckpt.savePhase('r', 'design',   { status: 'completed', completedAt: 'b' })
-    ckpt.savePhase('r', 'spec',     { status: 'failed', error: 'boom', failedAt: 'c' })
+    ckpt.savePhase('r', 'design', { status: 'completed', completedAt: 'b' })
+    ckpt.savePhase('r', 'spec', { status: 'failed', error: 'boom', failedAt: 'c' })
     expect(ckpt.lastCompletedPhase('r')).toBe('design')
     ckpt.close()
   })

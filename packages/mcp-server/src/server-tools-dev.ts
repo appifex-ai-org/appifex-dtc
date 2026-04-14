@@ -1,4 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { CommandCollectingRunner } from './command-collecting-runner.js'
 import { handleSpecExtract, handleSpecTranslate } from './tools/spec.js'
@@ -13,8 +13,14 @@ import { handleLoadContext, handleSaveContext } from './tools/config.js'
 
 const PLATFORM = z.enum(['swiftui', 'kotlin-compose']).describe('Target platform')
 
-type ResolveRunner = (projectDir: string, configDir?: string) => Promise<{ runner: CommandCollectingRunner; config: any }>
-type InjectCommands = (result: { text: string; isError: boolean }, runner: CommandCollectingRunner) => { text: string; isError: boolean }
+type ResolveRunner = (
+  projectDir: string,
+  configDir?: string,
+) => Promise<{ runner: CommandCollectingRunner; config: any }>
+type InjectCommands = (
+  result: { text: string; isError: boolean },
+  runner: CommandCollectingRunner,
+) => { text: string; isError: boolean }
 
 export function registerDevTools(
   server: McpServer,
@@ -98,8 +104,14 @@ export function registerDevTools(
     {
       platform: PLATFORM,
       projectDir: z.string().describe('Absolute path to the project directory'),
-      flowDir: z.string().optional().describe('Maestro flows directory (defaults to <projectDir>/.maestro)'),
-      testDir: z.string().optional().describe('Unit tests directory (defaults to <projectDir>/__tests__)'),
+      flowDir: z
+        .string()
+        .optional()
+        .describe('Maestro flows directory (defaults to <projectDir>/.maestro)'),
+      testDir: z
+        .string()
+        .optional()
+        .describe('Unit tests directory (defaults to <projectDir>/__tests__)'),
       runSecurity: z.boolean().optional().describe('Run Semgrep security scan (defaults to true)'),
       configDir: z.string().optional(),
     },
@@ -202,17 +214,42 @@ export function registerDevTools(
     'dtc_provision_submit',
     'Build and submit an app to TestFlight (iOS) or Play Console Internal Testing (Android). Auto-detects platform from the project directory, or specify explicitly.',
     {
-      projectDir: z.string().optional().describe('Absolute path to the project directory (required if ipaPath/aabPath is not provided)'),
+      projectDir: z
+        .string()
+        .optional()
+        .describe(
+          'Absolute path to the project directory (required if ipaPath/aabPath is not provided)',
+        ),
       scheme: z.string().optional().describe('Xcode scheme name (iOS only, defaults to App)'),
-      ipaPath: z.string().optional().describe('Path to a pre-built .ipa file (iOS, skips archive if provided)'),
-      aabPath: z.string().optional().describe('Path to a pre-built .aab file (Android, skips build if provided)'),
-      platform: z.enum(['ios', 'android']).optional().describe('Target platform (auto-detected from project if omitted)'),
-      exportMethod: z.enum(['app-store', 'ad-hoc', 'development']).optional().describe('Export method for iOS (defaults to app-store)'),
+      ipaPath: z
+        .string()
+        .optional()
+        .describe('Path to a pre-built .ipa file (iOS, skips archive if provided)'),
+      aabPath: z
+        .string()
+        .optional()
+        .describe('Path to a pre-built .aab file (Android, skips build if provided)'),
+      platform: z
+        .enum(['ios', 'android'])
+        .optional()
+        .describe('Target platform (auto-detected from project if omitted)'),
+      exportMethod: z
+        .enum(['app-store', 'ad-hoc', 'development'])
+        .optional()
+        .describe('Export method for iOS (defaults to app-store)'),
       configDir: z.string().optional(),
     },
     async (args) => {
       if (!args.ipaPath && !args.aabPath && !args.projectDir) {
-        return { content: [{ type: 'text' as const, text: 'Either projectDir, ipaPath, or aabPath must be provided.' }], isError: true }
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: 'Either projectDir, ipaPath, or aabPath must be provided.',
+            },
+          ],
+          isError: true,
+        }
       }
       const { runner, config } = await resolveRunner(args.projectDir ?? '.', args.configDir)
       const raw = await handleProvisionSubmit(args, runner, config)

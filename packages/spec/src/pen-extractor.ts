@@ -1,4 +1,11 @@
-import type { DesignSpec, ScreenSpec, ComponentSpec, DesignTokens, NavigationSpec, ComponentType } from '@appifex/core'
+import type {
+  DesignSpec,
+  ScreenSpec,
+  ComponentSpec,
+  DesignTokens,
+  NavigationSpec,
+  ComponentType,
+} from '@appifex/core'
 import { extractNavigation, describeScreen } from './pen-navigation.js'
 
 /**
@@ -30,8 +37,8 @@ export function extractSpecFromPenObject(pen: PenDocument): DesignSpec {
   }
 
   // Extract screens from top-level frames only
-  const frames = pen.children.filter(child => child.type === 'frame')
-  const screens: ScreenSpec[] = frames.map(frame => extractScreen(frame, resolveColor))
+  const frames = pen.children.filter((child) => child.type === 'frame')
+  const screens: ScreenSpec[] = frames.map((frame) => extractScreen(frame, resolveColor))
 
   // Extract design tokens from variables
   const designTokens = extractDesignTokens(vars)
@@ -52,7 +59,7 @@ function extractScreen(frame: PenNode, resolveColor: (val: unknown) => string): 
   const seenIds = new Set<string>() // fresh per screen — no module-level state
 
   const direction = frame.layout === 'horizontal' ? 'horizontal' : 'vertical'
-  const layoutType = frame.layout === 'none' ? 'absolute' as const : 'stack' as const
+  const layoutType = frame.layout === 'none' ? ('absolute' as const) : ('stack' as const)
 
   return {
     id,
@@ -79,7 +86,11 @@ function deduplicateId(baseId: string, seenIds: Set<string>): string {
   return uniqueId
 }
 
-function extractComponents(nodes: PenNode[], resolveColor: (val: unknown) => string, seenIds: Set<string>): ComponentSpec[] {
+function extractComponents(
+  nodes: PenNode[],
+  resolveColor: (val: unknown) => string,
+  seenIds: Set<string>,
+): ComponentSpec[] {
   const components: ComponentSpec[] = []
 
   for (const node of nodes) {
@@ -93,14 +104,19 @@ function extractComponents(nodes: PenNode[], resolveColor: (val: unknown) => str
   return components
 }
 
-function nodeToComponent(node: PenNode, resolveColor: (val: unknown) => string, seenIds: Set<string>): ComponentSpec | null {
+function nodeToComponent(
+  node: PenNode,
+  resolveColor: (val: unknown) => string,
+  seenIds: Set<string>,
+): ComponentSpec | null {
   const name = node.name ?? 'unnamed'
   const id = deduplicateId(`comp-${toKebab(name)}`, seenIds)
   const type = mapPenType(node)
 
   // Extract style
   const style: Record<string, unknown> = {}
-  if (node.cornerRadius) style.borderRadius = Array.isArray(node.cornerRadius) ? node.cornerRadius[0] : node.cornerRadius
+  if (node.cornerRadius)
+    style.borderRadius = Array.isArray(node.cornerRadius) ? node.cornerRadius[0] : node.cornerRadius
   if (node.width) style.width = node.width
   if (node.height) style.height = node.height
 
@@ -123,7 +139,7 @@ function nodeToComponent(node: PenNode, resolveColor: (val: unknown) => string, 
   }
 
   // Shadow (first drop shadow effect)
-  const shadow = node.effects?.find(e => e.type === 'drop_shadow' || e.type === 'shadow')
+  const shadow = node.effects?.find((e) => e.type === 'drop_shadow' || e.type === 'shadow')
   if (shadow) {
     style.shadow = {
       color: resolveColor(shadow.color),
@@ -162,7 +178,7 @@ function nodeToComponent(node: PenNode, resolveColor: (val: unknown) => string, 
   }
 
   // Image fill data
-  const imageFill = node.fills?.find(f => f.type === 'image')
+  const imageFill = node.fills?.find((f) => f.type === 'image')
   if (imageFill) {
     if (imageFill.url) props.imageUrl = imageFill.url
     if (imageFill.mode) props.imageFillMode = imageFill.mode
@@ -170,7 +186,7 @@ function nodeToComponent(node: PenNode, resolveColor: (val: unknown) => string, 
 
   // Recurse children
   const children = (node.children ?? [])
-    .map(child => nodeToComponent(child, resolveColor, seenIds))
+    .map((child) => nodeToComponent(child, resolveColor, seenIds))
     .filter((c): c is ComponentSpec => c !== null)
 
   return { id, type, name, props, children: children.length > 0 ? children : undefined, style }
@@ -189,7 +205,8 @@ function mapPenType(node: PenNode): ComponentType {
   if (name.includes('button') || name.includes('btn')) return 'button'
   if (name.includes('input') || name.includes('field') || name.includes('textfield')) return 'input'
   if (name.includes('tab bar') || name.includes('tabbar')) return 'tab-bar'
-  if (name.includes('nav bar') || name.includes('navbar') || name.includes('header')) return 'navigation-bar'
+  if (name.includes('nav bar') || name.includes('navbar') || name.includes('header'))
+    return 'navigation-bar'
   if (name.includes('list') || name.includes('scroll')) return 'scroll-view'
   if (name.includes('card')) return 'card'
   if (name.includes('modal') || name.includes('sheet')) return 'modal'
@@ -198,14 +215,24 @@ function mapPenType(node: PenNode): ComponentType {
   return 'view'
 }
 
-function normalizePadding(padding: number | number[]): { top: number; right: number; bottom: number; left: number } {
+function normalizePadding(padding: number | number[]): {
+  top: number
+  right: number
+  bottom: number
+  left: number
+} {
   if (typeof padding === 'number') {
     return { top: padding, right: padding, bottom: padding, left: padding }
   }
   if (padding.length === 2) {
     return { top: padding[0], right: padding[1], bottom: padding[0], left: padding[1] }
   }
-  return { top: padding[0] ?? 0, right: padding[1] ?? 0, bottom: padding[2] ?? 0, left: padding[3] ?? 0 }
+  return {
+    top: padding[0] ?? 0,
+    right: padding[1] ?? 0,
+    bottom: padding[2] ?? 0,
+    left: padding[3] ?? 0,
+  }
 }
 
 function resolveFill(node: PenNode, resolveColor: (val: unknown) => string): string | undefined {
@@ -278,11 +305,11 @@ export interface PenNode {
   id?: string
   name?: string
   content?: string
-  width?: number | string  // can be "fill_container" or "fit_content"
+  width?: number | string // can be "fill_container" or "fit_content"
   height?: number | string
   fill?: string
   fills?: Array<{ color?: string; type?: string; url?: string; mode?: string; opacity?: number }>
-  cornerRadius?: number | number[]  // uniform or per-corner [tl, tr, br, bl]
+  cornerRadius?: number | number[] // uniform or per-corner [tl, tr, br, bl]
   fontSize?: number
   fontWeight?: string
   fontFamily?: string
@@ -293,7 +320,7 @@ export interface PenNode {
   // Layout (flexbox)
   layout?: 'none' | 'vertical' | 'horizontal'
   gap?: number
-  padding?: number | number[]  // single, [v,h], or [t,r,b,l]
+  padding?: number | number[] // single, [v,h], or [t,r,b,l]
   justifyContent?: 'start' | 'center' | 'end' | 'space_between' | 'space_around'
   alignItems?: 'start' | 'center' | 'end'
   layoutPosition?: 'auto' | 'absolute'
@@ -301,7 +328,15 @@ export interface PenNode {
   iconFontFamily?: string
   iconFontName?: string
   // Effects
-  effects?: Array<{ type: string; color?: string; offsetX?: number; offsetY?: number; blur?: number; spread?: number; inner?: boolean }>
+  effects?: Array<{
+    type: string
+    color?: string
+    offsetX?: number
+    offsetY?: number
+    blur?: number
+    spread?: number
+    inner?: boolean
+  }>
   stroke?: { color?: string; width?: number; alignment?: string }
   children?: PenNode[]
 }

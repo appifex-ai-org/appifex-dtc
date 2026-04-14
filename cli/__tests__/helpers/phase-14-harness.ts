@@ -31,9 +31,9 @@ export interface Phase14ScenarioOpts {
   sourceFiles: Record<string, string>
   /** Optional: mutations to apply to sourceFiles on disk after snapshot (to simulate drift). */
   driftMutations?: {
-    modify?: Record<string, string>  // path → new content
-    remove?: string[]                // paths to delete
-    add?: Record<string, string>     // NEW files (NOT drift per D-15)
+    modify?: Record<string, string> // path → new content
+    remove?: string[] // paths to delete
+    add?: Record<string, string> // NEW files (NOT drift per D-15)
   }
   /** Force a corrupt checkpoint DB (D-04). */
   corruptCheckpointDb?: boolean
@@ -57,7 +57,9 @@ export interface Phase14ScenarioResult {
   error: Error | null
 }
 
-export async function runPhase14Scenario(opts: Phase14ScenarioOpts): Promise<Phase14ScenarioResult> {
+export async function runPhase14Scenario(
+  opts: Phase14ScenarioOpts,
+): Promise<Phase14ScenarioResult> {
   const tmpDir = await mkdtemp(join(tmpdir(), 'phase14-'))
   const dtcDir = join(tmpDir, '.dtc')
   await mkdir(dtcDir, { recursive: true })
@@ -79,7 +81,9 @@ export async function runPhase14Scenario(opts: Phase14ScenarioOpts): Promise<Pha
 
   // 3. Write run-context (unless omitted)
   if (!opts.omitRunContext) {
-    const ctxRunId = opts.runIdMismatch ? `run-mismatch-${randomUUID().slice(0, 8)}` : checkpointRunId
+    const ctxRunId = opts.runIdMismatch
+      ? `run-mismatch-${randomUUID().slice(0, 8)}`
+      : checkpointRunId
     const ctx: RunContext = {
       runId: ctxRunId,
       prompt: 'test',
@@ -100,7 +104,7 @@ export async function runPhase14Scenario(opts: Phase14ScenarioOpts): Promise<Pha
   if (opts.corruptCheckpointDb) {
     // Write zero bytes to force better-sqlite3 to throw on read
     await writeFile(join(dtcDir, 'checkpoint.db'), '')
-    checkpoint = new Checkpoint(':memory:')  // stub; never actually used
+    checkpoint = new Checkpoint(':memory:') // stub; never actually used
   } else {
     checkpoint = new Checkpoint(join(dtcDir, 'checkpoint.db'))
     // Seed analysis row with real sidecar metadata
@@ -113,16 +117,31 @@ export async function runPhase14Scenario(opts: Phase14ScenarioOpts): Promise<Pha
     })
     // Seed every phase up to interruptAfter as completed
     const PHASE_ORDER: PhaseId[] = [
-      'analysis','design','spec','design_delta','test_gen','codegen',
-      'test_regen','build','validate','security','fix','deliver','report',
+      'analysis',
+      'design',
+      'spec',
+      'design_delta',
+      'test_gen',
+      'codegen',
+      'test_regen',
+      'build',
+      'validate',
+      'security',
+      'fix',
+      'deliver',
+      'report',
     ]
     const stopIdx = PHASE_ORDER.indexOf(opts.interruptAfter)
     for (let i = 1; i <= stopIdx; i++) {
       const phase = PHASE_ORDER[i]
       const isSkipped = opts.skippedPhases?.includes(phase) ?? false
-      checkpoint.savePhase(checkpointRunId, phase, isSkipped
-        ? { status: 'skipped', reason: 'test-skip', completedAt: new Date().toISOString() }
-        : { status: 'completed', completedAt: new Date().toISOString() })
+      checkpoint.savePhase(
+        checkpointRunId,
+        phase,
+        isSkipped
+          ? { status: 'skipped', reason: 'test-skip', completedAt: new Date().toISOString() }
+          : { status: 'completed', completedAt: new Date().toISOString() },
+      )
     }
   }
 
@@ -152,7 +171,9 @@ export async function runPhase14Scenario(opts: Phase14ScenarioOpts): Promise<Pha
       for (const f of snapshotFiles) {
         await unlink(join(dtcDir, 'snapshots', f))
       }
-    } catch { /* ignore — test will fail downstream if deletion didn't happen */ }
+    } catch {
+      /* ignore — test will fail downstream if deletion didn't happen */
+    }
   }
 
   // 6. Load previousContext (real loader)
@@ -171,12 +192,18 @@ export async function runPhase14Scenario(opts: Phase14ScenarioOpts): Promise<Pha
       previousContext,
       checkpoint,
       checkpointRunId,
-      logBanner: (msg) => { bannerLines.push(msg) },
+      logBanner: (msg) => {
+        bannerLines.push(msg)
+      },
     })
   } catch (err) {
     error = err as Error
   }
 
-  try { checkpoint.close() } catch { /* ignore */ }
+  try {
+    checkpoint.close()
+  } catch {
+    /* ignore */
+  }
   return { tmpDir, dtcDir, checkpointRunId, resumeState, bannerLines, error }
 }

@@ -4,12 +4,20 @@ import type { Runner, ExecResult } from '@appifex/core'
 
 function mockRunner(): Runner {
   return {
-    exec: vi.fn().mockResolvedValue({ exitCode: 0, stdout: '', stderr: '', duration: 100 } as ExecResult),
+    exec: vi
+      .fn()
+      .mockResolvedValue({ exitCode: 0, stdout: '', stderr: '', duration: 100 } as ExecResult),
     readFile: vi.fn().mockResolvedValue('FAKE_IMAGE_DATA'),
     writeFile: vi.fn().mockResolvedValue(undefined),
     exists: vi.fn().mockResolvedValue(true),
     glob: vi.fn().mockResolvedValue([]),
-    capabilities: { hasMaestro: false, hasXcode: false, hasNode: true, hasSemgrep: false, platform: 'darwin' },
+    capabilities: {
+      hasMaestro: false,
+      hasXcode: false,
+      hasNode: true,
+      hasSemgrep: false,
+      platform: 'darwin',
+    },
   }
 }
 
@@ -42,10 +50,10 @@ describe('writeImageAssets', () => {
     expect(contents.info).toEqual({ author: 'xcode', version: 1 })
 
     // Should copy source image to imageset (binary-safe via cp)
-    expect(runner.exec).toHaveBeenCalledWith(
-      'cp',
-      ['/tmp/assets/hero.png', '/project/Sources/Assets.xcassets/hero-banner.imageset/hero-banner.png'],
-    )
+    expect(runner.exec).toHaveBeenCalledWith('cp', [
+      '/tmp/assets/hero.png',
+      '/project/Sources/Assets.xcassets/hero-banner.imageset/hero-banner.png',
+    ])
   })
 
   it('handles multiple assets', async () => {
@@ -84,10 +92,10 @@ describe('writeImageAssets', () => {
       { name: 'photo', filePath: '/tmp/photo.jpg' },
     ])
 
-    expect(runner.exec).toHaveBeenCalledWith(
-      'cp',
-      ['/tmp/photo.jpg', '/project/Assets.xcassets/photo.imageset/photo.jpg'],
-    )
+    expect(runner.exec).toHaveBeenCalledWith('cp', [
+      '/tmp/photo.jpg',
+      '/project/Assets.xcassets/photo.imageset/photo.jpg',
+    ])
   })
 
   it('returns empty array for empty input', async () => {

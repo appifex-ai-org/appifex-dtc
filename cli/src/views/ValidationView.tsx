@@ -24,17 +24,21 @@ export function ValidationView({ results }: ValidationViewProps) {
               platform,
               ui: { passed: result.ui.passed, total: result.ui.total },
               unit: { passed: result.unit.passed, total: result.unit.total },
-              security: result.security ? { passed: result.security.passed, total: result.security.total } : undefined,
+              security: result.security
+                ? { passed: result.security.passed, total: result.security.total }
+                : undefined,
             })}
           </Text>
 
           {result.ui.failed > 0 && (
             <Box flexDirection="column" marginLeft={4}>
-              {result.ui.results.filter(r => !r.passed).map((r, i) => (
-                <Text key={i} color="red">
-                  {'    '}✗ {r.flowName}: {r.error}
-                </Text>
-              ))}
+              {result.ui.results
+                .filter((r) => !r.passed)
+                .map((r, i) => (
+                  <Text key={i} color="red">
+                    {'    '}✗ {r.flowName}: {r.error}
+                  </Text>
+                ))}
             </Box>
           )}
 
@@ -50,7 +54,10 @@ export function ValidationView({ results }: ValidationViewProps) {
 
           {result.security && result.security.failed > 0 && (
             <Box flexDirection="column" marginLeft={4}>
-              <Text color="red" bold>{'    '}Security ({result.security.failed} finding{result.security.failed !== 1 ? 's' : ''}):</Text>
+              <Text color="red" bold>
+                {'    '}Security ({result.security.failed} finding
+                {result.security.failed !== 1 ? 's' : ''}):
+              </Text>
               {result.security.findings.map((f, j) => (
                 <Text key={j} color="red">
                   {'      '}✗ [{f.severity}] {f.ruleId}: {f.file}:{f.line} — {f.message}

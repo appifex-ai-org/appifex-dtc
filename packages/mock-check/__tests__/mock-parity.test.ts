@@ -29,9 +29,7 @@ function makeViolation(overrides: Partial<MockLayerViolation> = {}): MockLayerVi
 
 describe('checkMockParity', () => {
   it('Test 1: single platform (swiftui only) returns allPassed true — no comparison possible', () => {
-    const result = checkMockParity(
-      makeResult({ platformsScanned: ['swiftui'] }),
-    )
+    const result = checkMockParity(makeResult({ platformsScanned: ['swiftui'] }))
     expect(result.allPassed).toBe(true)
     expect(result.violations).toEqual([])
     expect(result.platformsCompared).toEqual(['swiftui'])
@@ -76,14 +74,18 @@ describe('checkMockParity', () => {
         platformsScanned: ['swiftui', 'kotlin-compose', 'react'],
         violations: [
           makeViolation({ platform: 'react', type: 'MISSING_METHOD', file: 'MockAuthManager.tsx' }),
-          makeViolation({ platform: 'kotlin-compose', type: 'MISSING_MOCK', file: 'MockAuthManager.kt' }),
+          makeViolation({
+            platform: 'kotlin-compose',
+            type: 'MISSING_MOCK',
+            file: 'MockAuthManager.kt',
+          }),
         ],
       }),
     )
     // swiftui passes, react and kotlin-compose both fail — parity violations for swift vs react AND swift vs kotlin
     expect(result.allPassed).toBe(false)
     // swiftui is the only passing platform, so 2 violations expected
-    const passingViolations = result.violations.filter(v => v.passingPlatform === 'swiftui')
+    const passingViolations = result.violations.filter((v) => v.passingPlatform === 'swiftui')
     expect(passingViolations.length).toBe(2)
   })
 
@@ -94,7 +96,11 @@ describe('checkMockParity', () => {
         platformsScanned: ['kotlin-compose', 'react'],
         violations: [
           makeViolation({ platform: 'react', type: 'MISSING_METHOD', file: 'MockAuthManager.tsx' }),
-          makeViolation({ platform: 'kotlin-compose', type: 'MISSING_MOCK', file: 'MockAuthManager.kt' }),
+          makeViolation({
+            platform: 'kotlin-compose',
+            type: 'MISSING_MOCK',
+            file: 'MockAuthManager.kt',
+          }),
         ],
       }),
     )
@@ -117,12 +123,12 @@ describe('checkMockParity', () => {
     expect(result.violations).toHaveLength(2)
 
     const swiftVsReact = result.violations.find(
-      v => v.passingPlatform === 'swiftui' && v.failingPlatform === 'react',
+      (v) => v.passingPlatform === 'swiftui' && v.failingPlatform === 'react',
     )
     expect(swiftVsReact).toBeDefined()
 
     const kotlinVsReact = result.violations.find(
-      v => v.passingPlatform === 'kotlin-compose' && v.failingPlatform === 'react',
+      (v) => v.passingPlatform === 'kotlin-compose' && v.failingPlatform === 'react',
     )
     expect(kotlinVsReact).toBeDefined()
   })
@@ -133,7 +139,11 @@ describe('checkMockParity', () => {
         allPassed: false,
         platformsScanned: ['swiftui', 'kotlin-compose'],
         violations: [
-          makeViolation({ platform: 'kotlin-compose', type: 'MISSING_MOCK', file: 'MockAuthManager.kt' }),
+          makeViolation({
+            platform: 'kotlin-compose',
+            type: 'MISSING_MOCK',
+            file: 'MockAuthManager.kt',
+          }),
         ],
       }),
     )

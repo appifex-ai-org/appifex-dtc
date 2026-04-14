@@ -95,13 +95,18 @@ export class PencilMcpClient {
     return this.parseToolResult(result as Record<string, unknown>)
   }
 
-  async getVariables(filePath: string): Promise<Record<string, { type: string; value: string | number }>> {
+  async getVariables(
+    filePath: string,
+  ): Promise<Record<string, { type: string; value: string | number }>> {
     this.ensureConnected()
     const result = await this.client!.callTool({
       name: 'get_variables',
       arguments: { filePath },
     })
-    return this.parseToolResult(result as Record<string, unknown>) as Record<string, { type: string; value: string | number }>
+    return this.parseToolResult(result as Record<string, unknown>) as Record<
+      string,
+      { type: string; value: string | number }
+    >
   }
 
   async setVariables(

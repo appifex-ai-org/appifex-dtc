@@ -9,7 +9,13 @@ function mockRunner(overrides: Partial<Runner> = {}): Runner {
     writeFile: vi.fn().mockResolvedValue(undefined),
     exists: vi.fn().mockResolvedValue(false),
     glob: vi.fn().mockResolvedValue([]),
-    capabilities: { hasMaestro: false, hasXcode: true, hasNode: true, hasSemgrep: false, platform: 'darwin' },
+    capabilities: {
+      hasMaestro: false,
+      hasXcode: true,
+      hasNode: true,
+      hasSemgrep: false,
+      platform: 'darwin',
+    },
     ...overrides,
   }
 }
@@ -17,11 +23,14 @@ function mockRunner(overrides: Partial<Runner> = {}): Runner {
 describe('dtc_build handler', () => {
   it('calls buildSwift for swiftui platform', async () => {
     const runner = mockRunner()
-    const result = await handleBuild({
-      platform: 'swiftui',
-      projectDir: '/tmp/test-app',
-      scheme: 'TestApp',
-    }, runner)
+    const result = await handleBuild(
+      {
+        platform: 'swiftui',
+        projectDir: '/tmp/test-app',
+        scheme: 'TestApp',
+      },
+      runner,
+    )
 
     const parsed = JSON.parse(result.text)
     expect(parsed).toHaveProperty('success')
@@ -30,10 +39,13 @@ describe('dtc_build handler', () => {
 
   it('calls buildKotlin for kotlin-compose platform', async () => {
     const runner = mockRunner()
-    const result = await handleBuild({
-      platform: 'kotlin-compose',
-      projectDir: '/tmp/test-app',
-    }, runner)
+    const result = await handleBuild(
+      {
+        platform: 'kotlin-compose',
+        projectDir: '/tmp/test-app',
+      },
+      runner,
+    )
 
     const parsed = JSON.parse(result.text)
     expect(parsed).toHaveProperty('success')
@@ -42,12 +54,17 @@ describe('dtc_build handler', () => {
 
   it('returns isError true when build fails', async () => {
     const runner = mockRunner({
-      exec: vi.fn().mockResolvedValue({ exitCode: 1, stdout: '', stderr: 'build error', duration: 500 }),
+      exec: vi
+        .fn()
+        .mockResolvedValue({ exitCode: 1, stdout: '', stderr: 'build error', duration: 500 }),
     })
-    const result = await handleBuild({
-      platform: 'kotlin-compose',
-      projectDir: '/tmp/test-app',
-    }, runner)
+    const result = await handleBuild(
+      {
+        platform: 'kotlin-compose',
+        projectDir: '/tmp/test-app',
+      },
+      runner,
+    )
 
     const parsed = JSON.parse(result.text)
     expect(parsed.success).toBe(false)

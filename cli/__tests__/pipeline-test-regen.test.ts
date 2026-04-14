@@ -25,12 +25,14 @@ vi.mock('@appifex/test-gen', async () => {
       }))
     }),
     generateSpecUnitTests: vi.fn((spec: { platform: string }, _filter?: Set<string>) => {
-      return [{
-        fileName: spec.platform === 'swiftui' ? 'ViewTests+Regen.swift' : 'ScreenTestRegen.kt',
-        content: '// regen\n',
-        platform: spec.platform,
-        testCount: 1,
-      }]
+      return [
+        {
+          fileName: spec.platform === 'swiftui' ? 'ViewTests+Regen.swift' : 'ScreenTestRegen.kt',
+          content: '// regen\n',
+          platform: spec.platform,
+          testCount: 1,
+        },
+      ]
     }),
   }
 })
@@ -38,7 +40,12 @@ vi.mock('@appifex/test-gen', async () => {
 import { runTestRegenPhase, type RunTestRegenDeps } from '../src/pipeline.js'
 import { diffScreenInventory } from '@appifex/analysis'
 import { generateUITests, generateSpecUnitTests } from '@appifex/test-gen'
-import { RunContextBuilder, type PlatformSpec, type ProgressEvent, type Runner } from '@appifex/core'
+import {
+  RunContextBuilder,
+  type PlatformSpec,
+  type ProgressEvent,
+  type Runner,
+} from '@appifex/core'
 
 const diffMock = vi.mocked(diffScreenInventory)
 const generateUITestsMock = vi.mocked(generateUITests)
@@ -100,14 +107,24 @@ function makeDeps(overrides: Partial<RunTestRegenDeps> = {}): {
     emit: (phase, status, message) => {
       emitted.push({ phase, status, message, timestamp: Date.now() } as ProgressEvent)
     },
-    flushContext: async () => { flushCalls++ },
+    flushContext: async () => {
+      flushCalls++
+    },
     flowDir: '/tmp/dtc/.maestro',
     testDir: '/tmp/dtc/__tests__',
     bundleId: 'com.dtc.TestApp',
     designScreenshots: {},
     ...overrides,
   }
-  return { deps, emitted, flushCalls: 0, ctxBuilder, get flushCalls() { return flushCalls } } as any
+  return {
+    deps,
+    emitted,
+    flushCalls: 0,
+    ctxBuilder,
+    get flushCalls() {
+      return flushCalls
+    },
+  } as any
 }
 
 beforeEach(() => {
@@ -122,7 +139,9 @@ describe('pipeline test_regen phase', () => {
     // revertUnexpectedChanges, then runTestRegenPhase. We assert invocation
     // order by tracking a shared order counter.
     const order: string[] = []
-    const revertSpy = vi.fn(async () => { order.push('revert') })
+    const revertSpy = vi.fn(async () => {
+      order.push('revert')
+    })
     diffMock.mockImplementation(async () => {
       order.push('diff')
       return { added: [], modified: [] }
@@ -141,8 +160,8 @@ describe('pipeline test_regen phase', () => {
     const { deps, emitted } = makeDeps()
     await runTestRegenPhase(deps)
     expect(diffMock).toHaveBeenCalledTimes(1)
-    expect(emitted.some(e => e.phase === 'test_regen' && e.status === 'started')).toBe(true)
-    expect(emitted.some(e => e.phase === 'test_regen' && e.status === 'completed')).toBe(true)
+    expect(emitted.some((e) => e.phase === 'test_regen' && e.status === 'started')).toBe(true)
+    expect(emitted.some((e) => e.phase === 'test_regen' && e.status === 'completed')).toBe(true)
   })
 
   it('skips generator calls when modifiedScreens is empty (D-10)', async () => {
@@ -158,7 +177,7 @@ describe('pipeline test_regen phase', () => {
     diffMock.mockResolvedValue({ added: [], modified: [] })
     const { deps, emitted } = makeDeps()
     await runTestRegenPhase(deps)
-    const skipEvent = emitted.find(e => e.phase === 'test_regen' && e.status === 'skipped')
+    const skipEvent = emitted.find((e) => e.phase === 'test_regen' && e.status === 'skipped')
     expect(skipEvent).toBeDefined()
     expect(skipEvent!.message).toContain('No modified screens')
   })
@@ -175,7 +194,7 @@ describe('pipeline test_regen phase', () => {
     const { deps, emitted } = makeDeps({ runMode: 'fresh', preAgentSnapshot: undefined })
     await runTestRegenPhase(deps)
     expect(diffMock).not.toHaveBeenCalled()
-    expect(emitted.find(e => e.phase === 'test_regen')).toBeUndefined()
+    expect(emitted.find((e) => e.phase === 'test_regen')).toBeUndefined()
   })
 
   it('plumbs screenFilter through generateUITests when screens changed', async () => {
@@ -186,7 +205,7 @@ describe('pipeline test_regen phase', () => {
     const call = generateUITestsMock.mock.calls[0]
     const optsArg = call[1] as { screenFilter?: Set<string> }
     expect(optsArg.screenFilter).toBeInstanceOf(Set)
-    expect([...(optsArg.screenFilter!)]).toContain('NewScreen')
+    expect([...optsArg.screenFilter!]).toContain('NewScreen')
   })
 
   it('writes regen flow + unit test files when screens changed', async () => {
@@ -195,7 +214,9 @@ describe('pipeline test_regen phase', () => {
     await runTestRegenPhase(deps)
     const writes = (deps.runner.writeFile as any).mock.calls.map(([p]: [string]) => p)
     // Flow file written
-    expect(writes.some((p: string) => p.includes('.maestro') && p.includes('newscreen.yaml'))).toBe(true)
+    expect(writes.some((p: string) => p.includes('.maestro') && p.includes('newscreen.yaml'))).toBe(
+      true,
+    )
     // Regen unit test file written (distinct filename per Plan 11-03)
     expect(writes.some((p: string) => p.includes('ViewTests+Regen.swift'))).toBe(true)
   })
@@ -204,6 +225,6 @@ describe('pipeline test_regen phase', () => {
     const { deps, emitted } = makeDeps({ preAgentSnapshot: undefined })
     await runTestRegenPhase(deps)
     expect(diffMock).not.toHaveBeenCalled()
-    expect(emitted.find(e => e.phase === 'test_regen')).toBeUndefined()
+    expect(emitted.find((e) => e.phase === 'test_regen')).toBeUndefined()
   })
 })

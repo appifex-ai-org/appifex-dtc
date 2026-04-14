@@ -94,8 +94,10 @@ export function diffDesignTokens(existing: DesignTokens, next: DesignTokens): De
   const changedEntries: DesignDeltaChangedEntry[] = []
 
   // colors — case-insensitive hex equality
-  const colorDelta = diffCategory(existing.colors, next.colors, (a, b) =>
-    normalizeColor(a) === normalizeColor(b),
+  const colorDelta = diffCategory(
+    existing.colors,
+    next.colors,
+    (a, b) => normalizeColor(a) === normalizeColor(b),
   )
   const category: DesignTokenCategory = 'colors'
   for (const { name, value } of colorDelta.added) {
@@ -135,7 +137,11 @@ export function diffDesignTokens(existing: DesignTokens, next: DesignTokens): De
   }
 
   // borderRadius — strict numeric equality
-  const borderRadiusDelta = diffCategory(existing.borderRadius, next.borderRadius, (a, b) => a === b)
+  const borderRadiusDelta = diffCategory(
+    existing.borderRadius,
+    next.borderRadius,
+    (a, b) => a === b,
+  )
   const borderRadiusCategory: DesignTokenCategory = 'borderRadius'
   for (const { name, value } of borderRadiusDelta.added) {
     addedEntries.push({ category: borderRadiusCategory, name, value })

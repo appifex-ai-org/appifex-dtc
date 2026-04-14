@@ -1,4 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { dirname } from 'node:path'
 import type { CommandCollectingRunner } from './command-collecting-runner.js'
@@ -10,8 +10,14 @@ import { handleDesignCreate, handleDesignIterate } from './tools/design.js'
 
 const PLATFORM = z.enum(['swiftui', 'kotlin-compose']).describe('Target platform')
 
-type ResolveRunner = (projectDir: string, configDir?: string) => Promise<{ runner: CommandCollectingRunner; config: any }>
-type InjectCommands = (result: { text: string; isError: boolean }, runner: CommandCollectingRunner) => { text: string; isError: boolean }
+type ResolveRunner = (
+  projectDir: string,
+  configDir?: string,
+) => Promise<{ runner: CommandCollectingRunner; config: any }>
+type InjectCommands = (
+  result: { text: string; isError: boolean },
+  runner: CommandCollectingRunner,
+) => { text: string; isError: boolean }
 
 export function registerPipelineTools(
   server: McpServer,
@@ -27,14 +33,25 @@ export function registerPipelineTools(
       prompt: z.string().describe('Natural language description of the app to build'),
       platform: PLATFORM,
       outputDir: z.string().describe('Directory where code will be generated'),
-      designFile: z.string().optional().describe('Path to existing design file. Accepts .pen (Pencil), .zip (Stitch export), or Figma file URL.'),
+      designFile: z
+        .string()
+        .optional()
+        .describe(
+          'Path to existing design file. Accepts .pen (Pencil), .zip (Stitch export), or Figma file URL.',
+        ),
       mode: z.enum(['fresh', 'resume', 'add-feature', 'refactor']).optional().describe('Run mode'),
-      agentType: z.enum(['claude', 'codex', 'gemini', 'auto', 'api']).optional().describe('Agent type (default: auto)'),
+      agentType: z
+        .enum(['claude', 'codex', 'gemini', 'auto', 'api'])
+        .optional()
+        .describe('Agent type (default: auto)'),
       resumeSessionId: z.string().optional().describe('Session ID to resume'),
       verbose: z.boolean().optional(),
       benchmark: z.boolean().optional().describe('Disable fix loop limits'),
       configDir: z.string().optional(),
-      baasProvider: z.enum(['firebase', 'supabase']).optional().describe('BaaS provider to use (overrides config file baas.provider)'),
+      baasProvider: z
+        .enum(['firebase', 'supabase'])
+        .optional()
+        .describe('BaaS provider to use (overrides config file baas.provider)'),
     },
     async (args) => {
       const sendLog = (message: string) => {
@@ -52,9 +69,20 @@ export function registerPipelineTools(
     'Refine a vague app prompt into a detailed one. Use "ask" mode to get clarifying questions, then "enrich" mode with user answers to produce a pipeline-ready prompt. IMPORTANT: When presenting questions to the user, always include the "hint" field from the response so users know they can skip all questions and build immediately with defaults.',
     {
       prompt: z.string().describe('The user\'s raw app description (e.g. "todo app")'),
-      mode: z.enum(['ask', 'enrich']).optional().describe('Mode: "ask" returns questions, "enrich" returns a detailed prompt (default: ask)'),
-      answers: z.string().optional().describe('JSON object of user answers keyed by question id (required for enrich mode)'),
-      platform: z.enum(['swiftui', 'kotlin-compose']).optional().describe('Target platform hint (if already known)'),
+      mode: z
+        .enum(['ask', 'enrich'])
+        .optional()
+        .describe(
+          'Mode: "ask" returns questions, "enrich" returns a detailed prompt (default: ask)',
+        ),
+      answers: z
+        .string()
+        .optional()
+        .describe('JSON object of user answers keyed by question id (required for enrich mode)'),
+      platform: z
+        .enum(['swiftui', 'kotlin-compose'])
+        .optional()
+        .describe('Target platform hint (if already known)'),
     },
     async (args) => {
       const result = await handleRefinePrompt(args)
@@ -69,7 +97,10 @@ export function registerPipelineTools(
     'Refine a vague add-feature prompt into a detailed prompt with assumptions. First call returns assumptions for confirmation. Second call with confirmed=true returns the enriched prompt.',
     {
       prompt: z.string().describe('The add-feature prompt to refine'),
-      confirmed: z.boolean().optional().describe('Set to true on second call to confirm assumptions and get enriched prompt'),
+      confirmed: z
+        .boolean()
+        .optional()
+        .describe('Set to true on second call to confirm assumptions and get enriched prompt'),
     },
     async (args) => {
       const result = await handleFeatureRefine(args)
@@ -84,9 +115,14 @@ export function registerPipelineTools(
     'Add a feature to an existing project. Validates that a prior completed run exists at outputDir before proceeding.',
     {
       prompt: z.string().describe('Feature description'),
-      outputDir: z.string().describe('Directory of the existing project (.dtc/run-context.json must exist)'),
+      outputDir: z
+        .string()
+        .describe('Directory of the existing project (.dtc/run-context.json must exist)'),
       platform: PLATFORM.optional(),
-      confirmed: z.boolean().optional().describe('Set to true on second call to confirm the pre-build summary'),
+      confirmed: z
+        .boolean()
+        .optional()
+        .describe('Set to true on second call to confirm the pre-build summary'),
     },
     async (args) => {
       const result = await handleAddFeature(args)
@@ -112,7 +148,9 @@ export function registerPipelineTools(
     'dtc_design_create',
     'Generate a design from a text prompt using the configured design tool (Pencil, Google Stitch, or Figma Make)',
     {
-      prompt: z.string().describe('Design prompt (e.g. "Pet adoption app with browse and favorites")'),
+      prompt: z
+        .string()
+        .describe('Design prompt (e.g. "Pet adoption app with browse and favorites")'),
       outputPath: z.string().describe('Output path for the .pen file'),
       exportPath: z.string().optional().describe('Optional path to export a preview PNG'),
       configDir: z.string().optional(),

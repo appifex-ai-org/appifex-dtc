@@ -18,14 +18,26 @@ describe('generateUnitTests for kotlin-compose', () => {
 describe('generateSpecUnitTests for kotlin-compose', () => {
   const spec: PlatformSpec = {
     platform: 'kotlin-compose',
-    screens: [{
-      id: 's1', name: 'Home', componentName: 'HomeScreen', description: 'Home',
-      components: [
-        { id: 'c1', platformType: 'Button', name: 'Login Button', props: { testID: 'login_button' }, style: {}, testId: 'login_button' },
-        { id: 'c2', platformType: 'Text', name: 'Title', props: {}, style: {}, testId: 'title' },
-      ],
-      testIds: { c1: 'login_button', c2: 'title' },
-    }],
+    screens: [
+      {
+        id: 's1',
+        name: 'Home',
+        componentName: 'HomeScreen',
+        description: 'Home',
+        components: [
+          {
+            id: 'c1',
+            platformType: 'Button',
+            name: 'Login Button',
+            props: { testID: 'login_button' },
+            style: {},
+            testId: 'login_button',
+          },
+          { id: 'c2', platformType: 'Text', name: 'Title', props: {}, style: {}, testId: 'title' },
+        ],
+        testIds: { c1: 'login_button', c2: 'title' },
+      },
+    ],
     designTokens: { colors: {}, typography: {}, spacing: {}, borderRadius: {} },
     imports: ['androidx.compose.material3'],
   }

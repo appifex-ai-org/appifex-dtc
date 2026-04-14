@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { handleRefinePrompt, isPromptVague, isFeaturePromptVague, generateFeatureAssumptions, handleFeatureRefine } from '../src/tools/refine.js'
+import {
+  handleRefinePrompt,
+  isPromptVague,
+  isFeaturePromptVague,
+  generateFeatureAssumptions,
+  handleFeatureRefine,
+} from '../src/tools/refine.js'
 import { handleRunPipeline } from '../src/tools/pipeline.js'
 
 describe('dtc_refine_prompt handler', () => {
@@ -21,7 +27,8 @@ describe('dtc_refine_prompt handler', () => {
     })
 
     it('returns fewer questions for a detailed prompt', async () => {
-      const detailed = 'A fitness tracker app with a home dashboard screen, workout log screen, and profile settings screen. Uses tab bar navigation with local data storage. Clean minimal design style.'
+      const detailed =
+        'A fitness tracker app with a home dashboard screen, workout log screen, and profile settings screen. Uses tab bar navigation with local data storage. Clean minimal design style.'
       const result = await handleRefinePrompt({ prompt: detailed })
       const parsed = JSON.parse(result.text)
 
@@ -96,7 +103,11 @@ describe('dtc_refine_prompt handler', () => {
     })
 
     it('errors on invalid JSON answers', async () => {
-      const result = await handleRefinePrompt({ prompt: 'todo app', mode: 'enrich', answers: 'not json' })
+      const result = await handleRefinePrompt({
+        prompt: 'todo app',
+        mode: 'enrich',
+        answers: 'not json',
+      })
       expect(result.isError).toBe(true)
     })
   })
@@ -116,12 +127,14 @@ describe('isPromptVague', () => {
   })
 
   it('returns false for detailed prompts', () => {
-    const detailed = 'A fitness tracker with a home dashboard screen, workout log page, and profile settings. Uses tab bar navigation with local CoreData storage. Dark mode design with login via Apple Sign In.'
+    const detailed =
+      'A fitness tracker with a home dashboard screen, workout log page, and profile settings. Uses tab bar navigation with local CoreData storage. Dark mode design with login via Apple Sign In.'
     expect(isPromptVague(detailed)).toBe(false)
   })
 
   it('returns false when platform is provided and prompt covers enough categories', () => {
-    const prompt = 'A todo app with a list screen, detail screen, and tab navigation with local storage'
+    const prompt =
+      'A todo app with a list screen, detail screen, and tab navigation with local storage'
     expect(isPromptVague(prompt, 'swiftui')).toBe(false)
   })
 
@@ -180,7 +193,11 @@ describe('isFeaturePromptVague', () => {
   })
 
   it('returns false for a fully specified add-feature prompt', () => {
-    expect(isFeaturePromptVague('add a search screen to the home tab that filters recipes by ingredient')).toBe(false)
+    expect(
+      isFeaturePromptVague(
+        'add a search screen to the home tab that filters recipes by ingredient',
+      ),
+    ).toBe(false)
   })
 
   it('returns true for single-word feature name (core < 6 words)', () => {
@@ -192,7 +209,11 @@ describe('isFeaturePromptVague', () => {
   })
 
   it('returns false for complete notification bell prompt', () => {
-    expect(isFeaturePromptVague('add a notification bell button on the profile screen to show unread messages')).toBe(false)
+    expect(
+      isFeaturePromptVague(
+        'add a notification bell button on the profile screen to show unread messages',
+      ),
+    ).toBe(false)
   })
 
   it('returns true for short vague add-feature prompt with insufficient detail', () => {
@@ -211,15 +232,15 @@ describe('generateFeatureAssumptions', () => {
 
   it('produces assumptions with expected categories', () => {
     const result = generateFeatureAssumptions('add settings', null)
-    const categories = result.assumptions.map(a => a.category)
+    const categories = result.assumptions.map((a) => a.category)
     // Should have at least one of type, placement, behavior, or data
     const validCategories = ['type', 'placement', 'behavior', 'data']
-    expect(categories.some(c => validCategories.includes(c))).toBe(true)
+    expect(categories.some((c) => validCategories.includes(c))).toBe(true)
   })
 
   it('includes a data assumption in all results', () => {
     const result = generateFeatureAssumptions('add settings', null)
-    const dataAssumption = result.assumptions.find(a => a.category === 'data')
+    const dataAssumption = result.assumptions.find((a) => a.category === 'data')
     expect(dataAssumption).toBeDefined()
   })
 })
@@ -289,7 +310,8 @@ Design style: Clean and minimal`
       report: { summary: { allGreen: true } },
       markdown: '# Done',
     })
-    const detailed = 'A todo app with a list screen showing tasks, detail screen for editing, tab navigation with home and settings tabs, local SwiftData storage, clean minimal design, no auth needed'
+    const detailed =
+      'A todo app with a list screen showing tasks, detail screen for editing, tab navigation with home and settings tabs, local SwiftData storage, clean minimal design, no auth needed'
     const result = await handleRunPipeline(
       { prompt: detailed, platform: 'swiftui', outputDir: '/tmp/test' },
       noop,

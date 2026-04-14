@@ -13,11 +13,24 @@ import { loadRunContext } from '@appifex/core'
 
 const mockPipelineResult = {
   report: {
-    summary: { allGreen: true, totalTests: 4, totalPassed: 4, totalFailed: 0, fixAttempts: 0, totalTokens: 1000, totalDuration: 5000, designIterations: 1 },
+    summary: {
+      allGreen: true,
+      totalTests: 4,
+      totalPassed: 4,
+      totalFailed: 0,
+      fixAttempts: 0,
+      totalTokens: 1000,
+      totalDuration: 5000,
+      designIterations: 1,
+    },
     platformReports: [],
     tokenUsage: {},
   },
-  validation: { ui: { total: 2, passed: 2, failed: 0, results: [] }, unit: { total: 2, passed: 2, failed: 0, failures: [] }, allPassed: true },
+  validation: {
+    ui: { total: 2, passed: 2, failed: 0, results: [] },
+    unit: { total: 2, passed: 2, failed: 0, failures: [] },
+    allPassed: true,
+  },
   markdown: '# Report\n**Status:** ALL GREEN',
 }
 
@@ -31,11 +44,15 @@ describe('dtc_run_pipeline handler', () => {
   it('returns structured JSON with status and summary on success', async () => {
     const mockRunPipeline = vi.fn().mockResolvedValue(mockPipelineResult)
 
-    const result = await handleRunPipeline({
-      prompt: 'A counter app with a home screen showing the current count, increment and decrement buttons, a settings tab for theme selection, local storage to persist the count, no auth needed, clean minimal design',
-      platform: 'swiftui',
-      outputDir: '/tmp/dtc-mcp-test-pipeline',
-    }, mockRunPipeline)
+    const result = await handleRunPipeline(
+      {
+        prompt:
+          'A counter app with a home screen showing the current count, increment and decrement buttons, a settings tab for theme selection, local storage to persist the count, no auth needed, clean minimal design',
+        platform: 'swiftui',
+        outputDir: '/tmp/dtc-mcp-test-pipeline',
+      },
+      mockRunPipeline,
+    )
 
     expect(result.isError).toBe(false)
     const parsed = JSON.parse(result.text)
@@ -47,7 +64,9 @@ describe('dtc_run_pipeline handler', () => {
     // Verify pipeline was called with correct opts
     expect(mockRunPipeline).toHaveBeenCalledOnce()
     const [opts] = mockRunPipeline.mock.calls[0]
-    expect(opts.prompt).toBe('A counter app with a home screen showing the current count, increment and decrement buttons, a settings tab for theme selection, local storage to persist the count, no auth needed, clean minimal design')
+    expect(opts.prompt).toBe(
+      'A counter app with a home screen showing the current count, increment and decrement buttons, a settings tab for theme selection, local storage to persist the count, no auth needed, clean minimal design',
+    )
     expect(opts.platform).toBe('swiftui')
     expect(opts.interactive).toBe(false)
   })
@@ -55,11 +74,15 @@ describe('dtc_run_pipeline handler', () => {
   it('returns structured error JSON when pipeline throws', async () => {
     const mockRunPipeline = vi.fn().mockRejectedValue(new Error('Pencil not installed'))
 
-    const result = await handleRunPipeline({
-      prompt: 'A weather app with a dashboard screen for current conditions, a 5-day forecast list view, location search with tab navigation, local data cache, no auth needed, modern flat design',
-      platform: 'swiftui',
-      outputDir: '/tmp/dtc-mcp-test-pipeline-fail',
-    }, mockRunPipeline)
+    const result = await handleRunPipeline(
+      {
+        prompt:
+          'A weather app with a dashboard screen for current conditions, a 5-day forecast list view, location search with tab navigation, local data cache, no auth needed, modern flat design',
+        platform: 'swiftui',
+        outputDir: '/tmp/dtc-mcp-test-pipeline-fail',
+      },
+      mockRunPipeline,
+    )
 
     expect(result.isError).toBe(true)
     const parsed = JSON.parse(result.text)
@@ -71,14 +94,18 @@ describe('dtc_run_pipeline handler', () => {
 
   // Test 1: MCP error response includes checkpoint field with all D-01 fields
   it('error response always includes checkpoint object with all D-01 fields', async () => {
-    (loadRunContext as Mock).mockResolvedValue(null)
+    ;(loadRunContext as Mock).mockResolvedValue(null)
     const mockRunPipeline = vi.fn().mockRejectedValue(new Error('Build failed'))
 
-    const result = await handleRunPipeline({
-      prompt: 'A todo app with a task list screen showing all tasks, add and delete buttons, local storage persistence, no auth needed, clean minimal design',
-      platform: 'swiftui',
-      outputDir: '/tmp/dtc-mcp-checkpoint-test',
-    }, mockRunPipeline)
+    const result = await handleRunPipeline(
+      {
+        prompt:
+          'A todo app with a task list screen showing all tasks, add and delete buttons, local storage persistence, no auth needed, clean minimal design',
+        platform: 'swiftui',
+        outputDir: '/tmp/dtc-mcp-checkpoint-test',
+      },
+      mockRunPipeline,
+    )
 
     expect(result.isError).toBe(true)
     const parsed = JSON.parse(result.text)
@@ -98,14 +125,18 @@ describe('dtc_run_pipeline handler', () => {
 
   // Test 2: When loadRunContext returns null, checkpoint has null run_id and empty completed_phases
   it('checkpoint has null run_id and empty completed_phases when no context saved (D-02)', async () => {
-    (loadRunContext as Mock).mockResolvedValue(null)
+    ;(loadRunContext as Mock).mockResolvedValue(null)
     const mockRunPipeline = vi.fn().mockRejectedValue(new Error('Very early failure'))
 
-    const result = await handleRunPipeline({
-      prompt: 'A todo app with a task list screen showing all tasks, add and delete buttons, local storage persistence, no auth needed, clean minimal design',
-      platform: 'swiftui',
-      outputDir: '/tmp/dtc-no-context',
-    }, mockRunPipeline)
+    const result = await handleRunPipeline(
+      {
+        prompt:
+          'A todo app with a task list screen showing all tasks, add and delete buttons, local storage persistence, no auth needed, clean minimal design',
+        platform: 'swiftui',
+        outputDir: '/tmp/dtc-no-context',
+      },
+      mockRunPipeline,
+    )
 
     const parsed = JSON.parse(result.text)
     expect(parsed.checkpoint.run_id).toBeNull()
@@ -118,9 +149,10 @@ describe('dtc_run_pipeline handler', () => {
 
   // Test 3: When loadRunContext returns a context with completed phases, checkpoint is populated
   it('checkpoint.completed_phases and checkpoint.run_id are populated from saved context', async () => {
-    (loadRunContext as Mock).mockResolvedValue({
+    ;(loadRunContext as Mock).mockResolvedValue({
       runId: 'run-abc-123',
-      prompt: 'A todo app with a task list screen showing all tasks, add and delete buttons, local storage persistence, no auth needed, clean minimal design',
+      prompt:
+        'A todo app with a task list screen showing all tasks, add and delete buttons, local storage persistence, no auth needed, clean minimal design',
       platform: 'swiftui',
       mode: 'fresh',
       status: 'failed',
@@ -136,11 +168,15 @@ describe('dtc_run_pipeline handler', () => {
 
     const mockRunPipeline = vi.fn().mockRejectedValue(new Error('Build failed'))
 
-    const result = await handleRunPipeline({
-      prompt: 'A todo app with a task list screen showing all tasks, add and delete buttons, local storage persistence, no auth needed, clean minimal design',
-      platform: 'swiftui',
-      outputDir: '/tmp/dtc-with-context',
-    }, mockRunPipeline)
+    const result = await handleRunPipeline(
+      {
+        prompt:
+          'A todo app with a task list screen showing all tasks, add and delete buttons, local storage persistence, no auth needed, clean minimal design',
+        platform: 'swiftui',
+        outputDir: '/tmp/dtc-with-context',
+      },
+      mockRunPipeline,
+    )
 
     const parsed = JSON.parse(result.text)
     expect(parsed.checkpoint.run_id).toBe('run-abc-123')
@@ -153,9 +189,10 @@ describe('dtc_run_pipeline handler', () => {
 
   // Test 4: resume object present with exact shape when completed_phases > 0 (D-03, D-04)
   it('resume object is present with exact tool and args when completed_phases is non-empty (D-03, D-04)', async () => {
-    (loadRunContext as Mock).mockResolvedValue({
+    ;(loadRunContext as Mock).mockResolvedValue({
       runId: 'run-resumable',
-      prompt: 'A todo app with a task list screen showing all tasks, add and delete buttons, local storage persistence, no auth needed, clean minimal design',
+      prompt:
+        'A todo app with a task list screen showing all tasks, add and delete buttons, local storage persistence, no auth needed, clean minimal design',
       platform: 'swiftui',
       mode: 'fresh',
       status: 'failed',
@@ -169,11 +206,15 @@ describe('dtc_run_pipeline handler', () => {
 
     const mockRunPipeline = vi.fn().mockRejectedValue(new Error('Network error'))
 
-    const result = await handleRunPipeline({
-      prompt: 'A todo app with a task list screen showing all tasks, add and delete buttons, local storage persistence, no auth needed, clean minimal design',
-      platform: 'swiftui',
-      outputDir: '/tmp/dtc-resumable',
-    }, mockRunPipeline)
+    const result = await handleRunPipeline(
+      {
+        prompt:
+          'A todo app with a task list screen showing all tasks, add and delete buttons, local storage persistence, no auth needed, clean minimal design',
+        platform: 'swiftui',
+        outputDir: '/tmp/dtc-resumable',
+      },
+      mockRunPipeline,
+    )
 
     const parsed = JSON.parse(result.text)
     expect(parsed).toHaveProperty('resume')
@@ -185,14 +226,18 @@ describe('dtc_run_pipeline handler', () => {
 
   // Test 5: resume object absent when completed_phases is empty (nothing to resume from)
   it('resume object is absent when completed_phases is empty', async () => {
-    (loadRunContext as Mock).mockResolvedValue(null)
+    ;(loadRunContext as Mock).mockResolvedValue(null)
     const mockRunPipeline = vi.fn().mockRejectedValue(new Error('Immediate failure'))
 
-    const result = await handleRunPipeline({
-      prompt: 'A todo app with a task list screen showing all tasks, add and delete buttons, local storage persistence, no auth needed, clean minimal design',
-      platform: 'swiftui',
-      outputDir: '/tmp/dtc-not-resumable',
-    }, mockRunPipeline)
+    const result = await handleRunPipeline(
+      {
+        prompt:
+          'A todo app with a task list screen showing all tasks, add and delete buttons, local storage persistence, no auth needed, clean minimal design',
+        platform: 'swiftui',
+        outputDir: '/tmp/dtc-not-resumable',
+      },
+      mockRunPipeline,
+    )
 
     const parsed = JSON.parse(result.text)
     expect(parsed).not.toHaveProperty('resume')
@@ -202,14 +247,18 @@ describe('dtc_run_pipeline handler', () => {
   // Test 6: resumable boolean convenience field equals completed_phases.length > 0
   it('resumable boolean field equals completed_phases.length > 0', async () => {
     // Case A: no completed phases -> resumable = false
-    (loadRunContext as Mock).mockResolvedValue(null)
+    ;(loadRunContext as Mock).mockResolvedValue(null)
     const mockRunPipelineA = vi.fn().mockRejectedValue(new Error('fail'))
 
-    const resultA = await handleRunPipeline({
-      prompt: 'A counter app with increment and decrement buttons, a home screen showing count, local storage to persist state, no auth needed, minimal design',
-      platform: 'swiftui',
-      outputDir: '/tmp/dtc-resumable-a',
-    }, mockRunPipelineA)
+    const resultA = await handleRunPipeline(
+      {
+        prompt:
+          'A counter app with increment and decrement buttons, a home screen showing count, local storage to persist state, no auth needed, minimal design',
+        platform: 'swiftui',
+        outputDir: '/tmp/dtc-resumable-a',
+      },
+      mockRunPipelineA,
+    )
 
     const parsedA = JSON.parse(resultA.text)
     expect(parsedA.resumable).toBe(false)
@@ -227,11 +276,15 @@ describe('dtc_run_pipeline handler', () => {
     })
     const mockRunPipelineB = vi.fn().mockRejectedValue(new Error('fail'))
 
-    const resultB = await handleRunPipeline({
-      prompt: 'A counter app with increment and decrement buttons, a home screen showing count, local storage to persist state, no auth needed, minimal design',
-      platform: 'swiftui',
-      outputDir: '/tmp/dtc-resumable-b',
-    }, mockRunPipelineB)
+    const resultB = await handleRunPipeline(
+      {
+        prompt:
+          'A counter app with increment and decrement buttons, a home screen showing count, local storage to persist state, no auth needed, minimal design',
+        platform: 'swiftui',
+        outputDir: '/tmp/dtc-resumable-b',
+      },
+      mockRunPipelineB,
+    )
 
     const parsedB = JSON.parse(resultB.text)
     expect(parsedB.resumable).toBe(true)
@@ -239,14 +292,18 @@ describe('dtc_run_pipeline handler', () => {
 
   // Test 7: error field contains only err.message, not stack trace (D-06)
   it('error field contains only err.message string, not stack trace (D-06)', async () => {
-    (loadRunContext as Mock).mockResolvedValue(null)
+    ;(loadRunContext as Mock).mockResolvedValue(null)
     const mockRunPipeline = vi.fn().mockRejectedValue(new Error('Build crashed with exit code 1'))
 
-    const result = await handleRunPipeline({
-      prompt: 'A todo app with a task list screen showing all tasks, add and delete buttons, local storage persistence, no auth needed, clean minimal design',
-      platform: 'swiftui',
-      outputDir: '/tmp/dtc-no-stack',
-    }, mockRunPipeline)
+    const result = await handleRunPipeline(
+      {
+        prompt:
+          'A todo app with a task list screen showing all tasks, add and delete buttons, local storage persistence, no auth needed, clean minimal design',
+        platform: 'swiftui',
+        outputDir: '/tmp/dtc-no-stack',
+      },
+      mockRunPipeline,
+    )
 
     const parsed = JSON.parse(result.text)
     expect(typeof parsed.error).toBe('string')

@@ -6,9 +6,13 @@ export function buildTestIdReference(spec: PlatformSpec): string {
   const lines: string[] = []
   lines.push(`## Accessibility Identifiers (from spec — use these on your views)`)
   lines.push('')
-  lines.push(`The following \`accessibilityIdentifier\` values must be set on the corresponding UI elements. These are used by the Maestro UI tests.`)
+  lines.push(
+    `The following \`accessibilityIdentifier\` values must be set on the corresponding UI elements. These are used by the Maestro UI tests.`,
+  )
   lines.push('')
-  lines.push(`**IMPORTANT:** The spec below may be INCOMPLETE. The design image is the source of truth for what screens and components to build. This section only tells you what testIds to set.`)
+  lines.push(
+    `**IMPORTANT:** The spec below may be INCOMPLETE. The design image is the source of truth for what screens and components to build. This section only tells you what testIds to set.`,
+  )
 
   for (const screen of spec.screens) {
     if (Object.keys(screen.testIds).length === 0) continue
@@ -27,7 +31,10 @@ export function buildTestIdReference(spec: PlatformSpec): string {
   return lines.join('\n')
 }
 
-export function findComponent(comps: PlatformComponentSpec[], testId: string): PlatformComponentSpec | null {
+export function findComponent(
+  comps: PlatformComponentSpec[],
+  testId: string,
+): PlatformComponentSpec | null {
   for (const c of comps) {
     if (c.testId === testId) return c
     if (c.children) {
@@ -40,7 +47,10 @@ export function findComponent(comps: PlatformComponentSpec[], testId: string): P
 
 // ── Design Tokens ──
 
-export function buildDesignTokensSection(tokens: PlatformSpec['designTokens'], fromExtraction: boolean): string {
+export function buildDesignTokensSection(
+  tokens: PlatformSpec['designTokens'],
+  fromExtraction: boolean,
+): string {
   if (fromExtraction) {
     // Tokens extracted deterministically from .pen file — authoritative
     const lines: string[] = ['## Design Tokens (extracted from design file — USE THESE)']
@@ -80,7 +90,9 @@ export function buildDesignTokensSection(tokens: PlatformSpec['designTokens'], f
 
   // Fallback — tokens from LLM, may be wrong
   const lines: string[] = ['## Design Tokens (FALLBACK — prefer what you see in the design image)']
-  lines.push('These tokens were extracted by a separate AI. They may be WRONG. Use the design image colors if they differ.')
+  lines.push(
+    'These tokens were extracted by a separate AI. They may be WRONG. Use the design image colors if they differ.',
+  )
 
   if (tokens.colors && Object.keys(tokens.colors).length > 0) {
     lines.push('')
@@ -104,7 +116,9 @@ export function buildDesignTokensSection(tokens: PlatformSpec['designTokens'], f
 
 export function buildExistingDesignTokensSection(tokens: PlatformSpec['designTokens']): string {
   const lines: string[] = ['## Existing Design Tokens (from existing app — USE THESE EXACTLY)']
-  lines.push('These tokens were loaded from the existing app\'s design file. Match them exactly so new features blend seamlessly.')
+  lines.push(
+    "These tokens were loaded from the existing app's design file. Match them exactly so new features blend seamlessly.",
+  )
 
   if (tokens.colors && Object.keys(tokens.colors).length > 0) {
     lines.push('')
@@ -144,7 +158,9 @@ export function buildModificationPlanSection(plan: ModificationPlan): string {
   const lines: string[] = []
   lines.push('## Modification Plan (files you MUST modify)')
   lines.push('')
-  lines.push('The following EXISTING files must be changed to integrate the new feature. Full file content is provided below. Output the complete modified file.')
+  lines.push(
+    'The following EXISTING files must be changed to integrate the new feature. Full file content is provided below. Output the complete modified file.',
+  )
   lines.push('')
   lines.push('DO NOT modify any files not listed here.')
 
@@ -155,9 +171,11 @@ export function buildModificationPlanSection(plan: ModificationPlan): string {
     lines.push(`**File path:** ${item.filePath}`)
     lines.push('')
     // Determine language for code fence
-    const lang = item.filePath.endsWith('.swift') ? 'swift'
-      : item.filePath.endsWith('.kt') ? 'kotlin'
-      : ''
+    const lang = item.filePath.endsWith('.swift')
+      ? 'swift'
+      : item.filePath.endsWith('.kt')
+        ? 'kotlin'
+        : ''
     lines.push(`\`\`\`${lang}`)
     lines.push(item.fileContent)
     lines.push('```')
@@ -170,8 +188,8 @@ export function buildModificationPlanSection(plan: ModificationPlan): string {
 
 export function buildIconReference(spec: PlatformSpec): string | null {
   const iconComps = spec.screens
-    .flatMap(s => flattenPlatformComps(s.components))
-    .filter(c => c.props.sfSymbolName)
+    .flatMap((s) => flattenPlatformComps(s.components))
+    .filter((c) => c.props.sfSymbolName)
 
   if (iconComps.length === 0) return null
 
@@ -190,7 +208,9 @@ export function buildIconReference(spec: PlatformSpec): string | null {
   lines.push('Use these exact SF Symbol names in your SwiftUI code:')
   lines.push('')
   for (const comp of unique) {
-    const origin = comp.props.iconFontFamily ? ` (design: \`${comp.props.iconFontFamily}:${comp.props.iconFontName}\`)` : ''
+    const origin = comp.props.iconFontFamily
+      ? ` (design: \`${comp.props.iconFontFamily}:${comp.props.iconFontName}\`)`
+      : ''
     lines.push(`- \`Image(systemName: "${comp.props.sfSymbolName}")\` — ${comp.name}${origin}`)
   }
   return lines.join('\n')

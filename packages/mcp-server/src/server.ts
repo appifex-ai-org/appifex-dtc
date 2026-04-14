@@ -16,7 +16,10 @@ async function resolveRunner(projectDir: string, configDir?: string) {
 }
 
 /** Inject collected commands into a tool result's JSON text */
-function injectCommands(result: { text: string; isError: boolean }, runner: CommandCollectingRunner): { text: string; isError: boolean } {
+function injectCommands(
+  result: { text: string; isError: boolean },
+  runner: CommandCollectingRunner,
+): { text: string; isError: boolean } {
   const commands = runner.getCommands()
   if (commands.length === 0) return result
   try {

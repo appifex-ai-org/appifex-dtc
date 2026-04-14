@@ -20,8 +20,8 @@ import { readFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { basename, join, isAbsolute, resolve } from 'node:path'
 import { createHash } from 'node:crypto'
+import type { Checkpoint } from '@appifex/core'
 import {
-  Checkpoint,
   readPreAgentSnapshotSidecar,
   recomputeAggregateSha256,
   SidecarCorruptError,
@@ -76,7 +76,10 @@ export interface DetectResumeInput {
 
 export type EligibilityResult =
   | { eligible: true }
-  | { eligible: false; reason: 'not-add-feature' | 'no-resume-flag' | 'no-checkpoint-db' | 'no-previous-context' }
+  | {
+      eligible: false
+      reason: 'not-add-feature' | 'no-resume-flag' | 'no-checkpoint-db' | 'no-previous-context'
+    }
 
 export interface RunResumeBootstrapDeps {
   outputDir: string
@@ -142,8 +145,8 @@ export async function runResumeBootstrap(
       const dbPath = join(dtcDir, 'checkpoint.db')
       throw new ResumeAbortError(
         `Resume aborted — found checkpoint DB at ${dbPath} but .dtc/run-context.json is missing.\n` +
-        `Resume cannot rehydrate modification plan / design delta without run-context.\n` +
-        `Fix: delete ${dbPath} or run \`dtc run --add-feature --no-resume\` to start fresh.`,
+          `Resume cannot rehydrate modification plan / design delta without run-context.\n` +
+          `Fix: delete ${dbPath} or run \`dtc run --add-feature --no-resume\` to start fresh.`,
       )
     }
     // D-03: first add-feature run (no-checkpoint-db) → null silently. No banner, no error.
@@ -159,9 +162,9 @@ export async function runResumeBootstrap(
   if (previousContext.runId !== deps.checkpointRunId) {
     throw new ResumeAbortError(
       `Resume aborted — runId mismatch between checkpoint and run-context.\n` +
-      `  run-context.json runId: ${previousContext.runId}\n` +
-      `  checkpoint DB runId:    ${deps.checkpointRunId}\n` +
-      `These artifacts belong to different runs. Fix: delete \`.dtc/checkpoint.db\` or run \`dtc run --add-feature --no-resume\`.`,
+        `  run-context.json runId: ${previousContext.runId}\n` +
+        `  checkpoint DB runId:    ${deps.checkpointRunId}\n` +
+        `These artifacts belong to different runs. Fix: delete \`.dtc/checkpoint.db\` or run \`dtc run --add-feature --no-resume\`.`,
     )
   }
 
@@ -172,7 +175,7 @@ export async function runResumeBootstrap(
   } catch (err) {
     throw new ResumeAbortError(
       `Resume aborted — checkpoint DB at ${join(dtcDir, 'checkpoint.db')} is unreadable: ${String(err)}\n` +
-      `Fix: \`rm ${join(dtcDir, 'checkpoint.db')} && dtc run --add-feature --no-resume\` to start fresh.`,
+        `Fix: \`rm ${join(dtcDir, 'checkpoint.db')} && dtc run --add-feature --no-resume\` to start fresh.`,
     )
   }
 
@@ -182,12 +185,15 @@ export async function runResumeBootstrap(
   }
 
   // D-22: read analysis row for sidecar pointer
-  const analysisRow = deps.checkpoint.getPhase(deps.checkpointRunId, 'analysis') as
-    | { snapshotPath?: string; snapshotSha256?: string; status?: string } | null
+  const analysisRow = deps.checkpoint.getPhase(deps.checkpointRunId, 'analysis') as {
+    snapshotPath?: string
+    snapshotSha256?: string
+    status?: string
+  } | null
   if (!analysisRow || !analysisRow.snapshotPath || !analysisRow.snapshotSha256) {
     throw new ResumeAbortError(
       `Resume aborted — checkpoint analysis row missing sidecar pointer (snapshotPath/snapshotSha256).\n` +
-      `Fix: \`dtc run --add-feature --no-resume\` to start fresh.`,
+        `Fix: \`dtc run --add-feature --no-resume\` to start fresh.`,
     )
   }
 
@@ -201,7 +207,7 @@ export async function runResumeBootstrap(
     if (err instanceof SidecarCorruptError) {
       throw new ResumeAbortError(
         `Resume aborted — sidecar snapshot corrupt: ${err.message}\n` +
-        `Fix: \`dtc run --add-feature --no-resume\` to start fresh.`,
+          `Fix: \`dtc run --add-feature --no-resume\` to start fresh.`,
       )
     }
     throw err
@@ -212,10 +218,10 @@ export async function runResumeBootstrap(
   if (recomputed !== analysisRow.snapshotSha256) {
     throw new ResumeAbortError(
       `Resume aborted — sidecar aggregate sha256 mismatch.\n` +
-      `  checkpoint row:    ${analysisRow.snapshotSha256}\n` +
-      `  sidecar recompute: ${recomputed}\n` +
-      `The snapshot file at ${resolvedSidecarPath} was modified or truncated since the original run.\n` +
-      `Fix: \`dtc run --add-feature --no-resume\` to start fresh.`,
+        `  checkpoint row:    ${analysisRow.snapshotSha256}\n` +
+        `  sidecar recompute: ${recomputed}\n` +
+        `The snapshot file at ${resolvedSidecarPath} was modified or truncated since the original run.\n` +
+        `Fix: \`dtc run --add-feature --no-resume\` to start fresh.`,
     )
   }
 
@@ -259,7 +265,11 @@ export async function checkDrift(
 
   for (const relPath of Object.keys(sidecar.sha256PerFile)) {
     // Defense in depth: belt-and-braces check (reader already validates, but cheap here)
-    if (isAbsolute(relPath) || relPath.split('/').includes('..') || relPath.split('\\').includes('..')) {
+    if (
+      isAbsolute(relPath) ||
+      relPath.split('/').includes('..') ||
+      relPath.split('\\').includes('..')
+    ) {
       removed.push(relPath)
       continue
     }
@@ -299,7 +309,7 @@ export function formatDriftError(drift: { modified: string[]; removed: string[] 
   const lines: string[] = []
 
   lines.push(
-    `Resume aborted — ${total} source file${total === 1 ? '' : 's'} have drifted since the original run:`
+    `Resume aborted — ${total} source file${total === 1 ? '' : 's'} have drifted since the original run:`,
   )
   lines.push('')
 

@@ -100,7 +100,13 @@ describe('revertUnexpectedChanges', () => {
     ])
     const modificationPlan: ModificationPlan = {
       items: [
-        { filePath: 'Sources/ContentView.swift', screenName: 'ContentView', changeDescription: 'Add tab', changeType: 'navigation', fileContent: 'original content' },
+        {
+          filePath: 'Sources/ContentView.swift',
+          screenName: 'ContentView',
+          changeDescription: 'Add tab',
+          changeType: 'navigation',
+          fileContent: 'original content',
+        },
       ],
     }
     const fileContents: Record<string, string> = {
@@ -122,12 +128,16 @@ describe('revertUnexpectedChanges', () => {
   })
 
   it('preserves file in modification plan even if changed', async () => {
-    const snapshot = new Map([
-      ['Sources/ContentView.swift', 'original'],
-    ])
+    const snapshot = new Map([['Sources/ContentView.swift', 'original']])
     const modificationPlan: ModificationPlan = {
       items: [
-        { filePath: 'Sources/ContentView.swift', screenName: 'ContentView', changeDescription: 'Add tab', changeType: 'navigation', fileContent: 'original' },
+        {
+          filePath: 'Sources/ContentView.swift',
+          screenName: 'ContentView',
+          changeDescription: 'Add tab',
+          changeType: 'navigation',
+          fileContent: 'original',
+        },
       ],
     }
     const runner = createMockRunner([], { 'Sources/ContentView.swift': 'modified' })
@@ -143,9 +153,7 @@ describe('revertUnexpectedChanges', () => {
 
   it('does NOT touch new files not in snapshot', async () => {
     // Snapshot has only A.swift. Agent created B.swift (not in snapshot).
-    const snapshot = new Map([
-      ['Sources/A.swift', 'original A'],
-    ])
+    const snapshot = new Map([['Sources/A.swift', 'original A']])
     const modificationPlan: ModificationPlan = { items: [] }
     // A.swift is unchanged; B.swift exists but was not in snapshot
     const runner = createMockRunner([], {
@@ -170,13 +178,19 @@ describe('revertUnexpectedChanges', () => {
     ])
     const modificationPlan: ModificationPlan = {
       items: [
-        { filePath: 'Sources/C.swift', screenName: 'C', changeDescription: 'Update', changeType: 'layout', fileContent: 'original C' },
+        {
+          filePath: 'Sources/C.swift',
+          screenName: 'C',
+          changeDescription: 'Update',
+          changeType: 'layout',
+          fileContent: 'original C',
+        },
       ],
     }
     const runner = createMockRunner([], {
       'Sources/A.swift': 'changed A',
       'Sources/B.swift': 'original B', // unchanged — should NOT be reverted
-      'Sources/C.swift': 'changed C',  // in plan — should NOT be reverted
+      'Sources/C.swift': 'changed C', // in plan — should NOT be reverted
     })
     const writeSpy = vi.fn().mockResolvedValue(undefined)
     runner.writeFile = writeSpy
@@ -189,9 +203,7 @@ describe('revertUnexpectedChanges', () => {
   })
 
   it('restores deleted files that were in snapshot but not in modification plan', async () => {
-    const snapshot = new Map([
-      ['Sources/HomeView.swift', 'original home'],
-    ])
+    const snapshot = new Map([['Sources/HomeView.swift', 'original home']])
     const modificationPlan: ModificationPlan = { items: [] }
     // HomeView was deleted — readFile rejects
     const runner = createMockRunner([], {})
@@ -206,9 +218,7 @@ describe('revertUnexpectedChanges', () => {
   })
 
   it('returns empty list when no unexpected changes occurred', async () => {
-    const snapshot = new Map([
-      ['Sources/ContentView.swift', 'unchanged'],
-    ])
+    const snapshot = new Map([['Sources/ContentView.swift', 'unchanged']])
     const modificationPlan: ModificationPlan = { items: [] }
     const runner = createMockRunner([], { 'Sources/ContentView.swift': 'unchanged' })
     const writeSpy = vi.fn().mockResolvedValue(undefined)

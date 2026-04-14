@@ -11,7 +11,12 @@ import { mkdtemp, readFile, writeFile, rm, unlink, mkdir } from 'node:fs/promise
 import { tmpdir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import { createHash } from 'node:crypto'
-import { Checkpoint, writePreAgentSnapshotSidecar, saveRunContext, RunContextBuilder } from '@appifex/core'
+import {
+  Checkpoint,
+  writePreAgentSnapshotSidecar,
+  saveRunContext,
+  RunContextBuilder,
+} from '@appifex/core'
 
 // These imports fail RED until resume-bootstrap.ts is created
 import {
@@ -41,7 +46,10 @@ async function makeDtcDir(outputDir: string): Promise<string> {
  * Build a minimal valid RunContext + checkpoint for a clean resume scenario.
  * Returns { previousContext, checkpoint, checkpointRunId, sidecarPath, dtcDir }
  */
-async function buildCleanResumeFixture(outputDir: string, sourceFiles: Map<string, string> = new Map()) {
+async function buildCleanResumeFixture(
+  outputDir: string,
+  sourceFiles: Map<string, string> = new Map(),
+) {
   const dtcDir = await makeDtcDir(outputDir)
 
   // Write source files to disk (so drift check can read them)
@@ -52,7 +60,11 @@ async function buildCleanResumeFixture(outputDir: string, sourceFiles: Map<strin
   }
 
   // Create run context
-  const builder = new RunContextBuilder({ prompt: 'Add dark mode', platform: 'swiftui', mode: 'add-feature' })
+  const builder = new RunContextBuilder({
+    prompt: 'Add dark mode',
+    platform: 'swiftui',
+    mode: 'add-feature',
+  })
   builder.recordPhase('analysis', 'completed', 'Analysis done')
   builder.recordPhase('codegen', 'completed', 'Codegen done')
   const ctx = builder.build('completed')
@@ -80,7 +92,13 @@ async function buildCleanResumeFixture(outputDir: string, sourceFiles: Map<strin
     completedAt: new Date().toISOString(),
   } as any)
 
-  return { previousContext: ctx, checkpoint, checkpointRunId, sidecarPath: sidecarMeta.path, dtcDir }
+  return {
+    previousContext: ctx,
+    checkpoint,
+    checkpointRunId,
+    sidecarPath: sidecarMeta.path,
+    dtcDir,
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -133,7 +151,9 @@ describe('detectResumeEligibility', () => {
 
 describe('runResumeBootstrap', () => {
   let dir: string
-  beforeEach(async () => { dir = await makeTmpDir() })
+  beforeEach(async () => {
+    dir = await makeTmpDir()
+  })
   afterEach(async () => {
     await rm(dir, { recursive: true, force: true })
   })
@@ -143,7 +163,11 @@ describe('runResumeBootstrap', () => {
     const logBanner = vi.fn()
     const dtcDir = await makeDtcDir(dir)
     const checkpoint = new Checkpoint(join(dtcDir, 'checkpoint.db'))
-    const builder = new RunContextBuilder({ prompt: 'test', platform: 'swiftui', mode: 'add-feature' })
+    const builder = new RunContextBuilder({
+      prompt: 'test',
+      platform: 'swiftui',
+      mode: 'add-feature',
+    })
     const ctx = builder.build('failed')
 
     const result = await runResumeBootstrap({
@@ -175,7 +199,7 @@ describe('runResumeBootstrap', () => {
         checkpoint,
         checkpointRunId: 'run-fake',
         logBanner,
-      })
+      }),
     ).rejects.toThrow('run-context.json is missing')
 
     const err = await runResumeBootstrap({
@@ -186,7 +210,7 @@ describe('runResumeBootstrap', () => {
       checkpoint,
       checkpointRunId: 'run-fake',
       logBanner,
-    }).catch(e => e)
+    }).catch((e) => e)
     checkpoint.close()
     expect(err).toBeInstanceOf(ResumeAbortError)
     expect(err.message).toContain('--no-resume')
@@ -195,7 +219,11 @@ describe('runResumeBootstrap', () => {
   test('runResumeBootstrap aborts on runId mismatch', async () => {
     // D-06: run-context has run-AAA but checkpoint has run-BBB
     const { checkpoint, dtcDir } = await buildCleanResumeFixture(dir)
-    const builder = new RunContextBuilder({ prompt: 'test', platform: 'swiftui', mode: 'add-feature' })
+    const builder = new RunContextBuilder({
+      prompt: 'test',
+      platform: 'swiftui',
+      mode: 'add-feature',
+    })
     // Override runId by building a context and manually setting a different ID
     const ctx = builder.build('completed')
     // Simulate mismatch: pass context with runId=run-AAA but checkpointRunId=run-BBB
@@ -208,7 +236,7 @@ describe('runResumeBootstrap', () => {
       checkpoint,
       checkpointRunId: 'run-BBB',
       logBanner,
-    }).catch(e => e)
+    }).catch((e) => e)
     checkpoint.close()
     expect(err).toBeInstanceOf(ResumeAbortError)
     expect(err.message).toContain('run-AAA')
@@ -223,12 +251,18 @@ describe('runResumeBootstrap', () => {
     const dbPath = join(dtcDir, 'checkpoint.db')
     await writeFile(dbPath, '') // empty / corrupt DB file
 
-    const builder = new RunContextBuilder({ prompt: 'test', platform: 'swiftui', mode: 'add-feature' })
+    const builder = new RunContextBuilder({
+      prompt: 'test',
+      platform: 'swiftui',
+      mode: 'add-feature',
+    })
     const ctx = builder.build('completed')
     await saveRunContext(dir, ctx)
 
     const stubbedCheckpoint = {
-      lastCompletedPhase: (_runId: string) => { throw new Error('SQLITE_CORRUPT: database disk image is malformed') },
+      lastCompletedPhase: (_runId: string) => {
+        throw new Error('SQLITE_CORRUPT: database disk image is malformed')
+      },
       getPhase: () => null,
       savePhase: () => {},
       completedPhases: () => [],
@@ -244,7 +278,7 @@ describe('runResumeBootstrap', () => {
       checkpoint: stubbedCheckpoint,
       checkpointRunId: ctx.runId,
       logBanner,
-    }).catch(e => e)
+    }).catch((e) => e)
     expect(err).toBeInstanceOf(ResumeAbortError)
     expect(err.message).toContain('unreadable')
     expect(err.message).toContain('--no-resume')
@@ -252,7 +286,10 @@ describe('runResumeBootstrap', () => {
 
   test('runResumeBootstrap aborts when sidecar aggregate hash mismatches', async () => {
     // D-16: checkpoint row has a bogus snapshotSha256
-    const sourceFiles = new Map([['src/App.swift', 'import SwiftUI'], ['src/View.swift', 'struct View {}']])
+    const sourceFiles = new Map([
+      ['src/App.swift', 'import SwiftUI'],
+      ['src/View.swift', 'struct View {}'],
+    ])
     const { previousContext, checkpoint, checkpointRunId, sidecarPath, dtcDir } =
       await buildCleanResumeFixture(dir, sourceFiles)
 
@@ -280,11 +317,13 @@ describe('runResumeBootstrap', () => {
       checkpoint,
       checkpointRunId,
       logBanner,
-    }).catch(e => e)
+    }).catch((e) => e)
     checkpoint.close()
     expect(err).toBeInstanceOf(ResumeAbortError)
     expect(err.message).toContain('aggregate sha256 mismatch')
-    expect(err.message).toContain('deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
+    expect(err.message).toContain(
+      'deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef',
+    )
   })
 
   test('runResumeBootstrap aborts with drift error when source files modified', async () => {
@@ -293,8 +332,10 @@ describe('runResumeBootstrap', () => {
       ['src/App.swift', 'import SwiftUI'],
       ['src/ContentView.swift', 'struct ContentView: View {}'],
     ])
-    const { previousContext, checkpoint, checkpointRunId, dtcDir } =
-      await buildCleanResumeFixture(dir, sourceFiles)
+    const { previousContext, checkpoint, checkpointRunId, dtcDir } = await buildCleanResumeFixture(
+      dir,
+      sourceFiles,
+    )
 
     // Modify one file
     await writeFile(join(dir, 'src/App.swift'), 'import SwiftUI\n// MODIFIED')
@@ -308,7 +349,7 @@ describe('runResumeBootstrap', () => {
       checkpoint,
       checkpointRunId,
       logBanner,
-    }).catch(e => e)
+    }).catch((e) => e)
     checkpoint.close()
     expect(err).toBeInstanceOf(ResumeAbortError)
     expect(err.message).toContain('Modified:')
@@ -322,8 +363,10 @@ describe('runResumeBootstrap', () => {
       ['src/App.swift', 'import SwiftUI'],
       ['src/ContentView.swift', 'struct ContentView: View {}'],
     ])
-    const { previousContext, checkpoint, checkpointRunId, dtcDir } =
-      await buildCleanResumeFixture(dir, sourceFiles)
+    const { previousContext, checkpoint, checkpointRunId, dtcDir } = await buildCleanResumeFixture(
+      dir,
+      sourceFiles,
+    )
 
     // Remove one file
     await unlink(join(dir, 'src/ContentView.swift'))
@@ -337,7 +380,7 @@ describe('runResumeBootstrap', () => {
       checkpoint,
       checkpointRunId,
       logBanner,
-    }).catch(e => e)
+    }).catch((e) => e)
     checkpoint.close()
     expect(err).toBeInstanceOf(ResumeAbortError)
     expect(err.message).toContain('Removed:')
@@ -362,7 +405,7 @@ describe('runResumeBootstrap', () => {
       checkpoint,
       checkpointRunId,
       logBanner,
-    }).catch(e => e)
+    }).catch((e) => e)
     checkpoint.close()
     expect(err).toBeInstanceOf(ResumeAbortError)
     expect(err.message).toContain('sidecar snapshot corrupt')
@@ -371,8 +414,10 @@ describe('runResumeBootstrap', () => {
   test('runResumeBootstrap ignores net-new files not in sidecar', async () => {
     // D-15: files added after snapshot are NOT drift
     const sourceFiles = new Map([['src/App.swift', 'import SwiftUI']])
-    const { previousContext, checkpoint, checkpointRunId, dtcDir } =
-      await buildCleanResumeFixture(dir, sourceFiles)
+    const { previousContext, checkpoint, checkpointRunId, dtcDir } = await buildCleanResumeFixture(
+      dir,
+      sourceFiles,
+    )
 
     // Add a new file (not in sidecar)
     await writeFile(join(dir, 'src/NewView.swift'), 'struct NewView: View {}')
@@ -394,8 +439,10 @@ describe('runResumeBootstrap', () => {
 
   test('runResumeBootstrap returns ResumeState and prints banner on clean resume', async () => {
     const sourceFiles = new Map([['src/App.swift', 'import SwiftUI']])
-    const { previousContext, checkpoint, checkpointRunId, dtcDir } =
-      await buildCleanResumeFixture(dir, sourceFiles)
+    const { previousContext, checkpoint, checkpointRunId, dtcDir } = await buildCleanResumeFixture(
+      dir,
+      sourceFiles,
+    )
 
     const logBanner = vi.fn()
     const result = await runResumeBootstrap({
@@ -413,7 +460,9 @@ describe('runResumeBootstrap', () => {
     expect(result?.checkpointRunId).toBe(checkpointRunId)
     expect(logBanner).toHaveBeenCalledOnce()
     const bannerArg = logBanner.mock.calls[0][0] as string
-    expect(bannerArg).toContain('Resuming add-feature run from checkpoint (last completed: codegen)')
+    expect(bannerArg).toContain(
+      'Resuming add-feature run from checkpoint (last completed: codegen)',
+    )
   })
 })
 
@@ -423,8 +472,12 @@ describe('runResumeBootstrap', () => {
 
 describe('checkDrift', () => {
   let dir: string
-  beforeEach(async () => { dir = await makeTmpDir() })
-  afterEach(async () => { await rm(dir, { recursive: true, force: true }) })
+  beforeEach(async () => {
+    dir = await makeTmpDir()
+  })
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true })
+  })
 
   test('checkDrift rejects path traversal in sidecar entries', async () => {
     // Defense in depth: path traversal entries land in removed[] without fs access
@@ -495,7 +548,7 @@ describe('Phase 24 (RESUME-02): legacy absolute path migration', () => {
       const { migrateSnapshotPath } = await import('../src/resume-bootstrap.js')
       const resolved = migrateSnapshotPath(legacyAbsPath, dtcDirB)
       expect(resolved).toBe(join(dtcDirB, 'snapshots', 'run-legacy-preAgent.json'))
-      expect(isAbsolute(resolved)).toBe(true)  // resolved path IS absolute (ready for readFile)
+      expect(isAbsolute(resolved)).toBe(true) // resolved path IS absolute (ready for readFile)
 
       // Verify file at resolved path is valid
       const body = JSON.parse(await readFile(resolved, 'utf8'))

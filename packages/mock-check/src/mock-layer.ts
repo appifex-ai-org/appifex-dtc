@@ -1,5 +1,11 @@
 import { relative, basename } from 'node:path'
-import type { Runner, Platform, MockLayerViolation, MockCheckResult, MockCheckContext } from '@appifex/core'
+import type {
+  Runner,
+  Platform,
+  MockLayerViolation,
+  MockCheckResult,
+  MockCheckContext,
+} from '@appifex/core'
 import { stripComments } from '@appifex/baas-check'
 import { MOCK_CONTRACT_METHODS } from '@appifex/mock'
 import { extractSwiftProtocolMethods, extractBracedBody } from './signature-extract/swift.js'
@@ -47,20 +53,20 @@ export async function checkMockLayer(
   }
 
   const swiftEntities = swiftFiles
-    .map(f => entityFromRepoFile(f, '.swift'))
+    .map((f) => entityFromRepoFile(f, '.swift'))
     .filter((e): e is string => e !== null)
 
   const ktEntities = ktFiles
-    .map(f => entityFromRepoFile(f, '.kt'))
+    .map((f) => entityFromRepoFile(f, '.kt'))
     .filter((e): e is string => e !== null)
 
   const tsxEntities = tsxFiles
-    .map(f => entityFromRepoFile(f, '.tsx'))
+    .map((f) => entityFromRepoFile(f, '.tsx'))
     .filter((e): e is string => e !== null)
 
   // ── 3. Helper: find file by basename pattern ─────────────────────────────
   function findFile(files: string[], namePattern: string): string | undefined {
-    return files.find(f => basename(f) === namePattern)
+    return files.find((f) => basename(f) === namePattern)
   }
 
   // ── 4. Completeness checks (MISSING_MOCK) ────────────────────────────────
@@ -166,7 +172,10 @@ export async function checkMockLayer(
     const mockMethods = extractSwiftProtocolMethods(source, 'MockAuthManager')
 
     // Extract from class body using brace-depth counting (CR-01 fix).
-    const classBlock = extractBracedBody(rawSource, /(?:class|struct|final\s+class)\s+MockAuthManager[^{]*/)
+    const classBlock = extractBracedBody(
+      rawSource,
+      /(?:class|struct|final\s+class)\s+MockAuthManager[^{]*/,
+    )
     const classMethods: Array<{ name: string; params: string[] }> = []
     if (classBlock) {
       const funcRegex = /func\s+(\w+)\(([^)]*)\)/g
@@ -174,9 +183,13 @@ export async function checkMockLayer(
       while ((m = funcRegex.exec(classBlock)) !== null) {
         const name = m[1]
         const rawParams = m[2].trim()
-        const params = rawParams.length === 0
-          ? []
-          : rawParams.split(',').map(p => p.trim()).filter(p => p.length > 0)
+        const params =
+          rawParams.length === 0
+            ? []
+            : rawParams
+                .split(',')
+                .map((p) => p.trim())
+                .filter((p) => p.length > 0)
         classMethods.push({ name, params })
       }
     }
@@ -185,7 +198,7 @@ export async function checkMockLayer(
 
     // Contract-driven method presence check (D-05: replaces protocol-derived method list)
     for (const methodName of MOCK_CONTRACT_METHODS) {
-      const mockMethod = allMockMethods.find(m => m.name === methodName)
+      const mockMethod = allMockMethods.find((m) => m.name === methodName)
       if (!mockMethod) {
         violations.push({
           file: relative(projectDir, swiftAuthFile),
@@ -200,7 +213,7 @@ export async function checkMockLayer(
 
     // Signature mismatch check (uses protocol extractors for parameter comparison)
     for (const ifMethod of interfaceMethods) {
-      const mockMethod = allMockMethods.find(m => m.name === ifMethod.name)
+      const mockMethod = allMockMethods.find((m) => m.name === ifMethod.name)
       if (mockMethod && !paramsEqual(ifMethod.params, mockMethod.params)) {
         violations.push({
           file: relative(projectDir, swiftAuthFile),
@@ -231,16 +244,20 @@ export async function checkMockLayer(
       while ((m = funcRegex.exec(objectBlock)) !== null) {
         const name = m[1]
         const rawParams = m[2].trim()
-        const params = rawParams.length === 0
-          ? []
-          : rawParams.split(',').map(p => p.trim()).filter(p => p.length > 0)
+        const params =
+          rawParams.length === 0
+            ? []
+            : rawParams
+                .split(',')
+                .map((p) => p.trim())
+                .filter((p) => p.length > 0)
         mockMethods.push({ name, params })
       }
     }
 
     // Contract-driven method presence check (D-05: replaces protocol-derived method list)
     for (const methodName of MOCK_CONTRACT_METHODS) {
-      const mockMethod = mockMethods.find(m => m.name === methodName)
+      const mockMethod = mockMethods.find((m) => m.name === methodName)
       if (!mockMethod) {
         violations.push({
           file: relative(projectDir, ktAuthFile),
@@ -255,7 +272,7 @@ export async function checkMockLayer(
 
     // Signature mismatch check (uses interface extractors for parameter comparison)
     for (const ifMethod of interfaceMethods) {
-      const mockMethod = mockMethods.find(m => m.name === ifMethod.name)
+      const mockMethod = mockMethods.find((m) => m.name === ifMethod.name)
       if (mockMethod && !paramsEqual(ifMethod.params, mockMethod.params)) {
         violations.push({
           file: relative(projectDir, ktAuthFile),
@@ -282,21 +299,26 @@ export async function checkMockLayer(
     // (with optional useCallback/async). Regular function declarations, object
     // property methods, and other patterns are not matched. This is acceptable
     // because codegen templates exclusively emit the arrow function convention.
-    const arrowFuncRegex = /const\s+(\w+)\s*=\s*(?:useCallback\s*\()?\s*(?:async\s*)?\(([^)]*)\)\s*=>/g
+    const arrowFuncRegex =
+      /const\s+(\w+)\s*=\s*(?:useCallback\s*\()?\s*(?:async\s*)?\(([^)]*)\)\s*=>/g
     const mockMethods: Array<{ name: string; params: string[] }> = []
     let m: RegExpExecArray | null
     while ((m = arrowFuncRegex.exec(source)) !== null) {
       const name = m[1]
       const rawParams = m[2].trim()
-      const params = rawParams.length === 0
-        ? []
-        : rawParams.split(',').map(p => p.trim().replace(/^_/, '')).filter(p => p.length > 0)
+      const params =
+        rawParams.length === 0
+          ? []
+          : rawParams
+              .split(',')
+              .map((p) => p.trim().replace(/^_/, ''))
+              .filter((p) => p.length > 0)
       mockMethods.push({ name, params })
     }
 
     // Contract-driven method presence check (D-05: replaces interface-derived method list)
     for (const methodName of MOCK_CONTRACT_METHODS) {
-      const mockMethod = mockMethods.find(m => m.name === methodName)
+      const mockMethod = mockMethods.find((m) => m.name === methodName)
       if (!mockMethod) {
         violations.push({
           file: relative(projectDir, reactAuthFile),

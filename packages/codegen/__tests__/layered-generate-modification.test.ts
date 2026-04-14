@@ -15,10 +15,16 @@ import type { ModificationPlan } from '@appifex/core'
 
 const baseSpec = {
   platform: 'swiftui' as const,
-  screens: [{
-    id: 's1', name: 'Home', componentName: 'HomeView',
-    description: 'Main screen', components: [], testIds: {},
-  }],
+  screens: [
+    {
+      id: 's1',
+      name: 'Home',
+      componentName: 'HomeView',
+      description: 'Main screen',
+      components: [],
+      testIds: {},
+    },
+  ],
   designTokens: { colors: {}, typography: {}, spacing: {}, borderRadius: {} },
   imports: ['SwiftUI'],
 }
@@ -37,14 +43,21 @@ function makeModificationPlan(items: ModificationPlan['items'] = []): Modificati
 function makeMockCreateMessage(capturedPrompts: string[]) {
   return vi.fn().mockImplementation(async (params: { messages: Array<{ content: unknown }> }) => {
     const msg = params.messages[0]
-    const content = typeof msg.content === 'string'
-      ? msg.content
-      : Array.isArray(msg.content)
-        ? msg.content.find((c: { type: string; text?: string }) => c.type === 'text')?.text ?? ''
-        : ''
+    const content =
+      typeof msg.content === 'string'
+        ? msg.content
+        : Array.isArray(msg.content)
+          ? (msg.content.find((c: { type: string; text?: string }) => c.type === 'text')?.text ??
+            '')
+          : ''
     capturedPrompts.push(content)
     return {
-      content: [{ type: 'text', text: '===FILE: Sources/HomeView.swift===\nstruct HomeView: View { var body: some View { Text("Hello") } }\n===END_FILE===' }],
+      content: [
+        {
+          type: 'text',
+          text: '===FILE: Sources/HomeView.swift===\nstruct HomeView: View { var body: some View { Text("Hello") } }\n===END_FILE===',
+        },
+      ],
       usage: { input_tokens: 100, output_tokens: 200 },
     }
   })
@@ -55,13 +68,15 @@ describe('buildLayeredPrompt: modificationPlan rendering', () => {
     const capturedPrompts: string[] = []
     const mockCreate = makeMockCreateMessage(capturedPrompts)
 
-    const plan = makeModificationPlan([{
-      filePath: 'Sources/ContentView.swift',
-      screenName: 'ContentView',
-      changeDescription: 'Add new tab for Settings',
-      changeType: 'navigation',
-      fileContent: 'struct ContentView: View { var body: some View { TabView {} } }',
-    }])
+    const plan = makeModificationPlan([
+      {
+        filePath: 'Sources/ContentView.swift',
+        screenName: 'ContentView',
+        changeDescription: 'Add new tab for Settings',
+        changeType: 'navigation',
+        fileContent: 'struct ContentView: View { var body: some View { TabView {} } }',
+      },
+    ])
 
     const input: CodegenInput = {
       ...baseInput,

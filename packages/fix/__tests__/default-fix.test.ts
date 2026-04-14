@@ -10,21 +10,39 @@ function mockRunner(): Runner {
     writeFile: vi.fn().mockResolvedValue(undefined),
     exists: vi.fn().mockResolvedValue(true),
     glob: vi.fn().mockResolvedValue(['/app/src/Home.tsx']),
-    capabilities: { hasMaestro: false, hasXcode: false, hasNode: true, hasSemgrep: false, platform: 'darwin' },
+    capabilities: {
+      hasMaestro: false,
+      hasXcode: false,
+      hasNode: true,
+      hasSemgrep: false,
+      platform: 'darwin',
+    },
   }
 }
 
 const failingValidation: ValidationResult = {
   ui: {
-    total: 5, passed: 4, failed: 1,
+    total: 5,
+    passed: 4,
+    failed: 1,
     results: [
       { flowName: 'browse', passed: true, duration: 100, assertions: [] },
-      { flowName: 'detail', passed: false, duration: 100, error: 'adoptButton not visible', assertions: [] },
+      {
+        flowName: 'detail',
+        passed: false,
+        duration: 100,
+        error: 'adoptButton not visible',
+        assertions: [],
+      },
     ],
   },
   unit: {
-    total: 3, passed: 2, failed: 1,
-    failures: [{ testName: 'validateEmail', suiteName: 'forms', error: 'Expected false, got true' }],
+    total: 3,
+    passed: 2,
+    failed: 1,
+    failures: [
+      { testName: 'validateEmail', suiteName: 'forms', error: 'Expected false, got true' },
+    ],
   },
   allPassed: false,
 }
@@ -32,11 +50,19 @@ const failingValidation: ValidationResult = {
 describe('createDefaultFixFn', () => {
   it('sends failures to LLM and applies file patches', async () => {
     const mockCreate = vi.fn().mockResolvedValue({
-      content: [{ type: 'text', text: JSON.stringify({
-        fixes: [
-          { path: '/app/src/Home.tsx', content: 'export default function Home() { return <View testID="adoptButton" /> }' },
-        ],
-      })}],
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            fixes: [
+              {
+                path: '/app/src/Home.tsx',
+                content: 'export default function Home() { return <View testID="adoptButton" /> }',
+              },
+            ],
+          }),
+        },
+      ],
       usage: { input_tokens: 800, output_tokens: 600 },
     })
 

@@ -11,7 +11,11 @@ export async function runDoctor(platform: Platform): Promise<void> {
   try {
     config = await loadConfig(join(homedir(), '.dtc'))
     // Treat empty API key as unconfigured (except for providers that don't need one)
-    if (!config.llm.apiKey && config.llm.provider !== 'claude-cli' && config.llm.provider !== 'copilot') {
+    if (
+      !config.llm.apiKey &&
+      config.llm.provider !== 'claude-cli' &&
+      config.llm.provider !== 'copilot'
+    ) {
       config = undefined
     }
   } catch {
@@ -25,13 +29,14 @@ export async function runDoctor(platform: Platform): Promise<void> {
   const report = checkPrerequisites(platform, config)
 
   for (const check of report.checks) {
-    const icon = check.status === 'pass'
-      ? chalk.green('✓')
-      : check.status === 'fail' && check.severity === 'critical'
-        ? chalk.red('✗')
-        : check.status === 'fail'
-          ? chalk.yellow('!')
-          : chalk.dim('–')
+    const icon =
+      check.status === 'pass'
+        ? chalk.green('✓')
+        : check.status === 'fail' && check.severity === 'critical'
+          ? chalk.red('✗')
+          : check.status === 'fail'
+            ? chalk.yellow('!')
+            : chalk.dim('–')
 
     const label = check.name.padEnd(20)
     p.log.message(`  ${icon} ${chalk.bold(label)} ${check.message}`)
@@ -41,14 +46,26 @@ export async function runDoctor(platform: Platform): Promise<void> {
     }
   }
 
-  const criticalCount = report.checks.filter(c => c.status === 'fail' && c.severity === 'critical').length
-  const warnCount = report.checks.filter(c => c.status === 'fail' && c.severity === 'warning').length
+  const criticalCount = report.checks.filter(
+    (c) => c.status === 'fail' && c.severity === 'critical',
+  ).length
+  const warnCount = report.checks.filter(
+    (c) => c.status === 'fail' && c.severity === 'warning',
+  ).length
 
   if (criticalCount > 0) {
-    p.outro(chalk.red(`${criticalCount} critical issue(s) must be fixed before \`dtc run --platform ${platform}\` will work.`))
+    p.outro(
+      chalk.red(
+        `${criticalCount} critical issue(s) must be fixed before \`dtc run --platform ${platform}\` will work.`,
+      ),
+    )
     process.exit(1)
   } else if (warnCount > 0) {
-    p.outro(chalk.yellow(`All critical checks passed. ${warnCount} optional tool(s) missing — some features will be skipped.`))
+    p.outro(
+      chalk.yellow(
+        `All critical checks passed. ${warnCount} optional tool(s) missing — some features will be skipped.`,
+      ),
+    )
   } else {
     p.outro(chalk.green(`All checks passed! Ready for \`dtc run --platform ${platform}\`.`))
   }
