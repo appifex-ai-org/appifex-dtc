@@ -1,0 +1,28 @@
+# Source: github.com/evilmartians/lefthook/blob/master/docs/configuration.md
+# Phase 1 Plan 04 (D-02, D-03, REPO-02): pre-commit + commit-msg hooks
+pre-commit:
+  parallel: true
+  commands:
+    gitleaks:
+      # Protect = scan staged content without full history walk
+      run: gitleaks protect --staged --redact --verbose
+      # Skip cleanly if binary not installed locally (CI still runs it)
+      skip:
+        - run: 'command -v gitleaks >/dev/null 2>&1 || exit 1'
+
+    lint-staged:
+      glob: '*.{ts,tsx,js,mjs,cjs}'
+      run: pnpm exec eslint --fix {staged_files} && git add {staged_files}
+
+    format-staged:
+      glob: '*.{ts,tsx,js,json,md,yml,yaml}'
+      run: pnpm exec prettier --write {staged_files} && git add {staged_files}
+
+    vitest-related:
+      glob: '*.{ts,tsx}'
+      run: pnpm exec vitest related --run {staged_files}
+
+commit-msg:
+  commands:
+    commitlint:
+      run: pnpm exec commitlint --edit {1}
