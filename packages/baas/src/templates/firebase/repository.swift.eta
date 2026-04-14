@@ -1,0 +1,79 @@
+import Foundation
+
+protocol <%= it.entity.name %>Repository {
+    func create(_ item: <%= it.entity.name %>) async throws -> <%= it.entity.name %>
+    func getById(_ id: String) async throws -> <%= it.entity.name %>?
+    func list() async throws -> [<%= it.entity.name %>]
+    func update(_ item: <%= it.entity.name %>) async throws -> <%= it.entity.name %>
+    func delete(_ id: String) async throws
+}
+
+import FirebaseFirestore
+
+final class Firestore<%= it.entity.name %>Repository: <%= it.entity.name %>Repository {
+    private let db = Firestore.firestore()
+    private let collection: String = "<%= it.entity.name.toLowerCase() %>s"
+
+    func create(_ item: <%= it.entity.name %>) async throws -> <%= it.entity.name %> {
+        let ref = db.collection(collection).document()
+        var data: [String: Any] = [:]
+<% for (const field of it.entity.fields) { %>
+<% if (field.type === 'string') { %>
+        data["<%= field.name %>"] = item.<%= field.name %> as String
+<% } else if (field.type === 'number') { %>
+        data["<%= field.name %>"] = item.<%= field.name %> as Double
+<% } else if (field.type === 'boolean') { %>
+        data["<%= field.name %>"] = item.<%= field.name %> as Bool
+<% } else if (field.type === 'date') { %>
+        data["<%= field.name %>"] = item.<%= field.name %> as Date
+<% } else if (field.type === 'reference') { %>
+        data["<%= field.name %>"] = item.<%= field.name %> as DocumentReference
+<% } else if (field.type === 'array') { %>
+        data["<%= field.name %>"] = item.<%= field.name %> as [Any]
+<% } %>
+<% } %>
+        try await ref.setData(data)
+        var created = item
+        created.id = ref.documentID
+        return created
+    }
+
+    func getById(_ id: String) async throws -> <%= it.entity.name %>? {
+        let doc = try await db.collection(collection).document(id).getDocument()
+        guard doc.exists, let data = doc.data() else { return nil }
+        return <%= it.entity.name %>(id: doc.documentID, data: data)
+    }
+
+    func list() async throws -> [<%= it.entity.name %>] {
+        let snapshot = try await db.collection(collection).getDocuments()
+        return snapshot.documents.compactMap { doc in
+            <%= it.entity.name %>(id: doc.documentID, data: doc.data())
+        }
+    }
+
+    func update(_ item: <%= it.entity.name %>) async throws -> <%= it.entity.name %> {
+        guard let id = item.id else { throw NSError(domain: "Repository", code: 400) }
+        var data: [String: Any] = [:]
+<% for (const field of it.entity.fields) { %>
+<% if (field.type === 'string') { %>
+        data["<%= field.name %>"] = item.<%= field.name %> as String
+<% } else if (field.type === 'number') { %>
+        data["<%= field.name %>"] = item.<%= field.name %> as Double
+<% } else if (field.type === 'boolean') { %>
+        data["<%= field.name %>"] = item.<%= field.name %> as Bool
+<% } else if (field.type === 'date') { %>
+        data["<%= field.name %>"] = item.<%= field.name %> as Date
+<% } else if (field.type === 'reference') { %>
+        data["<%= field.name %>"] = item.<%= field.name %> as DocumentReference
+<% } else if (field.type === 'array') { %>
+        data["<%= field.name %>"] = item.<%= field.name %> as [Any]
+<% } %>
+<% } %>
+        try await db.collection(collection).document(id).setData(data, merge: true)
+        return item
+    }
+
+    func delete(_ id: String) async throws {
+        try await db.collection(collection).document(id).delete()
+    }
+}

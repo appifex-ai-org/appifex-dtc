@@ -1,0 +1,35 @@
+{
+  "name": "@appifex/mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server exposing the DTC toolkit to AI agents",
+  "license": "MIT",
+  "type": "module",
+  "bin": { "dtc-mcp-server": "./dist/index.js" },
+  "main": "./dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist"],
+  "scripts": { "build": "tsc", "clean": "rm -rf dist" },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.24.0",
+    "@appifex/analysis": "workspace:*",
+    "@appifex/core": "workspace:*",
+    "@appifex/runner": "workspace:*",
+    "@appifex/design": "workspace:*",
+    "@appifex/spec": "workspace:*",
+    "@appifex/test-gen": "workspace:*",
+    "@appifex/codegen": "workspace:*",
+    "@appifex/build": "workspace:*",
+    "@appifex/validate": "workspace:*",
+    "@appifex/fix": "workspace:*",
+    "@appifex/deliver": "workspace:*",
+    "@appifex/provision": "workspace:*",
+    "@appifex/report": "workspace:*",
+    "@appifex/cli": "workspace:*"
+  }
+}

@@ -1,0 +1,48 @@
+package repositories
+
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.SupabaseClient
+
+interface <%= it.entity.name %>Repository {
+    suspend fun create(item: <%= it.entity.name %>): <%= it.entity.name %>
+    suspend fun getById(id: String): <%= it.entity.name %>?
+    suspend fun list(): List<<%= it.entity.name %>>
+    suspend fun update(item: <%= it.entity.name %>): <%= it.entity.name %>
+    suspend fun delete(id: String)
+}
+
+class Supabase<%= it.entity.name %>Repository(
+    private val supabase: SupabaseClient
+) : <%= it.entity.name %>Repository {
+    private val table = "<%= it.entity.name.toLowerCase() %>s"
+
+    override suspend fun create(item: <%= it.entity.name %>): <%= it.entity.name %> {
+        return supabase.from(table).insert(item) {
+            select()
+        }.decodeSingle()
+    }
+
+    override suspend fun getById(id: String): <%= it.entity.name %>? {
+        return supabase.from(table).select {
+            filter { eq("id", id) }
+        }.decodeSingleOrNull()
+    }
+
+    override suspend fun list(): List<<%= it.entity.name %>> {
+        return supabase.from(table).select().decodeList()
+    }
+
+    override suspend fun update(item: <%= it.entity.name %>): <%= it.entity.name %> {
+        val id = item.id ?: throw IllegalArgumentException("Item must have an id")
+        return supabase.from(table).update(item) {
+            filter { eq("id", id) }
+            select()
+        }.decodeSingle()
+    }
+
+    override suspend fun delete(id: String) {
+        supabase.from(table).delete {
+            filter { eq("id", id) }
+        }
+    }
+}

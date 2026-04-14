@@ -1,0 +1,23 @@
+{
+  "_comment": "Phase 13 golden invariant — post-normalization shape of a fresh-app RunContext as emitted by RunContextBuilder.build('completed'). Volatile fields (runId, timestamp) are normalized in the test comparator (see pipeline-checkpoint-unchanged.test.ts#normalizeRunContext and cli/__tests__/helpers/phase-13-harness.ts#normalizeRunContext). Regenerated in plan 13-03 to match the actual RunContext schema (the 13-01 draft targeted a hypothetical shape with schemaVersion/startedAt/updatedAt/completedAt/errors that RunContextBuilder has never produced). Phase 13 is pure instrumentation — this fixture locks the fresh-app shape so any Phase 14+ change that alters it will fail this test.",
+  "runId": "<NORMALIZED>",
+  "prompt": "Build a minimal counter app",
+  "platform": "swiftui",
+  "mode": "fresh",
+  "status": "completed",
+  "timestamp": "<NORMALIZED>",
+  "phases": {
+    "design": { "status": "completed", "summary": "design ok" },
+    "spec": { "status": "completed", "summary": "spec ok" },
+    "test_gen": { "status": "completed", "summary": "test_gen ok" },
+    "codegen": { "status": "completed", "summary": "codegen ok" },
+    "test_regen": { "status": "completed", "summary": "test_regen ok" },
+    "build": { "status": "completed", "summary": "build ok" },
+    "validate": { "status": "completed", "summary": "validate ok" },
+    "security": { "status": "completed", "summary": "security ok" },
+    "fix": { "status": "completed", "summary": "fix ok" },
+    "deliver": { "status": "completed", "summary": "deliver ok" },
+    "report": { "status": "completed", "summary": "report ok" }
+  },
+  "filesGenerated": []
+}
