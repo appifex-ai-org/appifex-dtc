@@ -40,6 +40,18 @@ Two screens:
 
 `.github/workflows/e2e.yml` runs both jobs (`e2e-build` on PR, `e2e-simulator` on push) using `--design-ir fixtures/tiny-mock/design-ir.json` per the spike fallback path documented below.
 
-**Outcome:** (c) — fully offline does NOT work; the Pencil MCP `.pen` round-trip requires either the Pencil CLI or a network call that is not safe to assume on a vanilla `macos-14` GitHub-hosted runner. The fallback `--design-ir` flag (added in this plan) lets CI hydrate the design IR directly from a committed JSON snapshot.
+**Outcome:** (b) — **partial offline** (live-verified 2026-04-15 against a real `helloworld.pen` with WiFi off).
 
-## Offline spike result: (c) — assumed by orchestrator decision; --design-ir fallback path implemented.
+What works offline:
+- Pencil MCP stdio server starts and parses the `.pen` file
+- `design` phase completes
+- `spec` phase translates to `PlatformSpec`
+- `baas-recommend` phase runs heuristics
+
+What fails offline:
+- `baas-schema` phase (needs `claude --print` → `ConnectionRefused`)
+- All downstream phases that invoke the LLM (codegen, fix, validate)
+
+**Implication for CI:** `--design-ir` is still the right call for GitHub-hosted runners, not because Pencil is incapable, but because (1) installing + authenticating the Pencil MCP binary in CI is extra friction we don't need, and (2) the pipeline fails on schema-inference anyway unless real LLM creds are wired. The `e2e-build` / `e2e-simulator` jobs in `.github/workflows/e2e.yml` will therefore need either `ANTHROPIC_API_KEY` set as a secret OR a future `--mock-llm` mode before GATE-02 is truly green end-to-end. Tracked as a Phase 2 follow-up.
+
+## Offline spike result: (b) — live-verified; --design-ir fallback retained for CI hermeticity.
