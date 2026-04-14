@@ -34,6 +34,15 @@
     "directory": "packages/mock-check"
   },
   "publishConfig": {
-    "access": "public"
-  }
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "appifex",
+    "dtc",
+    "mock",
+    "lint",
+    "signatures"
+  ],
+  "description": "Static signature checks for generated mock data services"
 }

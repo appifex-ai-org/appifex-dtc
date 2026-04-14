@@ -34,6 +34,14 @@
     "directory": "packages/report"
   },
   "publishConfig": {
-    "access": "public"
-  }
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "appifex",
+    "dtc",
+    "report",
+    "pipeline"
+  ],
+  "description": "Pipeline run reporting for the appifex-dtc toolkit"
 }

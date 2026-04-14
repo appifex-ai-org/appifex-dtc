@@ -33,6 +33,14 @@
     "directory": "packages/analysis"
   },
   "publishConfig": {
-    "access": "public"
-  }
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "appifex",
+    "dtc",
+    "analysis",
+    "spec"
+  ],
+  "description": "Static analysis helpers for the appifex-dtc pipeline"
 }

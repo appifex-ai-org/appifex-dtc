@@ -33,6 +33,16 @@
     "directory": "packages/agent"
   },
   "publishConfig": {
-    "access": "public"
-  }
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "appifex",
+    "dtc",
+    "agent",
+    "claude",
+    "codex",
+    "gemini"
+  ],
+  "description": "Agent runtime abstraction over Claude / Codex / Gemini CLIs"
 }

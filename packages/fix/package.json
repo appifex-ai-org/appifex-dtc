@@ -35,6 +35,15 @@
     "directory": "packages/fix"
   },
   "publishConfig": {
-    "access": "public"
-  }
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "appifex",
+    "dtc",
+    "fix",
+    "llm",
+    "auto-fix"
+  ],
+  "description": "LLM-assisted validation → fix loop with deterministic verification"
 }

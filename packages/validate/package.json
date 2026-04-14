@@ -36,6 +36,15 @@
     "directory": "packages/validate"
   },
   "publishConfig": {
-    "access": "public"
-  }
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "appifex",
+    "dtc",
+    "validate",
+    "maestro",
+    "semgrep"
+  ],
+  "description": "Validation suite (Maestro, JUnit parser, semgrep security scan) for the appifex-dtc pipeline"
 }

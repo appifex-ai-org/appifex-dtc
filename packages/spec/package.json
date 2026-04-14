@@ -32,6 +32,15 @@
     "directory": "packages/spec"
   },
   "publishConfig": {
-    "access": "public"
-  }
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "appifex",
+    "dtc",
+    "spec",
+    "platform-spec",
+    "design-tokens"
+  ],
+  "description": "Platform-neutral PlatformSpec + DesignTokens IR and translators for the appifex-dtc pipeline"
 }

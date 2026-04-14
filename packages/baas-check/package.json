@@ -32,6 +32,15 @@
     "directory": "packages/baas-check"
   },
   "publishConfig": {
-    "access": "public"
-  }
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "appifex",
+    "dtc",
+    "baas",
+    "lint",
+    "security"
+  ],
+  "description": "Static checks for generated BaaS wiring"
 }

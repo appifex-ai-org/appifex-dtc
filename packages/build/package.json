@@ -33,6 +33,15 @@
     "directory": "packages/build"
   },
   "publishConfig": {
-    "access": "public"
-  }
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "appifex",
+    "dtc",
+    "build",
+    "xcodebuild",
+    "gradle"
+  ],
+  "description": "Platform build drivers (xcodebuild / gradle) for the appifex-dtc pipeline"
 }

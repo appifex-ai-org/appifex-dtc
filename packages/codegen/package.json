@@ -34,6 +34,15 @@
     "directory": "packages/codegen"
   },
   "publishConfig": {
-    "access": "public"
-  }
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "appifex",
+    "dtc",
+    "codegen",
+    "swiftui",
+    "kotlin-compose"
+  ],
+  "description": "LLM-driven code generation for SwiftUI / Kotlin Compose targets"
 }

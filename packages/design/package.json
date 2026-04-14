@@ -35,6 +35,16 @@
     "directory": "packages/design"
   },
   "publishConfig": {
-    "access": "public"
-  }
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "appifex",
+    "dtc",
+    "design",
+    "pencil",
+    "figma",
+    "stitch"
+  ],
+  "description": "Design input adapters (Pencil / Figma / Figma-Make / Stitch) for the appifex-dtc pipeline"
 }

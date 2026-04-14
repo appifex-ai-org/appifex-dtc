@@ -34,6 +34,15 @@
     "directory": "packages/provision"
   },
   "publishConfig": {
-    "access": "public"
-  }
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "appifex",
+    "dtc",
+    "provision",
+    "apple",
+    "play"
+  ],
+  "description": "Apple ASC / Play Console provisioning client scaffolding"
 }

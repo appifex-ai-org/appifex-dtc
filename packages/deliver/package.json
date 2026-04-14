@@ -33,6 +33,15 @@
     "directory": "packages/deliver"
   },
   "publishConfig": {
-    "access": "public"
-  }
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "appifex",
+    "dtc",
+    "deliver",
+    "github",
+    "testflight"
+  ],
+  "description": "Delivery orchestration (GitHub push/PR, TestFlight upload) for the appifex-dtc pipeline"
 }

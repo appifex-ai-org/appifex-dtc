@@ -50,6 +50,14 @@
     "directory": "packages/mcp-server"
   },
   "publishConfig": {
-    "access": "public"
-  }
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "appifex",
+    "dtc",
+    "mcp",
+    "mcp-server",
+    "agents"
+  ]
 }
