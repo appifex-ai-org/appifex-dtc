@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\n  \"entities\": [\n    {\n      \"name\": \"Item\",\n      \"fields\": [\n        { \"name\": \"ownerId\", \"type\": \"string\", \"required\": true },\n        { \"name\": \"title\", \"type\": \"string\", \"required\": true }\n      ],\n      \"relationships\": []\n    }\n  ]\n}"
+    }
+  ],
+  "usage": { "input_tokens": 0, "output_tokens": 0 }
+}

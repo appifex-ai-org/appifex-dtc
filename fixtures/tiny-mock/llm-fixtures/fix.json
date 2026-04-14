@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "No fixes required — all tests already pass."
+    }
+  ],
+  "usage": { "input_tokens": 0, "output_tokens": 0 }
+}
