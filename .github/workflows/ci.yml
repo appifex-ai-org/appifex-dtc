@@ -100,3 +100,39 @@ jobs:
       - run: pnpm build
       - name: Verify every workspace package publishes cleanly
         run: pnpm publish --dry-run -r --no-git-checks
+
+  # Phase 1 Plan 01-11 (GATE-04): every PR must include a changeset entry.
+  # Docs-only PRs satisfy this with an empty changeset file created via
+  # `pnpm exec changeset --empty` (see .github/PULL_REQUEST_TEMPLATE.md).
+  # The changesets/action in release.yml only runs on push:main for Version
+  # Packages PR mode, so this check is what actually enforces the gate on
+  # incoming PRs. Once merged, setup-branch-protection.sh adds this job's
+  # check name ("changeset-check") to required_status_checks.contexts.
+  changeset-check:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify PR includes a changeset entry
+        run: |
+          set -euo pipefail
+          BASE_REF="${{ github.base_ref }}"
+          git fetch --no-tags --depth=0 origin "$BASE_REF"
+          ADDED=$(git diff --name-only --diff-filter=A "origin/${BASE_REF}...HEAD" -- '.changeset/*.md' \
+            | grep -vE '^\.changeset/(README\.md|config\.json)$' || true)
+          if [[ -z "$ADDED" ]]; then
+            echo "::error::No changeset entry found in this PR."
+            echo ""
+            echo "Every PR must include a changeset entry describing its change."
+            echo "Run: pnpm exec changeset"
+            echo ""
+            echo "For docs-only / release-irrelevant PRs, record an empty changeset:"
+            echo "  pnpm exec changeset --empty"
+            echo ""
+            echo "Both create a file under .changeset/ — commit it and push."
+            exit 1
+          fi
+          echo "Changeset entries in this PR:"
+          echo "$ADDED"
