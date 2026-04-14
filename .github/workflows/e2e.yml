@@ -29,7 +29,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - name: Run tiny fixture pipeline (build-only, IR fallback)
-        run: node bin/dtc run --design-ir fixtures/tiny-mock/design-ir.json --platform swiftui --baas mock --no-upload --skip-simulator --ci --out fixtures/tiny-mock/out
+        run: node cli/dist/entry.js run --design-ir fixtures/tiny-mock/design-ir.json --platform swiftui --baas mock --no-upload --skip-simulator --ci --out fixtures/tiny-mock/out
       - name: xcodebuild compile
         run: xcodebuild -project fixtures/tiny-mock/out/App.xcodeproj -scheme App -destination 'generic/platform=iOS' build
 
@@ -53,6 +53,6 @@ jobs:
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
       - name: Boot simulator + run full pipeline (IR fallback)
-        run: node bin/dtc run --design-ir fixtures/tiny-mock/design-ir.json --platform swiftui --baas mock --no-upload --ci --out fixtures/tiny-mock/out
+        run: node cli/dist/entry.js run --design-ir fixtures/tiny-mock/design-ir.json --platform swiftui --baas mock --no-upload --ci --out fixtures/tiny-mock/out
       - name: Maestro golden flow
         run: maestro test fixtures/tiny-mock/maestro/
