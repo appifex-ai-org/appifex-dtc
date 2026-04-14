@@ -1,6 +1,7 @@
 import { execSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import type { Platform, DtcConfig, PrereqCheck, PrereqReport } from './types.js'
+import { isFixtureMode } from './llm-fixture.js'
 
 function which(cmd: string): boolean {
   try {
@@ -242,6 +243,17 @@ function checkAndroidDevice(): PrereqCheck {
 }
 
 function checkLlmAccess(config?: DtcConfig): PrereqCheck {
+  // Phase 1 Plan 01-10 (GATE-02 fix): in fixture mode every LLM call is
+  // replayed from a committed cassette — no provider key required.
+  if (isFixtureMode()) {
+    return {
+      name: 'LLM access',
+      description: 'AI model for code generation',
+      severity: 'critical',
+      status: 'pass',
+      message: 'fixture mode (no key required)',
+    }
+  }
   if (!config) {
     return {
       name: 'LLM access',

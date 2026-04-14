@@ -9,6 +9,10 @@
 # fixtures/tiny-mock/README.md). When cassettes drift, re-record them by
 # running the pipeline locally with DTC_LLM_MODE=record (future Phase 2
 # enhancement) and committing the JSON outputs.
+#
+# Plan 01-10 fix: macos-14 runners do not ship with xcodegen; install it
+# explicitly before invoking the pipeline, which calls xcodegen to emit
+# App.xcodeproj from project.yml.
 name: E2E
 on:
   pull_request:
@@ -31,6 +35,8 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - name: Install xcodegen
+        run: brew install xcodegen
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - name: Run tiny fixture pipeline (build-only, IR + cassette replay)
@@ -53,6 +59,8 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - name: Install xcodegen
+        run: brew install xcodegen
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - name: Install Maestro
