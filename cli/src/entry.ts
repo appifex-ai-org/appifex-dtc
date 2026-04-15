@@ -3,7 +3,21 @@ import chalk from 'chalk'
 import { parseArgs } from './cli.js'
 import { setupWizard } from './setup-wizard.js'
 import { renderRunApp } from './views/RunApp.js'
-import type { Platform } from '@appifex/core'
+import { CliError, type Platform } from '@appifex/core'
+
+/**
+ * Phase 02 Plan 01 (FOUND-04): top-level CliError translator.
+ * CLI-only — the MCP server does NOT call this; instead, its tool wrapper
+ * translates CliError to an `isError` envelope (see packages/mcp-server/src/server.ts).
+ */
+export function handleCliError(err: unknown): never {
+  if (err instanceof CliError) {
+    console.error(chalk.red(`${err.name}: ${err.message}`))
+    process.exit(err.exitCode ?? 1)
+  }
+  console.error(chalk.red(err instanceof Error ? err.message : String(err)))
+  process.exit(1)
+}
 
 const VERSION = '0.1.0'
 
@@ -879,7 +893,5 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error(chalk.red(err.message))
-  process.exit(1)
-})
+// Phase 02 Plan 01 (FOUND-04): top-level catch translates CliError → exit code
+main().catch(handleCliError)
