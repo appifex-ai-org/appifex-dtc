@@ -47,6 +47,41 @@ describe('TokenBudget', () => {
     expect(budget.canConsumePhase('build', 50_000)).toBe(true)
   })
 
+  // Phase 02 Plan 02 (FOUND-02): public get total() getter
+  it('exposes the constructor-supplied budget total via public get total()', () => {
+    const budget = new TokenBudget({ total: 1000 })
+    expect(budget.total).toBe(1000)
+  })
+
+  // Phase 02 Plan 02 (FOUND-02): canEnterFixLoop — 30% reserve threshold
+  describe('canEnterFixLoop', () => {
+    it('returns true with full budget remaining (ratio 1.0)', () => {
+      const budget = new TokenBudget({ total: 1000 })
+      expect(budget.canEnterFixLoop()).toBe(true)
+    })
+
+    it('returns true exactly at the 30% threshold (remaining 300 of 1000)', () => {
+      const budget = new TokenBudget({ total: 1000 })
+      budget.consume('codegen', 700)
+      expect(budget.totalRemaining).toBe(300)
+      expect(budget.canEnterFixLoop()).toBe(true)
+    })
+
+    it('returns false just below the 30% threshold (remaining 299 of 1000)', () => {
+      const budget = new TokenBudget({ total: 1000 })
+      budget.consume('codegen', 701)
+      expect(budget.totalRemaining).toBe(299)
+      expect(budget.canEnterFixLoop()).toBe(false)
+    })
+
+    it('returns false when the budget is fully consumed', () => {
+      const budget = new TokenBudget({ total: 1000 })
+      budget.consume('codegen', 1000)
+      expect(budget.totalRemaining).toBe(0)
+      expect(budget.canEnterFixLoop()).toBe(false)
+    })
+  })
+
   it('returns a usage summary', () => {
     const budget = new TokenBudget({ total: 100_000, perPhase: { design: 30_000 } })
 

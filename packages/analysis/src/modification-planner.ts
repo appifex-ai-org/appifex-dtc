@@ -7,8 +7,9 @@ import type {
 } from '@appifex/core'
 import { join, resolve } from 'node:path'
 
-const CHARS_PER_TOKEN = 4
-const MODIFICATION_TOKEN_CAP = 8_000 // ~32,000 chars for file contents
+// Phase 02 Plan 02 (FOUND-02): Swift averages ~3 chars/token, not 4
+const CHARS_PER_TOKEN = 3
+const MODIFICATION_TOKEN_CAP = 8_000 // ~24,000 chars for file contents (Swift density)
 const CHANGE_TYPE_PRIORITY: ModificationChangeType[] = [
   'navigation',
   'layout',
