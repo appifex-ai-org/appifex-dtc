@@ -1,10 +1,10 @@
 // Phase 03 Plan 01 (SETUP-02): Wave-0 test scaffold — downstream plans fill in bodies.
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest'
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { signAscJwt, probeAscOffline, decodeJwt } from '../src/asc-jwt.js'
+import { signAscJwt, probeAscOffline, probeAscLive, decodeJwt } from '../src/asc-jwt.js'
 
 let tmpDir: string
 let pemPath: string
@@ -65,5 +65,17 @@ describe('asc-jwt', () => {
     expect(result).toBe('INVALID')
   })
 
-  it.todo('probeAscLive returns TRANSIENT on network error')
+  it('probeAscLive returns TRANSIENT on network error', async () => {
+    const networkError = Object.assign(new Error('connect ECONNRESET'), { code: 'ECONNRESET' })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.reject(networkError)),
+    )
+    const result = await probeAscLive('any-jwt-string')
+    expect(result).toBe('TRANSIENT')
+  })
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
