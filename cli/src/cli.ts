@@ -61,6 +61,11 @@ export interface ParsedArgs {
    * See SetupWizardOpts.full for semantics.
    */
   full?: boolean
+  /**
+   * Phase 03 Plan 05 (SETUP-03, D-12): --deep flag for `dtc doctor`.
+   * When true, doctor runs live credential probes via runCredentialChecks.
+   */
+  deep?: boolean
 }
 
 export function parseArgs(argv: string[]): ParsedArgs {
@@ -139,5 +144,8 @@ export function parseArgs(argv: string[]): ParsedArgs {
   }
   const designIrPath = typeof rawDesignIr === 'string' ? rawDesignIr : undefined
 
-  return { command, subcommand, positional, flags, designIrPath, section, full }
+  // Phase 03 Plan 05 (SETUP-03, D-12): --deep flag for `dtc doctor`.
+  const deep = command === 'doctor' && flags['deep'] === true ? true : undefined
+
+  return { command, subcommand, positional, flags, designIrPath, section, full, deep }
 }

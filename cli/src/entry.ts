@@ -156,9 +156,9 @@ async function main() {
       break
 
     case 'doctor': {
-      const doctorPlatform = validatePlatform((args.flags.platform as string) ?? 'swiftui')
+      // Phase 03 Plan 05 (SETUP-03, D-12): pass --deep flag; platform flag retained for compat.
       const { runDoctor } = await import('./doctor.js')
-      await runDoctor(doctorPlatform)
+      await runDoctor({ deep: args.deep ?? false })
       break
     }
 
