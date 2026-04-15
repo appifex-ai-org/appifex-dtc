@@ -141,7 +141,7 @@ describe('setupWizard section ordering', () => {
 
     await indexMod.setupWizard(configDir)
 
-    expect(callOrder).toEqual(['project', 'llm', 'design', 'runner', 'apple', 'android', 'deliver', 'budget', 'oauth'])
+    expect(callOrder).toEqual(['project', 'llm', 'design', 'runner', 'firebase', 'apple', 'android', 'deliver', 'budget', 'oauth'])
   })
 })
 

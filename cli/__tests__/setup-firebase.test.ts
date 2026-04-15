@@ -165,21 +165,18 @@ describe('runFirebaseSection', () => {
     const { ConfigError } = await import('@appifex/core')
     const { runFirebaseSection } = await import('../src/setup/firebase.js')
 
-    await expect(
-      runFirebaseSection(configDir, makeConfig(), {
-        appName: 'Coffee Tracker',
-        projectDir: configDir,
-      }),
-    ).rejects.toThrow(ConfigError)
-
+    // Single call — capture rejection and assert message content.
+    let caught: unknown
     try {
       await runFirebaseSection(configDir, makeConfig(), {
         appName: 'Coffee Tracker',
         projectDir: configDir,
       })
     } catch (err) {
-      expect(String(err)).toContain('Project ID already exists')
+      caught = err
     }
+    expect(caught).toBeInstanceOf(ConfigError)
+    expect(String(caught)).toContain('Project ID already exists')
   })
 
   it('Test 6: apps:create runs BEFORE apps:sdkconfig (Pitfall 2 ordering)', async () => {
