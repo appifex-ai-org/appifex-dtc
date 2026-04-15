@@ -240,7 +240,7 @@ describe('runPreflight — Phase 03 Plan 02 (SETUP-02)', () => {
   })
 
   // ── Legacy tests from phase 02 plan 01 scaffold ──
-  it('throws PreflightError instead of calling process.exit when prerequisites fail', () => {
+  it('throws PreflightError instead of calling process.exit when prerequisites fail', async () => {
     ;(checkCriticalPrerequisites as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       hasCriticalFailures: true,
       checks: [
@@ -259,7 +259,7 @@ describe('runPreflight — Phase 03 Plan 02 (SETUP-02)', () => {
     }) as never)
 
     try {
-      expect(() => runPreflight('swiftui')).toThrow(PreflightError)
+      await expect(runPreflight('swiftui')).rejects.toThrow(PreflightError)
     } finally {
       exitSpy.mockRestore()
     }
@@ -267,13 +267,17 @@ describe('runPreflight — Phase 03 Plan 02 (SETUP-02)', () => {
     expect(exitSpy).not.toHaveBeenCalled()
   })
 
-  it('returns normally (no throw) when no critical failures', () => {
+  it('returns normally (no throw) when no critical failures', async () => {
     ;(checkCriticalPrerequisites as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       hasCriticalFailures: false,
       checks: [],
     })
+    ;(runCredentialChecks as ReturnType<typeof vi.fn>).mockResolvedValue({
+      hasBlockingFailures: false,
+      checks: [],
+    })
 
-    expect(() => runPreflight('swiftui')).not.toThrow()
+    await expect(runPreflight('swiftui')).resolves.not.toThrow()
   })
 
   it('PreflightError exposes exitCode 1 and inherits from CliError', async () => {

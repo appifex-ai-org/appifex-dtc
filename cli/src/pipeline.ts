@@ -741,6 +741,13 @@ export async function runPipeline(
   const configDir = opts.configDir ?? join(homedir(), '.dtc')
   const config = await loadConfig(configDir)
 
+  // Phase 03 Plan 02 (SETUP-02): runPreflight is the SOLE LLM-spend gate — it MUST run before
+  // any generate/agent invocation. Do not move below this line.
+  {
+    const { runPreflight } = await import('./preflight.js')
+    await runPreflight(opts.platform, config, { deep: false })
+  }
+
   // Ensure output directory exists before creating runner
   const { mkdir } = await import('node:fs/promises')
   const outputDir = opts.outputDir.startsWith('/')
