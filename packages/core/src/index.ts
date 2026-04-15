@@ -33,3 +33,12 @@ export {
 } from './snapshot-sidecar.js'
 export { isFixtureMode, loadFixture, FixtureModeError } from './llm-fixture.js'
 export type { FixtureResponse } from './llm-fixture.js'
+// Phase 02 Plan 01 (FOUND-04): typed CliError hierarchy
+export {
+  CliError,
+  PreflightError,
+  ConfigError,
+  ResumeAbortError,
+  BudgetExhaustedError,
+  EpipeError,
+} from './errors.js'
