@@ -41,6 +41,10 @@ export interface DtcConfig {
   agent?: AgentConfig
   /** BaaS provider configuration (Phase 19) */
   baas?: BaasConfig
+  /** Firebase project configuration (Phase 03 Plan 01, SETUP-02) */
+  firebase?: FirebaseConfig
+  /** OAuth configuration for Apple Sign In (Phase 03 Plan 01, SETUP-02) */
+  oauth?: OAuthConfig
 }
 
 export interface LlmConfig {
@@ -142,4 +146,24 @@ export interface AndroidConfig {
 export interface TokenBudgetConfig {
   total: number
   perPhase?: Partial<Record<PhaseId, number>>
+}
+
+// Phase 03 Plan 01 (SETUP-02): FirebaseConfig + OAuthConfig — additive extensions to DtcConfig.
+export interface FirebaseConfig {
+  projectId: string
+  iosAppId: string
+  iosBundleId: string
+  /** Absolute path to GoogleService-Info.plist */
+  plistPath: string
+  /** Optional service account key path — used for --deep probes (SETUP-03) */
+  serviceAccountKeyPath?: string
+}
+
+export interface OAuthConfig {
+  apple?: {
+    servicesId: string
+    teamId: string
+    keyId: string
+    p8Path: string
+  }
 }
