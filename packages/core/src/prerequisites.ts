@@ -1,5 +1,7 @@
+// Phase 03 Plan 05 (SETUP-03, D-11): shallow checks for firebase-tools + service-account JSON + ASC .p8.
 import { execSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import type { Platform, DtcConfig, PrereqCheck, PrereqReport } from './types.js'
 import { isFixtureMode } from './llm-fixture.js'
 
@@ -422,6 +424,76 @@ function checkAgentCli(config?: DtcConfig): PrereqCheck {
           : type === 'gemini'
             ? 'npm install -g @anthropic-ai/gemini-cli'
             : `Install ${type}`,
+  }
+}
+
+// ── SETUP-03 Shallow Checks ──
+
+/** Check for firebase CLI presence. severity is 'critical' when BaaS provider is firebase, else 'info'. */
+export function checkFirebaseTools(severity: 'critical' | 'info' = 'info'): PrereqCheck {
+  const has = which('firebase')
+  const version = has ? execCapture('firebase --version') : null
+  return {
+    name: 'firebase CLI',
+    description: 'Firebase command-line tools for project provisioning',
+    severity,
+    status: has ? 'pass' : 'fail',
+    message: has ? `firebase-tools ${version ?? ''}`.trim() : 'firebase CLI not found',
+    installHint: 'npm install -g firebase-tools  (or: curl -sL firebase.tools | bash)',
+  }
+}
+
+/** Check firebase service-account JSON shape (SETUP-03). */
+export async function checkServiceAccountJson(path: string | undefined): Promise<PrereqCheck> {
+  const base: Omit<PrereqCheck, 'status' | 'message'> = {
+    name: 'firebase service account',
+    description: 'Firebase admin service account JSON for rule deploy / seeding',
+    severity: 'warning',
+  }
+  if (!path) return { ...base, status: 'skip', message: 'not configured (optional)' }
+  try {
+    const raw = await readFile(path, 'utf-8')
+    const json = JSON.parse(raw) as Record<string, string>
+    if (json.type !== 'service_account')
+      return { ...base, status: 'fail', message: `type is "${json.type}", expected service_account` }
+    if (!json.client_email || !json.private_key)
+      return { ...base, status: 'fail', message: 'missing client_email or private_key' }
+    return { ...base, status: 'pass', message: json.client_email }
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code
+    if (code === 'ENOENT') return { ...base, status: 'fail', message: `file not found: ${path}` }
+    return { ...base, status: 'fail', message: `parse failed: ${String(err)}` }
+  }
+}
+
+/**
+ * Check ASC .p8 key file (SETUP-03, D-11).
+ * Offline EXPIRED proxy: uses node:crypto createPrivateKey to validate the key can be loaded —
+ * no external dependency, avoids jose module resolution issues in git worktrees.
+ * If the key loads successfully, it is a usable EC PKCS#8 PEM.
+ */
+export async function checkAscP8(path: string | undefined): Promise<PrereqCheck> {
+  const base: Omit<PrereqCheck, 'status' | 'message'> = {
+    name: 'ASC API key',
+    description: 'App Store Connect .p8 private key (EC PKCS#8)',
+    severity: 'warning',
+  }
+  if (!path) return { ...base, status: 'skip', message: 'not configured (optional)' }
+  try {
+    const pem = await readFile(path, 'utf-8')
+    if (!pem.includes('BEGIN PRIVATE KEY'))
+      return { ...base, status: 'fail', message: 'not a valid EC PKCS#8 PEM' }
+    // Offline key validation using node:crypto — validates PKCS#8 parse without external deps.
+    // This serves as the offline EXPIRED proxy per D-11: if the key can't be loaded, it's unusable.
+    const { createPrivateKey } = await import('node:crypto')
+    const keyObj = createPrivateKey({ key: pem, format: 'pem' })
+    if (keyObj.asymmetricKeyType !== 'ec')
+      return { ...base, status: 'fail', message: 'key unusable: not an EC key' }
+    return { ...base, status: 'pass', message: path }
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code
+    if (code === 'ENOENT') return { ...base, status: 'fail', message: `file not found: ${path}` }
+    return { ...base, status: 'fail', message: `key unusable: ${String(err)}` }
   }
 }
 
