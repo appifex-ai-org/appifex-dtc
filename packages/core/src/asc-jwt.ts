@@ -52,6 +52,7 @@ export async function probeAscLive(
   try {
     const res = await fetch('https://api.appstoreconnect.apple.com/v1/apps?limit=1', {
       headers: { Authorization: `Bearer ${jwt}` },
+      signal: AbortSignal.timeout(5_000),
     })
     if (res.ok) return 'OK'
     if (res.status === 401) return 'EXPIRED'
@@ -59,6 +60,7 @@ export async function probeAscLive(
     if (res.status >= 500) return 'TRANSIENT'
     return 'INVALID'
   } catch (err) {
+    if ((err as Error).name === 'AbortError') return 'TRANSIENT'
     const code = (err as NodeJS.ErrnoException).code
     if (code === 'ECONNRESET' || code === 'ETIMEDOUT' || code === 'ENOTFOUND') return 'TRANSIENT'
     return 'INVALID'
