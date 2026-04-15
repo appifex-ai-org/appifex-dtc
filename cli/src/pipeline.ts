@@ -162,9 +162,7 @@ export interface RunClaudePrintOpts {
   cwd: string
 }
 
-export async function runClaudePrint(
-  opts: RunClaudePrintOpts,
-): Promise<{
+export async function runClaudePrint(opts: RunClaudePrintOpts): Promise<{
   content: Array<{ type: string; text: string }>
   usage: { input_tokens: number; output_tokens: number }
 }> {
@@ -188,6 +186,7 @@ export async function runClaudePrint(
       }
     }
     // Phase 02 Plan 03 (FOUND-03): hard-fail with typed EpipeError instead of silent swallow
+    // order matters: register 'error' BEFORE write()
     child.stdin.on('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'EPIPE') {
         settle(() =>
@@ -201,6 +200,8 @@ export async function runClaudePrint(
         )
         return
       }
+      // Phase 02 Plan 04 (WR-04): non-EPIPE stdin errors — kill child promptly to avoid runaway LLM cost
+      child.kill('SIGTERM')
       settle(() => reject(err))
     })
     child.stdin.write(prompt)
@@ -2859,6 +2860,7 @@ export async function runPipeline(
             validateFn: secValidateFn,
             maxAttempts: 3,
             tokenBudget: budget.totalRemaining,
+            budgetInstance: budget,
           })
           emit(
             'fix',
@@ -3219,6 +3221,7 @@ export async function runPipeline(
         validateFn,
         maxAttempts: opts.benchmark ? 999 : 5,
         tokenBudget: opts.benchmark ? Infinity : budget.totalRemaining,
+        budgetInstance: opts.benchmark ? undefined : budget,
         disableCircuitBreakers: opts.benchmark,
       })
       fixResult = fr
@@ -3275,6 +3278,7 @@ export async function runPipeline(
           validateFn,
           maxAttempts: opts.benchmark ? 999 : 5,
           tokenBudget: opts.benchmark ? Infinity : budget.totalRemaining,
+          budgetInstance: opts.benchmark ? undefined : budget,
           disableCircuitBreakers: opts.benchmark,
         })
         fixResult = fr
@@ -3351,6 +3355,7 @@ export async function runPipeline(
             validateFn: secValidateFn,
             maxAttempts: 3,
             tokenBudget: opts.benchmark ? Infinity : budget.totalRemaining,
+            budgetInstance: opts.benchmark ? undefined : budget,
             disableCircuitBreakers: opts.benchmark,
           })
           emit(
