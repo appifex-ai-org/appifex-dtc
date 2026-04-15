@@ -1,5 +1,8 @@
 import type { PhaseId, TokenBudgetConfig } from './types.js'
 
+/** Phase 02 Plan 02 (FOUND-02): fix loop must not start with less than this ratio of total budget remaining. */
+export const FIX_LOOP_MIN_RESERVE_RATIO = 0.3
+
 export interface BudgetSummary {
   total: number
   used: number
@@ -8,17 +11,29 @@ export interface BudgetSummary {
 }
 
 export class TokenBudget {
-  private total: number
+  // Phase 02 Plan 02 (FOUND-02): renamed from `private total` to `#total` so a
+  // public `get total()` getter can expose the constructor-supplied budget
+  // without colliding with the private storage field.
+  #total: number
   private phaseLimits: Partial<Record<PhaseId, number>>
   private usage: Map<PhaseId, number> = new Map()
 
   constructor(config: TokenBudgetConfig) {
-    this.total = config.total
+    this.#total = config.total
     this.phaseLimits = config.perPhase ?? {}
   }
 
   consume(phase: PhaseId, tokens: number): void {
     this.usage.set(phase, (this.usage.get(phase) ?? 0) + tokens)
+  }
+
+  /**
+   * Phase 02 Plan 02 (FOUND-02): expose the constructor-supplied budget total
+   * so callers (fix-loop guard, BudgetExhaustedError constructor) don't reach
+   * into private state.
+   */
+  get total(): number {
+    return this.#total
   }
 
   get totalUsed(): number {
@@ -28,7 +43,7 @@ export class TokenBudget {
   }
 
   get totalRemaining(): number {
-    return this.total - this.totalUsed
+    return this.#total - this.totalUsed
   }
 
   phaseUsed(phase: PhaseId): number {
@@ -36,7 +51,7 @@ export class TokenBudget {
   }
 
   canConsume(tokens: number): boolean {
-    return this.totalUsed + tokens <= this.total
+    return this.totalUsed + tokens <= this.#total
   }
 
   canConsumePhase(phase: PhaseId, tokens: number): boolean {
@@ -47,13 +62,18 @@ export class TokenBudget {
     return this.canConsume(tokens)
   }
 
+  /** Phase 02 Plan 02 (FOUND-02): fix-loop precondition — enough budget left to converge. */
+  canEnterFixLoop(): boolean {
+    return this.totalRemaining >= FIX_LOOP_MIN_RESERVE_RATIO * this.#total
+  }
+
   summary(): BudgetSummary {
     const phases: BudgetSummary['phases'] = {}
     for (const [phase, used] of this.usage) {
       phases[phase] = { used, limit: this.phaseLimits[phase] }
     }
     return {
-      total: this.total,
+      total: this.#total,
       used: this.totalUsed,
       remaining: this.totalRemaining,
       phases,
