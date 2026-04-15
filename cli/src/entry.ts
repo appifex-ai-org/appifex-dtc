@@ -15,7 +15,14 @@ export function handleCliError(err: unknown): never {
     console.error(chalk.red(`${err.name}: ${err.message}`))
     process.exit(err.exitCode ?? 1)
   }
-  console.error(chalk.red(err instanceof Error ? err.message : String(err)))
+  // Phase 02 Plan 04 (WR-02): preserve stack trace for non-CliError crashes so field debugging
+  // has file/line info instead of a single-line message.
+  if (err instanceof Error) {
+    console.error(chalk.red(err.message))
+    if (err.stack) console.error(chalk.dim(err.stack))
+  } else {
+    console.error(chalk.red(String(err)))
+  }
   process.exit(1)
 }
 
