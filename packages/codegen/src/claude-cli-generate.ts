@@ -184,6 +184,7 @@ export async function runClaude(
         fn()
       }
     }
+    // Phase 02 Plan 04 (WR-05): order matters: register 'error' BEFORE write()
     child.stdin.on('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'EPIPE') {
         settle(() =>
@@ -196,6 +197,8 @@ export async function runClaude(
         )
         return
       }
+      // Phase 02 Plan 04 (WR-03): non-EPIPE stdin errors — kill child promptly to avoid runaway LLM cost
+      child.kill('SIGTERM')
       settle(() =>
         resolve({
           success: false,
@@ -238,9 +241,7 @@ export async function runClaude(
         const errMsg =
           [stderr, stdout].filter(Boolean).join('\n').slice(-2000) ||
           `Claude CLI exited with code ${code}`
-        settle(() =>
-          resolve({ success: false, files: [], output: stdout, error: errMsg }),
-        )
+        settle(() => resolve({ success: false, files: [], output: stdout, error: errMsg }))
       } else {
         // Claude CLI runs in agentic mode — files are written directly to cwd via Write/Edit tools
         const files = collectWrittenFiles(cwd, cwd)
