@@ -1131,13 +1131,15 @@ export async function runPipeline(
     })
   } catch (err) {
     if (err instanceof ResumeAbortError) {
-      console.error(err.message)
       try {
         checkpoint.close()
       } catch {
         /* ignore */
       }
-      process.exit(err.exitCode)
+      // Phase 02 Plan 01 (FOUND-04): throw new ResumeAbortError instead of
+      // process.exit(err.exitCode) so the MCP host survives. entry.ts top-level
+      // catch renders the message; MCP tool wrapper translates to isError envelope.
+      throw new ResumeAbortError(err.message)
     }
     throw err
   }

@@ -1,6 +1,6 @@
 import * as p from '@clack/prompts'
 import chalk from 'chalk'
-import { checkPrerequisites, loadConfig, type Platform } from '@appifex/core'
+import { checkPrerequisites, ConfigError, loadConfig, type Platform } from '@appifex/core'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
@@ -54,12 +54,12 @@ export async function runDoctor(platform: Platform): Promise<void> {
   ).length
 
   if (criticalCount > 0) {
-    p.outro(
-      chalk.red(
-        `${criticalCount} critical issue(s) must be fixed before \`dtc run --platform ${platform}\` will work.`,
-      ),
-    )
-    process.exit(1)
+    const msg = `${criticalCount} critical issue(s) must be fixed before \`dtc run --platform ${platform}\` will work.`
+    p.outro(chalk.red(msg))
+    // Phase 02 Plan 01 (FOUND-04): throw a CliError subclass (ConfigError) so
+    // MCP tool wrappers catch it via `instanceof CliError` — a generic Error
+    // would fall through and crash the MCP host. entry.ts translates to exit code.
+    throw new ConfigError(msg)
   } else if (warnCount > 0) {
     p.outro(
       chalk.yellow(

@@ -32,13 +32,13 @@ import {
 
 // ── Public error type ─────────────────────────────────────────────────────────
 
-export class ResumeAbortError extends Error {
-  readonly exitCode = 1
-  constructor(message: string) {
-    super(message)
-    this.name = 'ResumeAbortError'
-  }
-}
+// Phase 02 Plan 01 (FOUND-04): ResumeAbortError now lives in @appifex/core as a
+// CliError subclass so MCP tool wrappers can catch it via `instanceof CliError`
+// without crashing the host. Re-exported here to preserve existing import paths
+// (cli/src/pipeline.ts, cli/__tests__/resume-bootstrap.test.ts,
+// cli/__tests__/pipeline-add-feature-resume.test.ts).
+import { ResumeAbortError } from '@appifex/core'
+export { ResumeAbortError }
 
 // ── Phase 24 (RESUME-02 / D-03): migrate-on-read helper ──────────────────────
 
