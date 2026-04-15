@@ -27,6 +27,22 @@ export interface DeliverConfig {
   deleteBranchOnMerge?: boolean
 }
 
+// Phase 03 Plan 03 (SETUP-01): ProjectConfig added to resolve RESEARCH OQ#3 (eliminates 'MyApp' literal).
+export interface ProjectConfig {
+  appName: string
+  projectDir: string
+}
+
+// Phase 03 Plan 03 (SETUP-01, D-07): OAuthConfig for Apple Sign In manual-paste section.
+export interface OAuthConfig {
+  apple?: {
+    servicesId: string
+    teamId: string
+    keyId: string
+    p8Path: string
+  }
+}
+
 export interface DtcConfig {
   llm: LlmConfig
   design: DesignConfig
@@ -43,7 +59,9 @@ export interface DtcConfig {
   baas?: BaasConfig
   /** Firebase project configuration (Phase 03 Plan 01, SETUP-02) */
   firebase?: FirebaseConfig
-  /** OAuth configuration for Apple Sign In (Phase 03 Plan 01, SETUP-02) */
+  /** Phase 03 Plan 03 (SETUP-01): App name and project directory (first-run capture). */
+  project?: ProjectConfig
+  /** OAuth configuration for Apple Sign In (Phase 03 Plan 01, SETUP-02, D-07) */
   oauth?: OAuthConfig
 }
 
@@ -148,7 +166,7 @@ export interface TokenBudgetConfig {
   perPhase?: Partial<Record<PhaseId, number>>
 }
 
-// Phase 03 Plan 01 (SETUP-02): FirebaseConfig + OAuthConfig — additive extensions to DtcConfig.
+// Phase 03 Plan 01 (SETUP-02): FirebaseConfig — additive extension to DtcConfig.
 export interface FirebaseConfig {
   projectId: string
   iosAppId: string
@@ -157,13 +175,4 @@ export interface FirebaseConfig {
   plistPath: string
   /** Optional service account key path — used for --deep probes (SETUP-03) */
   serviceAccountKeyPath?: string
-}
-
-export interface OAuthConfig {
-  apple?: {
-    servicesId: string
-    teamId: string
-    keyId: string
-    p8Path: string
-  }
 }
