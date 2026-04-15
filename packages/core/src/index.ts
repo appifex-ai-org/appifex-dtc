@@ -22,7 +22,7 @@ export {
 } from './skill-loader.js'
 export { buildBackendPromptSection } from './backend-context.js'
 export { assessBaasAppropriateness, extractBaasSignals } from './baas-recommend.js'
-export { checkPrerequisites, checkCriticalPrerequisites } from './prerequisites.js'
+export { checkPrerequisites, checkCriticalPrerequisites, which } from './prerequisites.js'
 export {
   writePreAgentSnapshotSidecar,
   readPreAgentSnapshotSidecar,

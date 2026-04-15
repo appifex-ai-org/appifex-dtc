@@ -11,6 +11,8 @@ import { runProjectSection } from './project.js'
 import { runLlmSection } from './llm.js'
 import { runDesignSection } from './design.js'
 import { runRunnerSection } from './runner.js'
+// Phase 03 Plan 04 (SETUP-04): Firebase provisioning section.
+import { runFirebaseSection } from './firebase.js'
 import { runAppleSection } from './apple.js'
 import { runAndroidSection } from './android.js'
 import { runDeliverSection } from './deliver.js'
@@ -22,6 +24,7 @@ export type SectionName =
   | 'llm'
   | 'design'
   | 'runner'
+  | 'firebase'
   | 'apple'
   | 'android'
   | 'deliver'
@@ -33,6 +36,7 @@ export const SECTION_ORDER: SectionName[] = [
   'llm',
   'design',
   'runner',
+  'firebase',
   'apple',
   'android',
   'deliver',
@@ -71,6 +75,18 @@ export const SECTIONS: Record<
   llm: runLlmSection,
   design: runDesignSection,
   runner: runRunnerSection,
+  // Phase 03 Plan 04 (SETUP-04, D-02): reads appName from cfg.project (set by runProjectSection)
+  // or from caller-supplied opts. Hard-fails when appName is absent — no 'MyApp' fallback.
+  firebase: async (dir, cfg, opts) => {
+    const appName = opts?.appName ?? cfg.project?.appName
+    const projectDir = opts?.projectDir ?? cfg.project?.projectDir ?? process.cwd()
+    if (!appName) {
+      throw new ConfigError(
+        'Firebase setup requires an app name. Run `dtc setup project` first, or pass --app-name <name>.',
+      )
+    }
+    await runFirebaseSection(dir, cfg, { appName, projectDir })
+  },
   apple: runAppleSection,
   android: runAndroidSection,
   deliver: runDeliverSection,

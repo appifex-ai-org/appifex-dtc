@@ -3,7 +3,8 @@ import { existsSync } from 'node:fs'
 import type { Platform, DtcConfig, PrereqCheck, PrereqReport } from './types.js'
 import { isFixtureMode } from './llm-fixture.js'
 
-function which(cmd: string): boolean {
+// Phase 03 Plan 04 (SETUP-04): exported so firebase.ts and other setup sections can probe for CLIs.
+export function which(cmd: string): boolean {
   try {
     execSync(`which ${cmd}`, { stdio: 'ignore' })
     return true
