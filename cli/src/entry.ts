@@ -241,9 +241,15 @@ async function main() {
         const { join } = await import('node:path')
         try {
           const preflightConfig = await loadConfig(join(homedir(), '.dtc'))
-          runPreflight(platform, preflightConfig)
-        } catch {
-          runPreflight(platform)
+          await runPreflight(platform, preflightConfig)
+        } catch (err) {
+          // If loadConfig fails, fall back to default-config preflight
+          // Re-throw PreflightError so handleCliError can catch it cleanly
+          if ((err as NodeJS.ErrnoException).code !== undefined) {
+            await runPreflight(platform)
+          } else {
+            throw err
+          }
         }
       }
 
