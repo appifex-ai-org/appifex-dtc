@@ -18,7 +18,7 @@
 
 import { readFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
-import { basename, join, isAbsolute, resolve } from 'node:path'
+import { basename, join, isAbsolute, resolve, sep } from 'node:path'
 import { createHash } from 'node:crypto'
 import type { Checkpoint } from '@appifex/core'
 import {
@@ -276,7 +276,8 @@ export async function checkDrift(
     const absPath = join(projectDir, relPath)
     const resolvedAbs = resolve(absPath)
     // T-14-03: symlink escape guard — reject paths that escape projectDir
-    if (!resolvedAbs.startsWith(projectDirResolved + '/') && resolvedAbs !== projectDirResolved) {
+    // Phase 02 Plan 04 (WR-01): use path.sep for cross-platform correctness (macOS-only today, but latent trap)
+    if (!resolvedAbs.startsWith(projectDirResolved + sep) && resolvedAbs !== projectDirResolved) {
       removed.push(relPath)
       continue
     }

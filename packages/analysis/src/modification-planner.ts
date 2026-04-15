@@ -5,7 +5,7 @@ import type {
   ModificationChangeType,
   Runner,
 } from '@appifex/core'
-import { join, resolve } from 'node:path'
+import { join, resolve, sep } from 'node:path'
 
 // Phase 02 Plan 02 (FOUND-02): Swift averages ~3 chars/token, not 4
 const CHARS_PER_TOKEN = 3
@@ -105,7 +105,8 @@ export async function planModifications(
     const resolvedPath = resolve(join(resolvedOutputDir, rawItem.filePath))
 
     // T-07-01: Validate resolved path starts with outputDir to prevent path traversal
-    if (!resolvedPath.startsWith(resolvedOutputDir + '/') && resolvedPath !== resolvedOutputDir) {
+    // Phase 02 Plan 04 (WR-01): use path.sep for cross-platform correctness
+    if (!resolvedPath.startsWith(resolvedOutputDir + sep) && resolvedPath !== resolvedOutputDir) {
       console.warn(`[modification-planner] Skipping item with suspicious path: ${rawItem.filePath}`)
       continue
     }
