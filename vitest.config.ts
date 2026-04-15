@@ -7,6 +7,7 @@ export default defineConfig({
       'packages/**/__tests__/**/*.test.ts',
       'packages/__tests__/**/*.test.ts',
       'cli/__tests__/**/*.test.ts',
+      '__tests__/**/*.test.ts',
     ],
     testTimeout: 10_000,
   },
