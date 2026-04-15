@@ -1,3 +1,6 @@
+// Phase 03 Plan 03 (SETUP-01, D-10): dtc setup <section> | --full command surface.
+import { CliError } from '@appifex/core'
+
 export const COMMANDS = [
   'design',
   'spec',
@@ -19,6 +22,23 @@ export type Command = (typeof COMMANDS)[number] | 'help' | 'version'
 
 const SUBCOMMAND_COMMANDS = new Set(['spec', 'test-gen', 'provision'])
 
+/**
+ * Valid section names for `dtc setup <section>`.
+ * 'firebase' is accepted even before plan 03-04 lands so the dispatcher is ready.
+ */
+const VALID_SETUP_SECTIONS = new Set([
+  'project',
+  'llm',
+  'design',
+  'runner',
+  'apple',
+  'android',
+  'deliver',
+  'budget',
+  'oauth',
+  'firebase',
+])
+
 export interface ParsedArgs {
   command: Command
   subcommand?: string
@@ -31,6 +51,16 @@ export interface ParsedArgs {
    * Mutually exclusive with `--design`.
    */
   designIrPath?: string
+  /**
+   * Phase 03 Plan 03 (SETUP-01, D-10): setup section name.
+   * Set when `dtc setup <section>` is called with a valid section name.
+   */
+  section?: string
+  /**
+   * Phase 03 Plan 03 (SETUP-01, D-10): force all sections flag.
+   * See SetupWizardOpts.full for semantics.
+   */
+  full?: boolean
 }
 
 export function parseArgs(argv: string[]): ParsedArgs {
@@ -53,6 +83,28 @@ export function parseArgs(argv: string[]): ParsedArgs {
     startIdx = 1
   }
 
+  // Phase 03 Plan 03 (SETUP-01, D-10): parse setup section + --full flag
+  let section: string | undefined
+  let full = false
+
+  if (command === 'setup') {
+    // First non-flag arg after 'setup' is the optional section name
+    if (rest.length > 0 && !rest[0].startsWith('-')) {
+      const candidateSection = rest[0]
+      if (!VALID_SETUP_SECTIONS.has(candidateSection)) {
+        throw new CliError(
+          `Unknown section: "${candidateSection}". Valid sections: ${[...VALID_SETUP_SECTIONS].join(', ')}`,
+        )
+      }
+      section = candidateSection
+      startIdx = 1
+    }
+    // Check for --full in remaining args
+    if (rest.includes('--full')) {
+      full = true
+    }
+  }
+
   const positional: string[] = []
   const flags: Record<string, string | boolean> = {}
 
@@ -69,9 +121,11 @@ export function parseArgs(argv: string[]): ParsedArgs {
         flags[key] = next
         i++
       }
-    } else {
+    } else if (command !== 'setup') {
+      // For non-setup commands, collect positional args normally
       positional.push(arg)
     }
+    // For setup command, skip the section arg (already captured above)
   }
 
   // Phase 1 Plan 07 (GATE-02): hoist --design-ir into a typed field on
@@ -85,5 +139,5 @@ export function parseArgs(argv: string[]): ParsedArgs {
   }
   const designIrPath = typeof rawDesignIr === 'string' ? rawDesignIr : undefined
 
-  return { command, subcommand, positional, flags, designIrPath }
+  return { command, subcommand, positional, flags, designIrPath, section, full }
 }

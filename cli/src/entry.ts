@@ -148,7 +148,11 @@ async function main() {
       break
 
     case 'setup':
-      await setupWizard()
+      // Phase 03 Plan 03 (SETUP-01, D-10): pass section + full from parsed args
+      await setupWizard(undefined, {
+        only: args.section as import('./setup/index.js').SectionName | undefined,
+        full: args.full ?? false,
+      })
       break
 
     case 'doctor': {

@@ -3,6 +3,10 @@
 // 'project' is FIRST so downstream sections (Firebase D-02, OAuth D-07) can read appName/projectDir.
 import { loadConfig, ConfigError } from '@appifex/core'
 import type { DtcConfig } from '@appifex/core'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
+
+const DEFAULT_CONFIG_DIR = join(homedir(), '.dtc')
 import { runProjectSection } from './project.js'
 import { runLlmSection } from './llm.js'
 import { runDesignSection } from './design.js'
@@ -80,8 +84,9 @@ export const SECTIONS: Record<
  * When both `opts.appName` and `opts.projectDir` are supplied, the project section
  * skips its prompts (caller-provided values take precedence).
  */
-export async function setupWizard(configDir: string, opts: SetupWizardOpts = {}): Promise<void> {
-  const cfg = await loadConfig(configDir)
+export async function setupWizard(configDir?: string, opts: SetupWizardOpts = {}): Promise<void> {
+  const dir = configDir ?? DEFAULT_CONFIG_DIR
+  const cfg = await loadConfig(dir)
 
   // When both appName and projectDir are provided, skip the project section entirely
   const hasCallerProject = opts.appName !== undefined && opts.projectDir !== undefined
@@ -89,7 +94,7 @@ export async function setupWizard(configDir: string, opts: SetupWizardOpts = {})
   if (opts.only) {
     const fn = SECTIONS[opts.only]
     if (!fn) throw new ConfigError(`Unknown section: ${opts.only}`)
-    await fn(configDir, cfg, opts)
+    await fn(dir, cfg, opts)
     return
   }
 
@@ -98,7 +103,7 @@ export async function setupWizard(configDir: string, opts: SetupWizardOpts = {})
     if (name === 'project' && hasCallerProject) {
       continue
     }
-    await SECTIONS[name](configDir, cfg, opts)
+    await SECTIONS[name](dir, cfg, opts)
   }
 }
 
