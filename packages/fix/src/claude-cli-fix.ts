@@ -94,6 +94,35 @@ ${flowFiles.length > 0 ? `## Maestro Test Flows (these define what accessibility
             env: { ...process.env },
           })
 
+          // Phase 02 Plan 03 (FOUND-03): surface EPIPE in the failure envelope instead of silent swallow.
+          const payloadBytes = Buffer.byteLength(prompt, 'utf8')
+          let settled = false
+          const settle = (fn: () => void) => {
+            if (!settled) {
+              settled = true
+              fn()
+            }
+          }
+          child.stdin.on('error', (err: NodeJS.ErrnoException) => {
+            if (err.code === 'EPIPE') {
+              settle(() =>
+                resolve({
+                  success: false,
+                  output: '',
+                  error: `EpipeError: LLM CLI closed stdin before prompt fully written (site=packages/fix/claude-cli-fix.ts, ${payloadBytes} bytes)`,
+                }),
+              )
+              return
+            }
+            settle(() =>
+              resolve({
+                success: false,
+                output: '',
+                error: `stdin error: ${err.message}`,
+              }),
+            )
+          })
+
           // Pipe prompt via stdin to avoid OS arg length limits
           child.stdin.write(prompt)
           child.stdin.end()
@@ -109,23 +138,27 @@ ${flowFiles.length > 0 ? `## Maestro Test Flows (these define what accessibility
 
           const timer = setTimeout(() => {
             child.kill('SIGTERM')
-            resolve({
-              success: false,
-              output: stdout,
-              error: `Claude CLI timed out after ${timeoutMs / 1000}s`,
-            })
+            settle(() =>
+              resolve({
+                success: false,
+                output: stdout,
+                error: `Claude CLI timed out after ${timeoutMs / 1000}s`,
+              }),
+            )
           }, timeoutMs)
 
           child.on('close', (code) => {
             clearTimeout(timer)
             if (code !== 0) {
-              resolve({
-                success: false,
-                output: stdout,
-                error: stderr || `Claude CLI exited with code ${code}`,
-              })
+              settle(() =>
+                resolve({
+                  success: false,
+                  output: stdout,
+                  error: stderr || `Claude CLI exited with code ${code}`,
+                }),
+              )
             } else {
-              resolve({ success: true, output: stdout })
+              settle(() => resolve({ success: true, output: stdout }))
             }
           })
         },

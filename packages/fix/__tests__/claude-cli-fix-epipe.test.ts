@@ -86,8 +86,9 @@ describe('createClaudeCliFixFn — EPIPE handling', () => {
   })
 
   it('surfaces EPIPE as EpipeError-prefixed error from the inner spawn Promise', async () => {
-    const fakeChild = makeFakeChildEmittingEpipeOnStdin()
-    vi.mocked(spawn).mockReturnValueOnce(fakeChild as any)
+    vi.mocked(spawn).mockImplementation(
+      (() => makeFakeChildEmittingEpipeOnStdin()) as any,
+    )
 
     const fixFn = createClaudeCliFixFn({
       runner: fakeRunner(),

@@ -14,6 +14,7 @@ import {
   assessBaasAppropriateness,
   isFixtureMode,
   loadFixture,
+  EpipeError,
   type AgentConfigType,
   type AppContext,
   type BackendContext,
@@ -147,6 +148,98 @@ export function createSkipGate(inputs: SkipGateInputs): SkipGate {
       return false
     },
   }
+}
+
+/**
+ * Phase 02 Plan 03 (FOUND-03): Exported helper that invokes `claude --print` for
+ * text-only LLM calls. Extracted from `buildCreateMessageFn` so the spawn site is
+ * unit-testable (tests mock `node:child_process.spawn` and assert EPIPE surfaces
+ * as a typed `EpipeError` instead of being silently swallowed).
+ */
+export interface RunClaudePrintOpts {
+  prompt: string
+  model: string
+  cwd: string
+}
+
+export async function runClaudePrint(
+  opts: RunClaudePrintOpts,
+): Promise<{
+  content: Array<{ type: string; text: string }>
+  usage: { input_tokens: number; output_tokens: number }
+}> {
+  const { spawn } = await import('node:child_process')
+  const { prompt, model, cwd } = opts
+  const payloadBytes = Buffer.byteLength(prompt, 'utf8')
+
+  return new Promise<{
+    content: Array<{ type: string; text: string }>
+    usage: { input_tokens: number; output_tokens: number }
+  }>((resolve, reject) => {
+    const child = spawn('claude', ['--print', '--model', model], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      cwd,
+    })
+    let settled = false
+    const settle = (fn: () => void) => {
+      if (!settled) {
+        settled = true
+        fn()
+      }
+    }
+    // Phase 02 Plan 03 (FOUND-03): hard-fail with typed EpipeError instead of silent swallow
+    child.stdin.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EPIPE') {
+        settle(() =>
+          reject(
+            new EpipeError(
+              `LLM CLI closed stdin before prompt fully written (site=cli/pipeline.ts:claude-print, ${payloadBytes} bytes)`,
+              'cli/pipeline.ts:claude-print',
+              payloadBytes,
+            ),
+          ),
+        )
+        return
+      }
+      settle(() => reject(err))
+    })
+    child.stdin.write(prompt)
+    child.stdin.end()
+    let stdout = ''
+    let stderr = ''
+    child.stdout.on('data', (d: Buffer) => {
+      stdout += d.toString()
+    })
+    child.stderr.on('data', (d: Buffer) => {
+      stderr += d.toString()
+    })
+    child.on('close', (code) => {
+      if (code !== 0) {
+        settle(() =>
+          reject(
+            new Error(
+              `claude --print exited with code ${code}${stderr ? `\nstderr: ${stderr}` : ''}${stdout ? `\nstdout preview: ${stdout.slice(0, 200)}` : ''}`,
+            ),
+          ),
+        )
+      } else if (!stdout.trim()) {
+        settle(() =>
+          reject(
+            new Error(
+              `claude --print returned empty response${stderr ? `\nstderr: ${stderr}` : ''}`,
+            ),
+          ),
+        )
+      } else {
+        settle(() =>
+          resolve({
+            content: [{ type: 'text', text: stdout }],
+            usage: { input_tokens: 0, output_tokens: 0 },
+          }),
+        )
+      }
+    })
+  })
 }
 
 type PenFileDecision = 'new' | 'extend'
@@ -711,7 +804,6 @@ export async function runPipeline(
 
     // Claude CLI — shell out to `claude --print` for text-only LLM calls
     if (cfg.llm.provider === 'claude-cli') {
-      const { spawn } = await import('node:child_process')
       return async (params: {
         model: string
         max_tokens: number
@@ -730,48 +822,10 @@ export async function runPipeline(
           .join('\n\n')
 
         const model = cfg.llm.model ?? 'claude-sonnet-4-6'
-        return new Promise<{
-          content: Array<{ type: string; text: string }>
-          usage: { input_tokens: number; output_tokens: number }
-        }>((resolve, reject) => {
-          const child = spawn('claude', ['--print', '--model', model], {
-            stdio: ['pipe', 'pipe', 'pipe'],
-            cwd: outputDir,
-          })
-          // Handle EPIPE — claude may close stdin early for large prompts
-          child.stdin.on('error', () => {
-            /* swallow EPIPE */
-          })
-          child.stdin.write(prompt)
-          child.stdin.end()
-          let stdout = ''
-          let stderr = ''
-          child.stdout.on('data', (d: Buffer) => {
-            stdout += d.toString()
-          })
-          child.stderr.on('data', (d: Buffer) => {
-            stderr += d.toString()
-          })
-          child.on('close', (code) => {
-            if (code !== 0)
-              reject(
-                new Error(
-                  `claude --print exited with code ${code}${stderr ? `\nstderr: ${stderr}` : ''}${stdout ? `\nstdout preview: ${stdout.slice(0, 200)}` : ''}`,
-                ),
-              )
-            else if (!stdout.trim())
-              reject(
-                new Error(
-                  `claude --print returned empty response${stderr ? `\nstderr: ${stderr}` : ''}`,
-                ),
-              )
-            else
-              resolve({
-                content: [{ type: 'text', text: stdout }],
-                usage: { input_tokens: 0, output_tokens: 0 },
-              })
-          })
-        })
+        // Phase 02 Plan 03 (FOUND-03): delegate to exported runClaudePrint so the
+        // spawn site is unit-testable and EPIPE hard-fails with typed EpipeError
+        // instead of being silently swallowed.
+        return runClaudePrint({ prompt, model, cwd: outputDir })
       }
     }
 

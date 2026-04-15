@@ -105,6 +105,36 @@ function spawnAgentWithInput(
       resetIdleTimer()
     })
 
+    // Phase 02 Plan 03 (FOUND-03): surface EPIPE via settle() helper instead of silent swallow.
+    const payloadBytes = Buffer.byteLength(input, 'utf8')
+    child.stdin.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EPIPE') {
+        settle(() =>
+          resolve({
+            success: false,
+            output: state.lastAssistantText || stdout,
+            exitCode: 1,
+            error: `EpipeError: LLM CLI closed stdin before prompt fully written (site=packages/agent/adapters/base.ts, ${payloadBytes} bytes)`,
+            stopReason: 'error',
+            sessionId: state.sessionId,
+            costUsd: state.costUsd,
+          }),
+        )
+        return
+      }
+      settle(() =>
+        resolve({
+          success: false,
+          output: state.lastAssistantText || stdout,
+          exitCode: 1,
+          error: `stdin error: ${err.message}`,
+          stopReason: 'error',
+          sessionId: state.sessionId,
+          costUsd: state.costUsd,
+        }),
+      )
+    })
+
     child.stdin.write(input)
     child.stdin.end()
 

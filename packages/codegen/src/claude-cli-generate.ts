@@ -175,6 +175,37 @@ export async function runClaude(
       env: { ...process.env },
     })
 
+    // Phase 02 Plan 03 (FOUND-03): surface EPIPE in the failure envelope instead of silent swallow.
+    const payloadBytes = Buffer.byteLength(prompt, 'utf8')
+    let settled = false
+    const settle = (fn: () => void) => {
+      if (!settled) {
+        settled = true
+        fn()
+      }
+    }
+    child.stdin.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EPIPE') {
+        settle(() =>
+          resolve({
+            success: false,
+            files: [],
+            output: '',
+            error: `EpipeError: LLM CLI closed stdin before prompt fully written (site=packages/codegen/claude-cli-generate.ts, ${payloadBytes} bytes)`,
+          }),
+        )
+        return
+      }
+      settle(() =>
+        resolve({
+          success: false,
+          files: [],
+          output: '',
+          error: `stdin error: ${err.message}`,
+        }),
+      )
+    })
+
     // Pipe prompt via stdin to avoid OS arg length limits
     child.stdin.write(prompt)
     child.stdin.end()
@@ -191,12 +222,14 @@ export async function runClaude(
 
     const timer = setTimeout(() => {
       child.kill('SIGTERM')
-      resolve({
-        success: false,
-        files: [],
-        output: stdout,
-        error: `Claude CLI timed out after ${timeoutMs / 1000}s`,
-      })
+      settle(() =>
+        resolve({
+          success: false,
+          files: [],
+          output: stdout,
+          error: `Claude CLI timed out after ${timeoutMs / 1000}s`,
+        }),
+      )
     }, timeoutMs)
 
     child.on('close', (code) => {
@@ -205,11 +238,13 @@ export async function runClaude(
         const errMsg =
           [stderr, stdout].filter(Boolean).join('\n').slice(-2000) ||
           `Claude CLI exited with code ${code}`
-        resolve({ success: false, files: [], output: stdout, error: errMsg })
+        settle(() =>
+          resolve({ success: false, files: [], output: stdout, error: errMsg }),
+        )
       } else {
         // Claude CLI runs in agentic mode — files are written directly to cwd via Write/Edit tools
         const files = collectWrittenFiles(cwd, cwd)
-        resolve({ success: true, files, output: stdout })
+        settle(() => resolve({ success: true, files, output: stdout }))
       }
     })
   })
