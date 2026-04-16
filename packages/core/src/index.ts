@@ -41,6 +41,8 @@ export {
   ResumeAbortError,
   BudgetExhaustedError,
   EpipeError,
+  ProvisionError,
+  SecurityLintError,
 } from './errors.js'
 // Phase 03 Plan 01 (SETUP-02): CredentialRegistry + ASC JWT helpers
 export * from './credential-registry.js'

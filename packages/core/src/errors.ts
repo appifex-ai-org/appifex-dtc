@@ -75,3 +75,22 @@ export class EpipeError extends CliError {
     this.name = 'EpipeError'
   }
 }
+
+// Phase 4 (FIRE-04): thrown by firebase_provision phase on firebase-tools or admin SDK failure
+export class ProvisionError extends CliError {
+  constructor(message: string) {
+    super(message, 1)
+    this.name = 'ProvisionError'
+  }
+}
+
+// Phase 4 (FIRE-05): thrown when security lint blocks rules deployment
+export class SecurityLintError extends CliError {
+  constructor(
+    message: string,
+    public readonly violations?: string[],
+  ) {
+    super(message, 1)
+    this.name = 'SecurityLintError'
+  }
+}
