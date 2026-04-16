@@ -1,5 +1,6 @@
 import type { Runner, BaasProvider } from '@appifex/core'
 import type { SwiftBuildOpts, BuildResult, BuildError } from './types.js'
+import yaml from 'js-yaml'
 
 /** Derive a PascalCase app name from a user prompt. e.g. "Todo app" → "TodoApp", "pet adoption" → "PetAdoption" */
 export function deriveAppName(prompt: string): string {
@@ -91,11 +92,16 @@ export async function patchProjectDependencies(
   Firebase:
     url: https://github.com/firebase/firebase-ios-sdk.git
     from: 11.0.0
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS.git
+    from: 9.1.0
 `
     targetDeps = `      - package: Firebase
         product: FirebaseFirestore
       - package: Firebase
-        product: FirebaseAuth`
+        product: FirebaseAuth
+      - package: GoogleSignIn
+        product: GoogleSignIn`
   } else {
     packagesBlock = `packages:
   Supabase:
@@ -118,6 +124,50 @@ export async function patchProjectDependencies(
   patched = patched.replace(/(\n {2}\w+Tests:)/m, `\n${depsBlock}\n$1`)
 
   await runner.writeFile(ymlPath, patched)
+
+  // Phase 4 (FIRE-02 D-03): inject REVERSED_CLIENT_ID URL scheme via js-yaml (not regex)
+  if (provider === 'firebase') {
+    const plistPath = `${projectDir}/GoogleService-Info.plist`
+    let plistContent: string
+    try {
+      plistContent = await runner.readFile(plistPath)
+    } catch {
+      // GoogleService-Info.plist not yet present (firebase_provision runs after build wiring)
+      // REVERSED_CLIENT_ID injection will be retried at provision time
+      return
+    }
+    const reversedClientIdMatch = plistContent.match(
+      /<key>REVERSED_CLIENT_ID<\/key>\s*<string>([^<]+)<\/string>/,
+    )
+    const reversedClientId = reversedClientIdMatch?.[1]
+    if (!reversedClientId) return
+
+    const projectYmlContent = await runner.readFile(ymlPath)
+    const projectYml = yaml.load(projectYmlContent) as Record<string, unknown>
+
+    // Inject URL scheme into the app target's info.plist urlSchemes
+    const targets = projectYml['targets'] as Record<string, unknown>
+    const appTargetName = Object.keys(targets).find((k) => !k.endsWith('Tests'))
+    if (!appTargetName) return
+
+    const appTarget = targets[appTargetName] as Record<string, unknown>
+    const info = (appTarget['info'] ?? {}) as Record<string, unknown>
+    const existingSchemes = (info['CFBundleURLTypes'] as unknown[]) ?? []
+    const schemeAlreadyPresent = JSON.stringify(existingSchemes).includes(reversedClientId)
+    if (!schemeAlreadyPresent) {
+      info['CFBundleURLTypes'] = [
+        ...existingSchemes,
+        {
+          CFBundleURLSchemes: [reversedClientId],
+          CFBundleURLName: 'google-signin',
+        },
+      ]
+      appTarget['info'] = info
+      targets[appTargetName] = appTarget
+      projectYml['targets'] = targets
+      await runner.writeFile(ymlPath, yaml.dump(projectYml, { lineWidth: -1 }))
+    }
+  }
 }
 
 async function detectSimulator(runner: Runner): Promise<string> {

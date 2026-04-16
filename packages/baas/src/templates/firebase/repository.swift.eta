@@ -1,18 +1,30 @@
 import Foundation
+import FirebaseFirestore
 
 protocol <%= it.entity.name %>Repository {
+    // Phase 4 (FIRE-03 D-09): realtime listener replaces one-time list() fetch
+    func startListening(onChange: @escaping ([<%= it.entity.name %>]) -> Void) -> ListenerRegistration
     func create(_ item: <%= it.entity.name %>) async throws -> <%= it.entity.name %>
     func getById(_ id: String) async throws -> <%= it.entity.name %>?
-    func list() async throws -> [<%= it.entity.name %>]
     func update(_ item: <%= it.entity.name %>) async throws -> <%= it.entity.name %>
     func delete(_ id: String) async throws
 }
 
-import FirebaseFirestore
-
 final class Firestore<%= it.entity.name %>Repository: <%= it.entity.name %>Repository {
     private let db = Firestore.firestore()
     private let collection: String = "<%= it.entity.name.toLowerCase() %>s"
+
+    // Phase 4 (FIRE-03 D-09): realtime listener — replaces one-time snapshot fetch
+    // ListenerRegistration is returned to caller (DataService) for lifecycle management (D-10)
+    func startListening(onChange: @escaping ([<%= it.entity.name %>]) -> Void) -> ListenerRegistration {
+        db.collection(collection).addSnapshotListener { snapshot, _ in
+            guard let docs = snapshot?.documents else { return }
+            let items = docs.compactMap { doc in
+                try? doc.data(as: <%= it.entity.name %>.self)
+            }
+            onChange(items)
+        }
+    }
 
     func create(_ item: <%= it.entity.name %>) async throws -> <%= it.entity.name %> {
         let ref = db.collection(collection).document()
@@ -42,13 +54,6 @@ final class Firestore<%= it.entity.name %>Repository: <%= it.entity.name %>Repos
         let doc = try await db.collection(collection).document(id).getDocument()
         guard doc.exists, let data = doc.data() else { return nil }
         return <%= it.entity.name %>(id: doc.documentID, data: data)
-    }
-
-    func list() async throws -> [<%= it.entity.name %>] {
-        let snapshot = try await db.collection(collection).getDocuments()
-        return snapshot.documents.compactMap { doc in
-            <%= it.entity.name %>(id: doc.documentID, data: doc.data())
-        }
     }
 
     func update(_ item: <%= it.entity.name %>) async throws -> <%= it.entity.name %> {

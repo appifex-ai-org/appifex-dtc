@@ -20,7 +20,8 @@
   },
   "dependencies": {
     "@appifex/core": "workspace:*",
-    "@appifex/runner": "workspace:*"
+    "@appifex/runner": "workspace:*",
+    "js-yaml": "^4.1.1"
   },
   "author": "Appifex",
   "homepage": "https://github.com/appifex-ai-org/appifex-dtc#readme",
@@ -43,5 +44,8 @@
     "xcodebuild",
     "gradle"
   ],
-  "description": "Platform build drivers (xcodebuild / gradle) for the appifex-dtc pipeline"
+  "description": "Platform build drivers (xcodebuild / gradle) for the appifex-dtc pipeline",
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9"
+  }
 }
