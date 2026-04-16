@@ -25,6 +25,7 @@ const PHASE_LABELS: Record<string, string> = {
   baas_recommend: 'BaaS',
   baas_schema: 'Schema',
   baas_auth: 'Auth',
+  firebase_provision: 'Firebase',
   mock_service: 'Mock services',
   test_gen: 'Tests',
   codegen: 'Codegen',

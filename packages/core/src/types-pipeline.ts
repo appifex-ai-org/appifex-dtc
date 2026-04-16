@@ -10,6 +10,7 @@ export type PhaseId =
   | 'baas_recommend'
   | 'baas_schema'
   | 'baas_auth'
+  | 'firebase_provision'  // Phase 4 (FIRE-04)
   | 'mock_service'
   | 'test_gen'
   | 'codegen'
@@ -77,6 +78,16 @@ export type CheckpointData = {
     | CheckpointFailed
     | CheckpointSkipped
   baas_auth: CheckpointBase | CheckpointFailed | CheckpointSkipped
+  // Phase 4 (FIRE-04): firebase_provision checkpoint — stores plist path and projectId for idempotency
+  firebase_provision:
+    | (CheckpointBase & {
+        projectId?: string
+        iosAppId?: string
+        plistPath?: string
+        collectionsSeeded?: number
+      })
+    | CheckpointFailed
+    | CheckpointSkipped
   mock_service:
     | (CheckpointBase & {
         fileCount?: number
