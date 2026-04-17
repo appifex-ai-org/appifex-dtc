@@ -10,7 +10,7 @@ export type PhaseId =
   | 'baas_recommend'
   | 'baas_schema'
   | 'baas_auth'
-  | 'firebase_provision'  // Phase 4 (FIRE-04)
+  | 'firebase_provision' // Phase 4 (FIRE-04)
   | 'mock_service'
   | 'test_gen'
   | 'codegen'
@@ -20,6 +20,8 @@ export type PhaseId =
   | 'security'
   | 'fix'
   | 'deliver'
+  | 'xcode_archive' // Phase 5 (TF-01 D-02): after deliver, before report
+  | 'testflight_upload' // Phase 5 (TF-01 D-02): after xcode_archive, before report
   | 'report'
   | 'provision'
 
@@ -111,6 +113,29 @@ export type CheckpointData = {
   security: CheckpointBase | CheckpointFailed | CheckpointSkipped
   fix: CheckpointBase | CheckpointFailed | CheckpointSkipped
   deliver: CheckpointBase | CheckpointFailed | CheckpointSkipped
+  // Phase 5 (TF-01 D-01): xcode_archive checkpoint — stores .ipa path + version for idempotent resume (D-16)
+  xcode_archive:
+    | (CheckpointBase & {
+        ipaPath?: string
+        archivePath?: string
+        buildNumber?: string
+        marketingVersion?: string
+        bundleId?: string
+      })
+    | CheckpointFailed
+    | CheckpointSkipped
+  // Phase 5 (TF-04 D-01): testflight_upload checkpoint — stores ASC buildId + terminal processing state
+  testflight_upload:
+    | (CheckpointBase & {
+        buildId?: string
+        processingState?: 'PROCESSING' | 'VALID' | 'INVALID' | 'FAILED'
+        groupId?: string
+        testersAdded?: number
+        /** Phase 5 (D-17): soft-fail warnings surfaced in the report */
+        warnings?: string[]
+      })
+    | CheckpointFailed
+    | CheckpointSkipped
   report: CheckpointBase | CheckpointFailed | CheckpointSkipped
   /** provision is a PhaseId but NOT in PHASE_ORDER (Pitfall 1). Branch present for type completeness. */
   provision: CheckpointBase | CheckpointFailed | CheckpointSkipped
