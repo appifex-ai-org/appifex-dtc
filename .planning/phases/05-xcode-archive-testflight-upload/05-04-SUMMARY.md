@@ -307,7 +307,7 @@ None — this plan only composes existing primitives. Callers (Plan 06 pipeline 
 - [x] Phase-handler test contains: `D-16`, `ArchiveError`, `package.json`
 - [x] `pnpm vitest run packages/build/__tests__/xcode-archive-phase.test.ts` → 12/12 GREEN
 - [x] `pnpm -C packages/build exec tsc --noEmit` → exit 0 (clean typecheck)
-- [~] `pnpm vitest run packages/build/__tests__/swift-archive-hygiene.test.ts` → RED in this worktree by design (awaits Plan 02 merge). Post-merge will verify GREEN.
+- [x] `pnpm vitest run packages/build/__tests__/swift-archive-hygiene.test.ts` → 7/7 GREEN (confirmed post Plan 02 merge of `6e454f8: feat(05-02)`; full `packages/build/__tests__/` suite: 63/63 GREEN)
 
 ## Self-Check: PASSED
 
