@@ -121,4 +121,37 @@ describe('firebase-provision', () => {
       runFirebaseProvision({ ...BASE_OPTS, runner, plistExists: false }),
     ).rejects.toThrow(ProvisionError)
   })
+
+  // Phase 4 Plan 07 (UI-SPEC destructive-action contract): overwritePlist=true bypasses idempotency
+  it('overwrites the existing plist when overwritePlist=true is passed (UI-SPEC overwrite-confirm path)', async () => {
+    const runner = makeRunner()
+    const result = await runFirebaseProvision({
+      ...BASE_OPTS,
+      runner,
+      plistExists: true,
+      overwritePlist: true,
+    })
+    // Should NOT skip — must proceed through the full provision path
+    expect(result.skipped).toBe(false)
+    // releaseFirestoreRuleset must be called (rules deploy proceeds)
+    expect(mockReleaseFirestoreRuleset).toHaveBeenCalledTimes(1)
+    // firebase apps:sdkconfig must be called to refresh the plist
+    expect(runner.exec).toHaveBeenCalledWith(
+      'firebase',
+      expect.arrayContaining(['apps:sdkconfig', 'IOS', '1:123456:ios:abcdef']),
+    )
+  })
+
+  // Phase 4 Plan 07: plistExists=true without overwritePlist still skips (D-05 default-safe behavior preserved)
+  it('preserves idempotency: plistExists=true with overwritePlist=false (or omitted) returns skipped=true', async () => {
+    const runner = makeRunner()
+    const result = await runFirebaseProvision({
+      ...BASE_OPTS,
+      runner,
+      plistExists: true,
+      overwritePlist: false,
+    })
+    expect(result.skipped).toBe(true)
+    expect(runner.exec).not.toHaveBeenCalled()
+  })
 })
