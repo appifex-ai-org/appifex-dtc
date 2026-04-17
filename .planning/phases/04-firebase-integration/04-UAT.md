@@ -1,5 +1,5 @@
 ---
-status: testing
+status: complete
 phase: 04-firebase-integration
 source:
   - 04-00-SUMMARY.md
@@ -10,7 +10,7 @@ source:
   - 04-05-SUMMARY.md
   - 04-06-SUMMARY.md
 started: 2026-04-17T07:50:54Z
-updated: 2026-04-17T07:51:30Z
+updated: 2026-04-17T07:56:00Z
 ---
 
 ## Current Test
@@ -33,9 +33,8 @@ result: pass
 
 ### 4. Generated Firestore rules template passes lint
 expected: Running `pnpm exec vitest run --reporter=verbose "render-templates"` shows the deny-all tests passing — the rendered `firestore.rules` contains `match /{document=**}` and `allow read, write: if false`, and passes `lintSecurityRules` with `{ passed: true }`.
-result: issue
-reported: "render-templates has 1 failure: 'Each CRUD method appears in generated repository' — test asserts `func list` exists but Plan 02 intentionally replaced `list()` with `startListening()`. Test was never updated to match the new realtime listener protocol. 13/14 tests pass; deny-all tests specifically pass."
-severity: major
+result: pass
+note: "Gap found and fixed inline — test updated from `func list` to `func startListening` (commit 0c08ec7). All 14 render-templates tests now pass."
 
 ### 5. Swift auth template has Apple Sign In before Google
 expected: Running `grep -n "SignInWithAppleButton\|signInWithGoogle\|Google Sign In" packages/baas/src/templates/firebase/login-view.swift.eta` shows `SignInWithAppleButton` at an earlier line than the Google Sign In button — Apple precedes Google per Apple HIG.
@@ -60,20 +59,11 @@ result: pass
 ## Summary
 
 total: 9
-passed: 8
-issues: 1
+passed: 9
+issues: 0
 pending: 0
 skipped: 0
 
 ## Gaps
 
-- truth: "render-templates test 'Each CRUD method appears in generated repository' should assert `func startListening` (not `func list`) after Plan 02 replaced the list() protocol with realtime listener pattern"
-  status: failed
-  reason: "User reported: render-templates has 1 failure: 'Each CRUD method appears in generated repository' — test asserts `func list` exists but Plan 02 intentionally replaced `list()` with `startListening()`. Test was never updated to match the new realtime listener protocol. 13/14 tests pass; deny-all tests specifically pass."
-  severity: major
-  test: 4
-  artifacts:
-    - packages/baas/__tests__/render-templates.test.ts:123
-    - packages/baas/src/templates/firebase/repository.swift.eta
-  missing:
-    - Test assertion updated from `func list` to `func startListening` (or equivalent protocol method name)
+[none — gap found during UAT was fixed inline (commit 0c08ec7)]
