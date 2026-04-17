@@ -4,10 +4,7 @@ import { loadConfig, saveConfig } from '@appifex/core'
 import type { DtcConfig } from '@appifex/core'
 import { assertNotCancelled } from './shared.js'
 
-export async function runAppleSection(
-  configDir: string,
-  existingConfig: DtcConfig,
-): Promise<void> {
+export async function runAppleSection(configDir: string, existingConfig: DtcConfig): Promise<void> {
   const wantApple = await p.confirm({
     message: 'Configure Apple TestFlight?',
     initialValue: existingConfig.apple != null,
@@ -56,6 +53,15 @@ export async function runAppleSection(
         placeholder: 'Internal Testers',
         initialValue: existingConfig.apple?.ascTestFlightGroup ?? '',
       }),
+    // Phase 5 Plan 06 (TF-04 D-18): comma-separated list of internal tester emails.
+    // Optional — solo founders can leave blank and re-run `dtc setup apple` later.
+    testers: () =>
+      p.text({
+        message:
+          'TestFlight internal tester emails (comma-separated, optional — press Enter to skip)',
+        placeholder: 'alice@example.com,bob@example.com',
+        initialValue: (existingConfig.apple?.testflightTesters ?? []).join(','),
+      }),
   })
   assertNotCancelled(apple)
 
@@ -67,7 +73,19 @@ export async function runAppleSection(
     issuerId: string
     keyPath: string
     testFlightGroup: string
+    testers: string
   }
+
+  // Phase 5 Plan 06 (TF-04 D-18): parse comma-separated testers to string[].
+  // Empty string → preserve any existing list (edit-without-overwrite); otherwise
+  // split + trim + filter blanks.
+  const parsedTesters =
+    typeof appleResult.testers === 'string' && appleResult.testers.trim().length > 0
+      ? appleResult.testers
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : (existingConfig.apple?.testflightTesters ?? [])
 
   const cfg = await loadConfig(configDir)
   await saveConfig(configDir, {
@@ -80,6 +98,7 @@ export async function runAppleSection(
       ascIssuerId: appleResult.issuerId || undefined,
       ascKeyPath: appleResult.keyPath || undefined,
       ascTestFlightGroup: appleResult.testFlightGroup || undefined,
+      testflightTesters: parsedTesters.length > 0 ? parsedTesters : undefined,
     },
   })
 }

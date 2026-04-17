@@ -116,6 +116,7 @@ ${chalk.dim('OPTIONS')}
   --baas-provider <name>  BaaS provider: firebase, supabase (overrides config)
   --accept-drift          Non-interactive: accept design token drift without failing closed
   --no-resume             Force a fresh add-feature run even when a checkpoint DB exists
+  --skip-testflight       Skip testflight_upload phase (xcode_archive still runs for local .ipa)
 
 ${chalk.dim('EXAMPLES')}
   dtc setup
@@ -179,6 +180,9 @@ async function main() {
       const acceptDrift = args.flags['accept-drift'] === true
       const noResume = args.flags['no-resume'] === true
       const baasProviderFlag = args.flags['baas-provider'] as string | undefined
+      // Phase 5 Plan 06 (TF-04 D-04): --skip-testflight gates the testflight_upload phase only;
+      // xcode_archive still runs so the .ipa artifact exists on disk for manual inspection / retry.
+      const skipTestflight = args.flags['skip-testflight'] === true
 
       if (!prompt && !resumeRaw && !designFile && !designIrPath) {
         console.error(
@@ -272,6 +276,7 @@ async function main() {
         acceptDrift,
         noResume,
         baasProvider: baasProviderFlag ? validateBaasProvider(baasProviderFlag) : undefined,
+        skipTestflight,
       })
       break
     }
@@ -650,7 +655,7 @@ async function main() {
         // Phase 5 Plan 06 (TF-01 D-03): AscClient removed — use runTestFlightUploadPhase
         // + runXcodeArchivePhase orchestrators instead of the deleted subprocess shell-out.
         const { PlayConsoleClient, runTestFlightUploadPhase } = await import('@appifex/provision')
-        const { archiveSwift, bundleKotlin, runXcodeArchivePhase } = await import('@appifex/build')
+        const { bundleKotlin, runXcodeArchivePhase } = await import('@appifex/build')
         const { homedir } = await import('node:os')
         const { join } = await import('node:path')
         const { existsSync } = await import('node:fs')

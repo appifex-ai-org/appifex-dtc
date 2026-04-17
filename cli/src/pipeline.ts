@@ -66,10 +66,11 @@ import {
   swiftAutofix,
   patchProjectDependencies,
   patchBuildGradle,
+  runXcodeArchivePhase,
 } from '@appifex/build'
 // Phase 5 Plan 06 (TF-01 D-03): AscClient deleted. iOS submission now flows through
-// runTestFlightUploadPhase (imported at the wiring site below).
-import { PlayConsoleClient } from '@appifex/provision'
+// runTestFlightUploadPhase orchestrator.
+import { PlayConsoleClient, runTestFlightUploadPhase } from '@appifex/provision'
 import { validateAll, type ValidationResult } from '@appifex/validate'
 import { fixLoop, createDefaultFixFn, createClaudeCliFixFn } from '@appifex/fix'
 import { buildReport, formatMarkdown, type PipelineReport } from '@appifex/report'
@@ -728,6 +729,8 @@ export interface PipelineOpts {
   noResume?: boolean
   /** BaaS provider selection. CLI --baas-provider > config baas.provider > null (skip BaaS) */
   baasProvider?: BaasProvider
+  /** Phase 5 (TF-04 D-04): skip testflight_upload phase; xcode_archive still runs. */
+  skipTestflight?: boolean
 }
 
 export interface PipelineResult {
@@ -3712,6 +3715,171 @@ export async function runPipeline(
     }
     // Phase 5 Plan 06: SwiftUI no longer emits any 'provision' row — the xcode_archive +
     // testflight_upload phase blocks (added below) own the iOS path.
+
+    // ── Phase: xcode_archive ── (Phase 5 TF-01 D-02: after deliver, before report).
+    // Mirrors the firebase_provision structural shape: started emit → handler call →
+    // checkpoint save → completed/skipped/failed emit → rethrow on error.
+    const hasFullAscCreds = !!(
+      config.apple?.ascAppId &&
+      config.apple.ascKeyId &&
+      config.apple.ascIssuerId &&
+      config.apple.ascKeyPath
+    )
+    if (
+      opts.platform === 'swiftui' &&
+      hasFullAscCreds &&
+      report.summary.allGreen &&
+      !canSkipPhase('xcode_archive')
+    ) {
+      currentPhase = 'xcode_archive'
+      emit('xcode_archive', 'started', 'Archiving signed .ipa for TestFlight')
+      try {
+        const archive = await runXcodeArchivePhase({
+          runner,
+          config,
+          projectDir: outputDir,
+          scheme: deriveAppName(opts.prompt),
+        })
+        if (archive.skipped) {
+          checkpoint.savePhase(checkpointRunId, 'xcode_archive', {
+            status: 'completed',
+            completedAt: new Date().toISOString(),
+          })
+          emit('xcode_archive', 'skipped', archive.reason)
+        } else {
+          checkpoint.savePhase(checkpointRunId, 'xcode_archive', {
+            status: 'completed',
+            completedAt: new Date().toISOString(),
+            ipaPath: archive.ipaPath,
+            archivePath: archive.archivePath,
+            buildNumber: archive.buildNumber,
+            marketingVersion: archive.marketingVersion,
+            bundleId: archive.bundleId,
+          })
+          emit('xcode_archive', 'completed', `Archived ${archive.ipaPath ?? '(no path)'}`)
+        }
+        await flushContext()
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        try {
+          checkpoint.savePhase(checkpointRunId, 'xcode_archive', {
+            status: 'failed',
+            error: String(err),
+            failedAt: new Date().toISOString(),
+            completedAt: new Date().toISOString(),
+          })
+        } catch (ckptErr) {
+          console.error(`[checkpoint] xcode_archive savePhase failed: ${String(ckptErr)}`)
+        }
+        emit('xcode_archive', 'failed', `Archive failed: ${msg}`)
+        await flushContext()
+        throw err
+      }
+    } else if (opts.platform === 'swiftui' && !hasFullAscCreds) {
+      emit(
+        'xcode_archive',
+        'skipped',
+        'Apple TestFlight credentials not configured — run `dtc setup apple`',
+      )
+    } else if (opts.platform === 'swiftui' && !report.summary.allGreen) {
+      emit('xcode_archive', 'skipped', 'Skipped — tests not all green')
+    } else if (opts.platform === 'swiftui' && canSkipPhase('xcode_archive')) {
+      emit('xcode_archive', 'skipped', 'skipped (checkpoint complete)')
+    }
+
+    // ── Phase: testflight_upload ── (Phase 5 TF-04 D-02, respects --skip-testflight D-04).
+    // D-17 soft-fail: completed_with_warnings → emit 'completed' (NOT 'failed'), pipeline exits 0.
+    if (
+      opts.platform === 'swiftui' &&
+      !opts.skipTestflight &&
+      hasFullAscCreds &&
+      report.summary.allGreen &&
+      !canSkipPhase('testflight_upload')
+    ) {
+      currentPhase = 'testflight_upload'
+      // Pull archive metadata from the xcode_archive checkpoint row saved above.
+      const archiveCkpt = checkpoint.getPhase(checkpointRunId, 'xcode_archive') as {
+        status?: string
+        ipaPath?: string
+        buildNumber?: string
+        marketingVersion?: string
+      } | null
+      if (
+        !archiveCkpt ||
+        archiveCkpt.status !== 'completed' ||
+        !archiveCkpt.ipaPath ||
+        !archiveCkpt.buildNumber ||
+        !archiveCkpt.marketingVersion
+      ) {
+        // Archive skipped D-16 (already VALID in ASC) OR missing metadata — soft-skip.
+        emit(
+          'testflight_upload',
+          'skipped',
+          'No .ipa artifact from xcode_archive — re-run dtc to re-archive.',
+        )
+      } else {
+        emit('testflight_upload', 'started', 'Uploading to TestFlight')
+        try {
+          const result = await runTestFlightUploadPhase({
+            runner,
+            config,
+            emitter: progress,
+            ipaPath: archiveCkpt.ipaPath,
+            buildNumber: archiveCkpt.buildNumber,
+            marketingVersion: archiveCkpt.marketingVersion,
+          })
+          if (result.status === 'completed_with_warnings') {
+            // Phase 5 (D-17): soft-fail. Build IS on TestFlight; only the assignment step is incomplete.
+            checkpoint.savePhase(checkpointRunId, 'testflight_upload', {
+              status: 'completed',
+              completedAt: new Date().toISOString(),
+              buildId: result.buildId,
+              warnings: result.warnings,
+            })
+            // Emit 'completed' (NOT 'failed') — exit code 0. Warnings joined into message.
+            const warnMsg = `Uploaded build with warnings: ${result.warnings.join('; ')}`
+            emit('testflight_upload', 'completed', warnMsg)
+          } else {
+            checkpoint.savePhase(checkpointRunId, 'testflight_upload', {
+              status: 'completed',
+              completedAt: new Date().toISOString(),
+              buildId: result.buildId,
+              groupId: result.groupId,
+              testersAdded: result.testersAdded.length,
+            })
+            emit(
+              'testflight_upload',
+              'completed',
+              `Uploaded + assigned to ${result.testersAdded.length} tester(s)`,
+            )
+          }
+          await flushContext()
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          try {
+            checkpoint.savePhase(checkpointRunId, 'testflight_upload', {
+              status: 'failed',
+              error: String(err),
+              failedAt: new Date().toISOString(),
+              completedAt: new Date().toISOString(),
+            })
+          } catch (ckptErr) {
+            console.error(`[checkpoint] testflight_upload savePhase failed: ${String(ckptErr)}`)
+          }
+          emit('testflight_upload', 'failed', `TestFlight upload failed: ${msg}`)
+          await flushContext()
+          throw err
+        }
+      }
+    } else if (opts.platform === 'swiftui' && opts.skipTestflight) {
+      emit('testflight_upload', 'skipped', 'skipped (--skip-testflight)')
+    } else if (opts.platform === 'swiftui' && !hasFullAscCreds) {
+      emit('testflight_upload', 'skipped', 'ASC credentials not configured — run `dtc setup apple`')
+    } else if (opts.platform === 'swiftui' && !report.summary.allGreen) {
+      emit('testflight_upload', 'skipped', 'Skipped — tests not all green')
+    } else if (opts.platform === 'swiftui' && canSkipPhase('testflight_upload')) {
+      emit('testflight_upload', 'skipped', 'skipped (checkpoint complete)')
+    }
 
     // Save run context for future resume/add-feature/refactor
     const apiFilesGenerated: string[] = []
