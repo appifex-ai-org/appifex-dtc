@@ -36,6 +36,10 @@ export interface FirebaseProvisionOpts {
   baasSchema: BaasSchema
   /** True if GoogleService-Info.plist already exists on disk — skip if so (D-05) */
   plistExists?: boolean
+  /** Phase 4 Plan 07 (UI-SPEC destructive-action contract): force overwrite even when plistExists=true.
+   * Set by the pipeline handler ONLY after the user explicitly confirms the overwrite prompt.
+   * Default false — preserves D-05 idempotency for headless / repeated runs. */
+  overwritePlist?: boolean
 }
 
 export interface FirebaseProvisionResult {
@@ -49,10 +53,11 @@ export interface FirebaseProvisionResult {
 export async function runFirebaseProvision(
   opts: FirebaseProvisionOpts,
 ): Promise<FirebaseProvisionResult> {
-  const { outputDir, runner, config, baasSchema, plistExists } = opts
+  const { outputDir, runner, config, baasSchema, plistExists, overwritePlist } = opts
 
-  // Phase 4 (FIRE-04): idempotent — skip if plist already present (D-05)
-  if (plistExists) {
+  // Phase 4 Plan 07: only short-circuit when plist exists AND user did not opt into overwrite.
+  // The overwritePlist=true path is gated by an interactive @clack/prompts confirm in cli/src/pipeline.ts.
+  if (plistExists && !overwritePlist) {
     return { skipped: true }
   }
 
