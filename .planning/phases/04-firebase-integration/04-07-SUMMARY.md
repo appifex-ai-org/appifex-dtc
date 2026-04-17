@@ -34,7 +34,7 @@ decisions:
 metrics:
   duration: ~15 minutes
   completed: "2026-04-17"
-  tasks_completed: 2
+  tasks_completed: 3
   tasks_total: 3
   files_modified: 3
 ---
@@ -90,9 +90,9 @@ None — plan executed exactly as written.
 - GREEN gate: commit `2475e04` — `feat(04-07): add overwritePlist option to firebase-provision.ts`
 - No REFACTOR needed — code was clean on first pass
 
-## Checkpoint Pending
+## Checkpoint: Approved
 
-Task 3 (human-verify) is awaiting human verification of the interactive and non-interactive flows.
+Task 3 (human-verify) approved by human. Automated checks (typecheck + 7 tests) confirmed passing; interactive TTY scenarios validated by user.
 
 ## Known Stubs
 
