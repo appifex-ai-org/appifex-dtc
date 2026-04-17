@@ -2404,6 +2404,28 @@ export async function runPipeline(
     const plistPath = join(outputDir, 'GoogleService-Info.plist')
     const plistExists = await runner.exists(plistPath).catch(() => false)
 
+    // Phase 4 Plan 07 (UI-SPEC destructive-action contract): confirm before overwriting an existing plist.
+    // Default-safe: in non-interactive contexts (CI, piped stdin, opts.interactive=false) or on cancel,
+    // do NOT overwrite — preserves D-05 idempotency.
+    // Reuses the canonical isInteractive(opts) helper (pipeline.ts:686) that every other prompt site uses
+    // — this respects the opts.interactive override used by MCP / non-TTY callers.
+    let overwritePlist = false
+    if (plistExists && isInteractive(opts)) {
+      const clack = await import('@clack/prompts')
+      const proceed = await clack.confirm({
+        message: `GoogleService-Info.plist already exists at ${plistPath}. Overwrite? [y/N]`,
+        initialValue: false,
+      })
+      // clack.isCancel returns true on Ctrl+C; treat cancel as No (no overwrite)
+      overwritePlist = clack.isCancel(proceed) ? false : proceed === true
+    }
+
+    if (plistExists && !overwritePlist) {
+      emit('firebase_provision', 'running', chalkForProvision.dim('Existing GoogleService-Info.plist preserved (no overwrite).'))
+    } else if (plistExists && overwritePlist) {
+      emit('firebase_provision', 'running', 'Overwriting existing GoogleService-Info.plist...')
+    }
+
     // Phase 4 (FIRE-05): lint runs inside runFirebaseProvision before rules are deployed (D-13).
     // Phase 4 (FIRE-04): plist download (firebase apps:sdkconfig) also runs inside runFirebaseProvision
     //   when plistExists is false. If the download exits non-zero, runFirebaseProvision throws
@@ -2414,6 +2436,7 @@ export async function runPipeline(
       config,
       baasSchema: baasSchema!,
       plistExists,
+      overwritePlist,
     })
 
     if (result.skipped) {
