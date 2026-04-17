@@ -10,10 +10,15 @@ const BANNED_PATTERNS: Array<{ pattern: RegExp; description: string }> = [
   // Phase 4 (FIRE-05 D-12): cross-user read — allow read without ownership check is a hard-fail
   // Matches any 'allow read' (or 'allow get/list') not followed by an ownership assertion.
   // Note: this regex is intentionally conservative — it flags 'allow read: if request.auth != null'
-  // as a violation; generated rules MUST include resource.data.ownerId == request.auth.uid.
+  // as a violation; generated rules MUST include an ownership check (either operand order is valid).
+  // Phase 4 (wr-02): both operand orders accepted —
+  //   request.auth.uid == resource.data.ownerId  (original)
+  //   resource.data.ownerId == request.auth.uid  (reversed, equally valid)
   {
-    pattern: /allow\s+(?:read|get|list)\s*:[^;{]*?if\s+(?!false)(?!.*request\.auth\.uid\s*==\s*resource\.data\.ownerId)/,
-    description: 'Cross-user read: allow read without request.auth.uid == resource.data.ownerId ownership check',
+    pattern:
+      /allow\s+(?:read|get|list)\s*:[^;{]*?if\s+(?!false)(?!.*(?:request\.auth\.uid\s*==\s*resource\.data\.ownerId|resource\.data\.ownerId\s*==\s*request\.auth\.uid))/,
+    description:
+      'Cross-user read: allow read without request.auth.uid == resource.data.ownerId ownership check',
   },
 ]
 
