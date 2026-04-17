@@ -94,3 +94,22 @@ export class SecurityLintError extends CliError {
     this.name = 'SecurityLintError'
   }
 }
+
+// Phase 5 (TF-01 D-05): thrown by xcode_archive phase on xcodebuild/xcodegen/mutator failure
+export class ArchiveError extends CliError {
+  constructor(message: string) {
+    super(message, 1)
+    this.name = 'ArchiveError'
+  }
+}
+
+// Phase 5 (TF-04 D-05): thrown by testflight_upload phase on altool/ASC REST failure (non-soft-fail — D-17)
+export class TestFlightError extends CliError {
+  constructor(
+    message: string,
+    public readonly itmsCode?: string,
+  ) {
+    super(message, 1)
+    this.name = 'TestFlightError'
+  }
+}
