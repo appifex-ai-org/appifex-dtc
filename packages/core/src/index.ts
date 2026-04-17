@@ -34,6 +34,7 @@ export {
 export { isFixtureMode, loadFixture, FixtureModeError } from './llm-fixture.js'
 export type { FixtureResponse } from './llm-fixture.js'
 // Phase 02 Plan 01 (FOUND-04): typed CliError hierarchy
+// Phase 5 (TF-01, TF-04 D-05): ArchiveError + TestFlightError appended
 export {
   CliError,
   PreflightError,
@@ -43,6 +44,8 @@ export {
   EpipeError,
   ProvisionError,
   SecurityLintError,
+  ArchiveError,
+  TestFlightError,
 } from './errors.js'
 // Phase 03 Plan 01 (SETUP-02): CredentialRegistry + ASC JWT helpers
 export * from './credential-registry.js'
