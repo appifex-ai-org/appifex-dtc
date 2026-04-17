@@ -120,7 +120,7 @@ describe('renderBaasTemplates', () => {
     const repoFile = files.find((f) => f.path.endsWith('TodoRepository.swift'))!
     expect(repoFile.content).toContain('func create')
     expect(repoFile.content).toContain('func getById')
-    expect(repoFile.content).toContain('func list')
+    expect(repoFile.content).toContain('func startListening')
     expect(repoFile.content).toContain('func update')
     expect(repoFile.content).toContain('func delete')
   })
