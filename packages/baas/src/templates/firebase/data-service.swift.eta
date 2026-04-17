@@ -22,8 +22,18 @@ final class <%= it.entity.name %>DataService {
         cancelListener = { reg.remove() }
     }
 
+    // Phase 4 (wr-03): explicit stopListening() method for deterministic cleanup.
+    // @Observable deinit timing is unreliable — call stopListening() from the view's .onDisappear
+    // to guarantee the Firestore listener is cancelled before the view leaves the hierarchy.
+    func stopListening() {
+        cancelListener?()
+        cancelListener = nil
+    }
+
     deinit {
-        // Phase 4 (FIRE-03 D-10): cancel listener on deinit — prevents memory leak and Firebase billing overrun
+        // Phase 4 (FIRE-03 D-10): best-effort cancel on deinit — not sufficient on its own for
+        // @Observable classes (deinit timing is managed by SwiftUI view storage).
+        // Callers MUST also invoke stopListening() from .onDisappear.
         cancelListener?()
     }
 
