@@ -1,5 +1,6 @@
 import {
   loadConfig,
+  saveConfig,
   TokenBudget,
   createFileSkillProvider,
   createBundledSkillProvider,
@@ -2402,8 +2403,23 @@ export async function runPipeline(
     const { default: chalkForProvision } = await import('chalk')
 
     // Check if GoogleService-Info.plist already exists (idempotency guard — D-05)
-    const plistPath = join(outputDir, 'GoogleService-Info.plist')
-    const plistExists = await runner.exists(plistPath).catch(() => false)
+    // Phase 4 (FIRE-04 fix): check config.firebase.plistPath first (set by wizard), then outputDir.
+    // When wizard's projectDir differs from outputDir, both locations are checked so the guard
+    // does not miss an existing plist and trigger a redundant re-download.
+    const defaultPlistPath = join(outputDir, 'GoogleService-Info.plist')
+    const configPlistPath = config.firebase?.plistPath
+    let plistPath = defaultPlistPath
+    let plistExists = false
+    if (configPlistPath && configPlistPath !== defaultPlistPath) {
+      const [existsAtConfig, existsAtDefault] = await Promise.all([
+        runner.exists(configPlistPath).catch(() => false),
+        runner.exists(defaultPlistPath).catch(() => false),
+      ])
+      plistExists = existsAtConfig || existsAtDefault
+      plistPath = existsAtDefault ? defaultPlistPath : existsAtConfig ? configPlistPath : defaultPlistPath
+    } else {
+      plistExists = await runner.exists(defaultPlistPath).catch(() => false)
+    }
 
     // Phase 4 Plan 07 (UI-SPEC destructive-action contract): confirm before overwriting an existing plist.
     // Default-safe: in non-interactive contexts (CI, piped stdin, opts.interactive=false) or on cancel,
@@ -2482,6 +2498,13 @@ export async function runPipeline(
         plistPath: result.plistPath,
         collectionsSeeded: result.collectionsSeeded,
       })
+
+      // Phase 4 (FIRE-04 fix): sync config.firebase.plistPath to the actual download location
+      // so future idempotency checks resolve correctly without a wizard re-run.
+      if (config.firebase && result.plistPath && config.firebase.plistPath !== result.plistPath) {
+        config.firebase.plistPath = result.plistPath
+        await saveConfig(configDir, config)
+      }
 
       emit('firebase_provision', 'completed', 'Firebase provision complete')
     }
