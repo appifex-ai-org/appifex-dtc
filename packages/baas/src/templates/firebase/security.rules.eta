@@ -29,5 +29,8 @@ service cloud.firestore {
       allow delete: if request.auth != null && request.auth.uid == resource.data.ownerId;
     }
 <% } %>
+
+        // Phase 4 (FIRE-05 D-12 pattern 3): catch-all deny-all default — required by security lint gate
+        match /{document=**} { allow read, write: if false; }
   }
 }
