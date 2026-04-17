@@ -2421,15 +2421,11 @@ export async function runPipeline(
       overwritePlist = clack.isCancel(proceed) ? false : proceed === true
     }
 
-    if (plistExists && !overwritePlist) {
-      emit(
-        'firebase_provision',
-        'running',
-        chalkForProvision.dim('Existing GoogleService-Info.plist preserved (no overwrite).'),
-      )
-    } else if (plistExists && overwritePlist) {
-      emit('firebase_provision', 'running', 'Overwriting existing GoogleService-Info.plist...')
-    }
+    // Phase 4 (wr-04): pre-call status messages removed — they produced duplicate events.
+    // When plistExists && !overwritePlist, runFirebaseProvision returns { skipped: true } and
+    // the result.skipped branch below already emits 'skipped'. Emitting 'running' here first
+    // was misleading (phase goes running → skipped with no work done).
+    // The post-call result branches are the sole source of terminal phase status messages.
 
     // Phase 4 (wr-01): guard against undefined baasSchema before calling runFirebaseProvision.
     // On resume, baasSchema is rehydrated from previousContext — if the context is missing or
