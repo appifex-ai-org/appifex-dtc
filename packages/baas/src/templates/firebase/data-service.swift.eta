@@ -1,5 +1,4 @@
 import Foundation
-import FirebaseFirestore
 
 @MainActor
 @Observable
@@ -8,8 +7,8 @@ final class <%= it.entity.name %>DataService {
     var items: [<%= it.entity.name %>] = []
     var error: Error?
 
-    // Phase 4 (FIRE-03 D-10): holds ListenerRegistration; cancels on deinit to prevent memory/billing leak
-    private var listener: ListenerRegistration?
+    // Phase 4 (FIRE-03 D-10): closure captures ListenerRegistration.remove() without exposing FirebaseFirestore to service layer
+    private var cancelListener: (() -> Void)?
 
     init(repository: any <%= it.entity.name %>Repository = Firestore<%= it.entity.name %>Repository()) {
         self.repository = repository
@@ -17,14 +16,15 @@ final class <%= it.entity.name %>DataService {
     }
 
     private func startListening() {
-        listener = repository.startListening { [weak self] newItems in
+        let reg = repository.startListening { [weak self] newItems in
             self?.items = newItems
         }
+        cancelListener = { reg.remove() }
     }
 
     deinit {
         // Phase 4 (FIRE-03 D-10): cancel listener on deinit — prevents memory leak and Firebase billing overrun
-        listener?.remove()
+        cancelListener?()
     }
 
     func create(_ item: <%= it.entity.name %>) async {

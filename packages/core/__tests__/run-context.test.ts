@@ -150,7 +150,7 @@ describe('PHASE_ORDER', () => {
     const mockIdx = PHASE_ORDER.indexOf('mock_service')
     const baasAuthIdx = PHASE_ORDER.indexOf('baas_auth')
     const testGenIdx = PHASE_ORDER.indexOf('test_gen')
-    expect(mockIdx).toBe(baasAuthIdx + 1)
+    expect(mockIdx).toBe(baasAuthIdx + 2) // firebase_provision sits at baasAuthIdx + 1 (Phase 4)
     expect(mockIdx).toBe(testGenIdx - 1)
   })
 })
