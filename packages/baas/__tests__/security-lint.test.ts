@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { lintSecurityRules } from '../src/security-lint.js'
 
 describe('lintSecurityRules', () => {
-  // Test 1: passes on valid owner-only Firestore rules
+  // Test 1: passes on valid owner-only Firestore rules (with deny-all default required by D-12)
   it('passes on valid owner-only Firestore rules', () => {
     const validRules = `
       rules_version = '2';
@@ -14,6 +14,7 @@ describe('lintSecurityRules', () => {
             allow update: if request.auth != null && request.auth.uid == resource.data.ownerId;
             allow delete: if request.auth != null && request.auth.uid == resource.data.ownerId;
           }
+          match /{document=**} { allow read, write: if false; }
         }
       }
     `
