@@ -2393,6 +2393,68 @@ export async function runPipeline(
     emit('baas_auth', 'skipped', 'Auth templates already generated (resume)')
   }
 
+  // ── Phase: firebase_provision ── (Phase 4 FIRE-04: after baas_auth, before mock_service — D-04)
+  if (resolvedBaasProvider === 'firebase' && !canSkipPhase('firebase_provision')) {
+    emit('firebase_provision', 'started', 'Provisioning Firebase project')
+
+    const { runFirebaseProvision } = await import('@appifex/baas')
+    const { default: chalkForProvision } = await import('chalk')
+
+    // Check if GoogleService-Info.plist already exists (idempotency guard — D-05)
+    const plistPath = join(outputDir, 'GoogleService-Info.plist')
+    const plistExists = await runner.exists(plistPath).catch(() => false)
+
+    // Phase 4 (FIRE-05): lint runs inside runFirebaseProvision before rules are deployed (D-13).
+    // Phase 4 (FIRE-04): plist download (firebase apps:sdkconfig) also runs inside runFirebaseProvision
+    //   when plistExists is false. If the download exits non-zero, runFirebaseProvision throws
+    //   ProvisionError — do NOT catch it here; let it propagate as CliError to the pipeline runner.
+    const result = await runFirebaseProvision({
+      outputDir,
+      runner,
+      config,
+      baasSchema: baasSchema!,
+      plistExists,
+    })
+
+    if (result.skipped) {
+      checkpoint.savePhase(checkpointRunId, 'firebase_provision', {
+        status: 'skipped',
+        reason: 'GoogleService-Info.plist already present',
+      })
+      emit('firebase_provision', 'skipped', 'skipped (checkpoint complete)')
+    } else {
+      // Emit gitignore tip per UI-SPEC.md copywriting contract
+      emit(
+        'firebase_provision',
+        'running',
+        chalkForProvision.dim(
+          'Tip: add GoogleService-Info.plist to your project .gitignore to avoid committing secrets.',
+        ),
+      )
+
+      if (result.collectionsSeeded !== undefined && result.collectionsSeeded > 0) {
+        emit(
+          'firebase_provision',
+          'running',
+          `Seeded ${result.collectionsSeeded} empty collection(s)`,
+        )
+      }
+
+      checkpoint.savePhase(checkpointRunId, 'firebase_provision', {
+        status: 'completed',
+        completedAt: new Date().toISOString(),
+        projectId: result.projectId,
+        iosAppId: result.iosAppId,
+        plistPath: result.plistPath,
+        collectionsSeeded: result.collectionsSeeded,
+      })
+
+      emit('firebase_provision', 'completed', 'Firebase provision complete')
+    }
+  } else if (resolvedBaasProvider === 'firebase' && canSkipPhase('firebase_provision')) {
+    emit('firebase_provision', 'skipped', 'skipped (checkpoint complete)')
+  }
+
   // Design note (FLOW-02): Test template generation (Phase 37 templates) is
   // intentionally bundled in mock_service rather than test_gen. Mock test
   // templates are tightly coupled to mock file generation — if mock_service is
