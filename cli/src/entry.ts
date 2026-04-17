@@ -646,9 +646,11 @@ async function main() {
     case 'provision': {
       if (args.subcommand === 'submit') {
         const { createRunner } = await import('@appifex/runner')
-        const { loadConfig } = await import('@appifex/core')
-        const { AscClient, PlayConsoleClient } = await import('@appifex/provision')
-        const { archiveSwift, bundleKotlin } = await import('@appifex/build')
+        const { loadConfig, ProgressEmitter } = await import('@appifex/core')
+        // Phase 5 Plan 06 (TF-01 D-03): AscClient removed — use runTestFlightUploadPhase
+        // + runXcodeArchivePhase orchestrators instead of the deleted subprocess shell-out.
+        const { PlayConsoleClient, runTestFlightUploadPhase } = await import('@appifex/provision')
+        const { archiveSwift, bundleKotlin, runXcodeArchivePhase } = await import('@appifex/build')
         const { homedir } = await import('node:os')
         const { join } = await import('node:path')
         const { existsSync } = await import('node:fs')
@@ -750,6 +752,8 @@ async function main() {
           if (!result.success) process.exit(1)
         } else {
           // ── iOS: Archive + Submit to TestFlight ──
+          // Phase 5 Plan 06 (TF-01 D-03): route through runXcodeArchivePhase +
+          // runTestFlightUploadPhase orchestrators (ASC REST + altool).
           if (!config.apple) {
             console.error(chalk.red('Apple TestFlight not configured. Run `dtc setup` first.'))
             process.exit(1)
@@ -767,8 +771,9 @@ async function main() {
             process.exit(1)
           }
 
-          let ipaPath = ipaFlag
-          if (!ipaPath) {
+          // Fresh-upload path: let runXcodeArchivePhase compute version+buildNumber +
+          // guard D-16 idempotent skip; runTestFlightUploadPhase handles altool + D-17.
+          if (!ipaFlag) {
             if (!project) {
               console.error(
                 chalk.red(
@@ -778,49 +783,78 @@ async function main() {
               process.exit(1)
             }
             const runner = createRunner(config.runner, { cwd: project })
+            const emitter = new ProgressEmitter()
             console.log(chalk.dim('📦 Archiving project for distribution...'))
-            const archiveResult = await archiveSwift(runner, {
+            const archive = await runXcodeArchivePhase({
+              runner,
+              config,
               projectDir: project,
-              scheme: args.flags.scheme as string | undefined,
-              teamId: config.apple.teamId,
-              bundleId: config.apple.bundleId,
-              exportMethod:
-                (args.flags.method as 'app-store' | 'ad-hoc' | 'development') ?? 'app-store',
-              // Phase 5 (TF-03 D-06/D-07): placeholder defaults until Plan 04's runXcodeArchivePhase
-              // replaces this call site with package.json + ASC REST derived values.
-              marketingVersion: (args.flags.marketingVersion as string | undefined) ?? '1.0.0',
-              buildNumber: (args.flags.buildNumber as string | undefined) ?? '1',
+              scheme: (args.flags.scheme as string | undefined) ?? 'App',
             })
-            if (!archiveResult.success) {
-              console.error(chalk.red(`✗ Archive failed: ${archiveResult.error}`))
+            if (archive.skipped) {
+              console.log(chalk.green(`✓ Archive skipped: ${archive.reason}`))
+              // D-16: the build is already VALID in ASC; nothing else to do.
+              break
+            }
+            if (!archive.ipaPath) {
+              console.error(chalk.red('✗ Archive reported success but produced no .ipa path'))
               process.exit(1)
             }
-            ipaPath = archiveResult.ipaPath!
             console.log(
-              chalk.green(
-                `✓ Archive succeeded: ${ipaPath} (${(archiveResult.duration / 1000).toFixed(1)}s)`,
-              ),
+              chalk.green(`✓ Archive succeeded: ${archive.ipaPath} (build ${archive.buildNumber})`),
             )
+            console.log(chalk.dim('🚀 Submitting to TestFlight...'))
+            const result = await runTestFlightUploadPhase({
+              runner,
+              config,
+              emitter,
+              ipaPath: archive.ipaPath,
+              buildNumber: archive.buildNumber,
+              marketingVersion: archive.marketingVersion,
+            })
+            if (result.status === 'completed_with_warnings') {
+              console.log(chalk.yellow(`✓ Uploaded with warnings:`))
+              for (const w of result.warnings) console.log(chalk.yellow(`  - ${w}`))
+            } else {
+              console.log(
+                chalk.green(
+                  `✓ Submitted to TestFlight (build ${result.buildId}, ${result.testersAdded.length} tester(s) assigned)`,
+                ),
+              )
+            }
+          } else {
+            // Pre-built --ipa path: user supplied IPA directly; no archive phase.
+            // Version metadata must come from flags since we cannot read it from the IPA here.
+            const runner = createRunner(config.runner)
+            const emitter = new ProgressEmitter()
+            const buildNumber =
+              (args.flags['build-number'] as string | undefined) ??
+              (args.flags.buildNumber as string | undefined) ??
+              '1'
+            const marketingVersion =
+              (args.flags['marketing-version'] as string | undefined) ??
+              (args.flags.marketingVersion as string | undefined) ??
+              '1.0.0'
+            console.log(chalk.dim('🚀 Submitting to TestFlight...'))
+            const result = await runTestFlightUploadPhase({
+              runner,
+              config,
+              emitter,
+              ipaPath: ipaFlag,
+              buildNumber,
+              marketingVersion,
+            })
+            if (result.status === 'completed_with_warnings') {
+              console.log(chalk.yellow(`✓ Uploaded with warnings:`))
+              for (const w of result.warnings) console.log(chalk.yellow(`  - ${w}`))
+            } else {
+              console.log(
+                chalk.green(
+                  `✓ Submitted to TestFlight (build ${result.buildId}, ${result.testersAdded.length} tester(s) assigned)`,
+                ),
+              )
+            }
           }
-
-          const runner = createRunner(config.runner)
-          const asc = new AscClient(runner, {
-            keyId: config.apple.ascKeyId,
-            issuerId: config.apple.ascIssuerId,
-            keyPath: config.apple.ascKeyPath,
-          })
-          console.log(chalk.dim('🚀 Submitting to TestFlight...'))
-          const result = await asc.submitTestFlight({
-            appId: config.apple.ascAppId,
-            ipaPath,
-            group: config.apple.ascTestFlightGroup,
-          })
-          console.log(
-            result.success
-              ? chalk.green('✓ Submitted to TestFlight')
-              : chalk.red(`✗ ${result.error}`),
-          )
-          if (!result.success) process.exit(1)
         }
       } else {
         console.error(

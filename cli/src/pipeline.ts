@@ -60,7 +60,6 @@ import {
 import {
   buildSwift,
   buildKotlin,
-  archiveSwift,
   bundleKotlin,
   deriveAppName,
   swiftPrecheck,
@@ -68,7 +67,9 @@ import {
   patchProjectDependencies,
   patchBuildGradle,
 } from '@appifex/build'
-import { AscClient, PlayConsoleClient } from '@appifex/provision'
+// Phase 5 Plan 06 (TF-01 D-03): AscClient deleted. iOS submission now flows through
+// runTestFlightUploadPhase (imported at the wiring site below).
+import { PlayConsoleClient } from '@appifex/provision'
 import { validateAll, type ValidationResult } from '@appifex/validate'
 import { fixLoop, createDefaultFixFn, createClaudeCliFixFn } from '@appifex/fix'
 import { buildReport, formatMarkdown, type PipelineReport } from '@appifex/report'
@@ -2416,7 +2417,11 @@ export async function runPipeline(
         runner.exists(defaultPlistPath).catch(() => false),
       ])
       plistExists = existsAtConfig || existsAtDefault
-      plistPath = existsAtDefault ? defaultPlistPath : existsAtConfig ? configPlistPath : defaultPlistPath
+      plistPath = existsAtDefault
+        ? defaultPlistPath
+        : existsAtConfig
+          ? configPlistPath
+          : defaultPlistPath
     } else {
       plistExists = await runner.exists(defaultPlistPath).catch(() => false)
     }
@@ -3642,61 +3647,21 @@ export async function runPipeline(
       await flushContext()
     }
 
-    // 10. Provision (archive + TestFlight / AAB + Play Console)
-    const hasFullAscCreds =
-      config.apple?.ascKeyId &&
-      config.apple?.ascIssuerId &&
-      config.apple?.ascKeyPath &&
-      config.apple?.ascAppId
+    // 10. Provision
+    //
+    // Phase 5 Plan 06 (TF-01 D-03): iOS provision branch removed — archive + TestFlight upload
+    // now run as their own dedicated phases (xcode_archive, testflight_upload) wired later in
+    // this file so the pipeline emits distinct progress/checkpoint rows for each step and
+    // stops shelling out to the deleted community `asc` CLI.
+    //
+    // Android/Play Console remains on the legacy `provision` PhaseId for this milestone —
+    // the Kotlin→Play hardening belongs to a later milestone.
     const hasAndroidCreds =
       config.android?.serviceAccountKeyPath &&
       config.android?.packageName &&
       config.android?.keystorePath
 
-    if (opts.platform === 'swiftui' && hasFullAscCreds && report.summary.allGreen) {
-      // ── iOS: Archive + TestFlight ──
-      emit('provision', 'started', 'Archiving and submitting to TestFlight')
-      try {
-        const archiveResult = await archiveSwift(runner, {
-          projectDir: outputDir,
-          scheme: deriveAppName(opts.prompt),
-          teamId: config.apple!.teamId,
-          bundleId: config.apple!.bundleId,
-          exportMethod: 'app-store',
-          // Phase 5 (TF-03 D-06/D-07): placeholder defaults until Plan 04's runXcodeArchivePhase
-          // replaces this call site. Real values come from package.json "version" (marketingVersion)
-          // and ASC REST max + 1 via computeNextBuildNumber (buildNumber).
-          marketingVersion: '1.0.0',
-          buildNumber: '1',
-        })
-        if (!archiveResult.success) {
-          emit('provision', 'failed', `Archive failed: ${archiveResult.error}`)
-          await flushContext()
-        } else {
-          const asc = new AscClient(runner, {
-            keyId: config.apple!.ascKeyId!,
-            issuerId: config.apple!.ascIssuerId!,
-            keyPath: config.apple!.ascKeyPath!,
-          })
-          const submitResult = await asc.submitTestFlight({
-            appId: config.apple!.ascAppId!,
-            ipaPath: archiveResult.ipaPath!,
-            group: config.apple!.ascTestFlightGroup,
-          })
-          if (submitResult.success) {
-            emit('provision', 'completed', `Submitted to TestFlight: ${archiveResult.ipaPath}`)
-            await flushContext()
-          } else {
-            emit('provision', 'failed', `TestFlight submission failed: ${submitResult.error}`)
-            await flushContext()
-          }
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
-        emit('provision', 'failed', `Provision failed: ${message}`)
-        await flushContext()
-      }
-    } else if (opts.platform === 'kotlin-compose' && hasAndroidCreds && report.summary.allGreen) {
+    if (opts.platform === 'kotlin-compose' && hasAndroidCreds && report.summary.allGreen) {
       // ── Android: AAB + Play Console ──
       emit('provision', 'started', 'Building release AAB and submitting to Play Console')
       try {
@@ -3734,9 +3699,6 @@ export async function runPipeline(
         emit('provision', 'failed', `Provision failed: ${message}`)
         await flushContext()
       }
-    } else if (opts.platform === 'swiftui' && !hasFullAscCreds) {
-      emit('provision', 'skipped', 'Apple TestFlight credentials not configured — run `dtc setup`')
-      await flushContext()
     } else if (opts.platform === 'kotlin-compose' && !hasAndroidCreds) {
       emit(
         'provision',
@@ -3744,16 +3706,12 @@ export async function runPipeline(
         'Google Play Console credentials not configured — run `dtc setup`',
       )
       await flushContext()
-    } else if (
-      (opts.platform === 'swiftui' || opts.platform === 'kotlin-compose') &&
-      !report.summary.allGreen
-    ) {
+    } else if (opts.platform === 'kotlin-compose' && !report.summary.allGreen) {
       emit('provision', 'skipped', 'Skipped — tests not all green')
       await flushContext()
-    } else {
-      emit('provision', 'skipped', 'Skipped — platform does not support provision')
-      await flushContext()
     }
+    // Phase 5 Plan 06: SwiftUI no longer emits any 'provision' row — the xcode_archive +
+    // testflight_upload phase blocks (added below) own the iOS path.
 
     // Save run context for future resume/add-feature/refactor
     const apiFilesGenerated: string[] = []
