@@ -382,8 +382,8 @@ describe('runFirebaseSection', () => {
     expect((loginCall![2] as { stdio?: unknown }).stdio).toBe('inherit')
   })
 
-  it('Test 11: wave-0 stub packages/baas/__tests__/firebase-provision.test.ts has at least one it.todo', async () => {
-    // This test does NOT edit the file — it only asserts the stub exists and has todos.
+  it('Test 11: packages/baas/__tests__/firebase-provision.test.ts has no it.todo stubs (Phase 4 implemented)', async () => {
+    // Phase 4 (FIRE-04): stubs were implemented in Plan 04; this test verifies no todos remain.
     const { readFileSync } = await import('node:fs')
     const { resolve } = await import('node:path')
     const stubPath = resolve(
@@ -391,6 +391,8 @@ describe('runFirebaseSection', () => {
       '../../packages/baas/__tests__/firebase-provision.test.ts',
     )
     const contents = readFileSync(stubPath, 'utf-8')
-    expect(contents).toContain('it.todo')
+    expect(contents).not.toContain('it.todo')
+    expect(contents).toContain('runFirebaseProvision')
+    expect(contents).toContain('ProvisionError')
   })
 })
