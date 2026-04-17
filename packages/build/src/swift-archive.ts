@@ -173,6 +173,8 @@ with open('${iconPath}', 'wb') as f:
       error: `xcodegen failed: ${genResult.stderr}`,
       duration: Date.now() - startTime,
       commands,
+      marketingVersion: opts.marketingVersion,
+      buildNumber: opts.buildNumber,
     }
   }
 
@@ -184,6 +186,8 @@ with open('${iconPath}', 'wb') as f:
       error: 'No .xcodeproj found after xcodegen',
       duration: Date.now() - startTime,
       commands,
+      marketingVersion: opts.marketingVersion,
+      buildNumber: opts.buildNumber,
     }
   }
   const projFile = projs[0].split('/').pop()!
@@ -225,6 +229,8 @@ with open('${iconPath}', 'wb') as f:
       error: errorLines || archiveResult.stderr,
       duration: Date.now() - startTime,
       commands,
+      marketingVersion: opts.marketingVersion,
+      buildNumber: opts.buildNumber,
     }
   }
 
@@ -273,6 +279,8 @@ with open('${iconPath}', 'wb') as f:
       archivePath,
       duration: Date.now() - startTime,
       commands,
+      marketingVersion: opts.marketingVersion,
+      buildNumber: opts.buildNumber,
     }
   }
 
@@ -285,6 +293,8 @@ with open('${iconPath}', 'wb') as f:
       archivePath,
       duration: Date.now() - startTime,
       commands,
+      marketingVersion: opts.marketingVersion,
+      buildNumber: opts.buildNumber,
     }
   }
 
@@ -294,5 +304,7 @@ with open('${iconPath}', 'wb') as f:
     archivePath,
     duration: Date.now() - startTime,
     commands,
+    marketingVersion: opts.marketingVersion,
+    buildNumber: opts.buildNumber,
   }
 }

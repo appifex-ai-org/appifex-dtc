@@ -3663,6 +3663,11 @@ export async function runPipeline(
           teamId: config.apple!.teamId,
           bundleId: config.apple!.bundleId,
           exportMethod: 'app-store',
+          // Phase 5 (TF-03 D-06/D-07): placeholder defaults until Plan 04's runXcodeArchivePhase
+          // replaces this call site. Real values come from package.json "version" (marketingVersion)
+          // and ASC REST max + 1 via computeNextBuildNumber (buildNumber).
+          marketingVersion: '1.0.0',
+          buildNumber: '1',
         })
         if (!archiveResult.success) {
           emit('provision', 'failed', `Archive failed: ${archiveResult.error}`)

@@ -786,6 +786,10 @@ async function main() {
               bundleId: config.apple.bundleId,
               exportMethod:
                 (args.flags.method as 'app-store' | 'ad-hoc' | 'development') ?? 'app-store',
+              // Phase 5 (TF-03 D-06/D-07): placeholder defaults until Plan 04's runXcodeArchivePhase
+              // replaces this call site with package.json + ASC REST derived values.
+              marketingVersion: (args.flags.marketingVersion as string | undefined) ?? '1.0.0',
+              buildNumber: (args.flags.buildNumber as string | undefined) ?? '1',
             })
             if (!archiveResult.success) {
               console.error(chalk.red(`✗ Archive failed: ${archiveResult.error}`))
