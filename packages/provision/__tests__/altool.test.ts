@@ -4,13 +4,15 @@
 // detection chain (JSON product-errors → ITMS regex → ContentDelivery regex).
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Mock node:fs/promises for symlink testing — MUST be before the import of altool.ts
-const fsMocks = {
+// Mock node:fs/promises for symlink testing. vi.mock is hoisted above this file's
+// top-level statements, so the mock factory cannot reference local consts. Use
+// vi.hoisted so the mock registry is created together with the hoisted vi.mock call.
+const fsMocks = vi.hoisted(() => ({
   mkdir: vi.fn().mockResolvedValue(undefined),
   symlink: vi.fn().mockResolvedValue(undefined),
   stat: vi.fn(),
   unlink: vi.fn().mockResolvedValue(undefined),
-}
+}))
 vi.mock('node:fs/promises', () => fsMocks)
 
 import { uploadIpa, parseAltoolOutput, ensureKeyAtStandardPath } from '../src/altool.js'

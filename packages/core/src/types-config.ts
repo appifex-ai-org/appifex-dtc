@@ -142,6 +142,9 @@ export interface AppleConfig {
   ascKeyPath?: string
   /** TestFlight beta group name (default: "App Store Connect Users") */
   ascTestFlightGroup?: string
+  // Phase 5 Plan 05 (TF-04 D-20): emails of internal TestFlight testers to reconcile
+  // into the beta group after upload. Solo-founder default: their own team email.
+  testflightTesters?: string[]
 }
 
 export interface AndroidConfig {
