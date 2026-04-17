@@ -184,6 +184,9 @@ importers:
       '@appifex/core':
         specifier: workspace:*
         version: link:../core
+      '@appifex/provision':
+        specifier: workspace:*
+        version: link:../provision
       '@appifex/runner':
         specifier: workspace:*
         version: link:../runner
