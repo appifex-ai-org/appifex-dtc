@@ -1,6 +1,11 @@
 import type { Runner, BaasProvider } from '@appifex/core'
 import type { SwiftBuildOpts, BuildResult, BuildError } from './types.js'
-import yaml from 'js-yaml'
+import {
+  readProjectYml,
+  writeProjectYml,
+  setInfoProperty,
+  findAppTargetName,
+} from './project-yml.js'
 
 /** Derive a PascalCase app name from a user prompt. e.g. "Todo app" → "TodoApp", "pet adoption" → "PetAdoption" */
 export function deriveAppName(prompt: string): string {
@@ -125,7 +130,9 @@ export async function patchProjectDependencies(
 
   await runner.writeFile(ymlPath, patched)
 
-  // Phase 4 (FIRE-02 D-03): inject REVERSED_CLIENT_ID URL scheme via js-yaml (not regex)
+  // Phase 4 (FIRE-02 D-03), refactored Phase 5 (TF-02 D-13): use shared project-yml helpers
+  // instead of inline js-yaml. The extracted module enforces the Info.plist vs. build-settings
+  // split at the API level (Pitfall 1 correction of D-10).
   if (provider === 'firebase') {
     const plistPath = `${projectDir}/GoogleService-Info.plist`
     let plistContent: string
@@ -142,30 +149,27 @@ export async function patchProjectDependencies(
     const reversedClientId = reversedClientIdMatch?.[1]
     if (!reversedClientId) return
 
-    const projectYmlContent = await runner.readFile(ymlPath)
-    const projectYml = yaml.load(projectYmlContent) as Record<string, unknown>
+    const projectYml = await readProjectYml(runner, ymlPath)
+    let appTargetName: string
+    try {
+      appTargetName = findAppTargetName(projectYml)
+    } catch {
+      return
+    }
 
-    // Inject URL scheme into the app target's info.plist urlSchemes
-    const targets = projectYml['targets'] as Record<string, unknown>
-    const appTargetName = Object.keys(targets).find((k) => !k.endsWith('Tests'))
-    if (!appTargetName) return
-
-    const appTarget = targets[appTargetName] as Record<string, unknown>
-    const info = (appTarget['info'] ?? {}) as Record<string, unknown>
-    const existingSchemes = (info['CFBundleURLTypes'] as unknown[]) ?? []
+    const appTarget = projectYml.targets[appTargetName]
+    const infoProps = (appTarget.info?.properties ?? {}) as Record<string, unknown>
+    const existingSchemes = (infoProps['CFBundleURLTypes'] as unknown[]) ?? []
     const schemeAlreadyPresent = JSON.stringify(existingSchemes).includes(reversedClientId)
     if (!schemeAlreadyPresent) {
-      info['CFBundleURLTypes'] = [
+      setInfoProperty(projectYml, appTargetName, 'CFBundleURLTypes', [
         ...existingSchemes,
         {
           CFBundleURLSchemes: [reversedClientId],
           CFBundleURLName: 'google-signin',
         },
-      ]
-      appTarget['info'] = info
-      targets[appTargetName] = appTarget
-      projectYml['targets'] = targets
-      await runner.writeFile(ymlPath, yaml.dump(projectYml, { lineWidth: -1 }))
+      ])
+      await writeProjectYml(runner, ymlPath, projectYml)
     }
   }
 }
