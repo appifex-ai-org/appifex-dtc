@@ -29,12 +29,11 @@ final class AuthManager: ObservableObject {
         try Auth.auth().signOut()
     }
 
+    // Phase 4 (cr-02): ActionCodeSettings with a hardcoded REPLACE_PROJECT_ID placeholder removed.
+    // Firebase default reset link is safe and requires no console configuration.
+    // To customise the reset URL, pass ActionCodeSettings with a registered universal-link domain.
     func sendPasswordReset(email: String) async throws {
-        let settings = ActionCodeSettings()
-        settings.url = URL(string: "https://REPLACE_PROJECT_ID.firebaseapp.com/auth?email=\(email)")
-        settings.handleCodeInApp = true
-        settings.setIOSBundleID(Bundle.main.bundleIdentifier!)
-        try await Auth.auth().sendPasswordReset(withEmail: email, actionCodeSettings: settings)
+        try await Auth.auth().sendPasswordReset(withEmail: email)
     }
 
     func confirmPasswordReset(code: String, newPassword: String) async throws {
@@ -52,6 +51,8 @@ final class AuthManager: ObservableObject {
         request.nonce = sha256(nonce) // hashed nonce sent to Apple; raw nonce retained in currentNonce
         let controller = ASAuthorizationController(authorizationRequests: [request])
         controller.delegate = self
+        // Phase 4 (cr-03): presentationContextProvider required on iOS 16+ for the sheet to appear.
+        controller.presentationContextProvider = self
         controller.performRequests()
     }
 
@@ -101,5 +102,17 @@ extension AuthManager: ASAuthorizationControllerDelegate {
     func authorizationController(controller: ASAuthorizationController,
                                   didCompleteWithError error: Error) {
         // Handle sign-in error; publish to @Published error state if present
+    }
+}
+
+// Phase 4 (cr-03): presentationContextProvider conformance — required on iOS 16+ for the
+// Apple sign-in sheet to appear. Without this the sheet silently fails to present.
+extension AuthManager: ASAuthorizationControllerPresentationContextProviding {
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = scene.windows.first else {
+            return ASPresentationAnchor()
+        }
+        return window
     }
 }
