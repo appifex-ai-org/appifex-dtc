@@ -15,6 +15,7 @@ import {
   isFixtureMode,
   loadFixture,
   EpipeError,
+  ProvisionError,
   type AgentConfigType,
   type AppContext,
   type BackendContext,
@@ -2421,9 +2422,23 @@ export async function runPipeline(
     }
 
     if (plistExists && !overwritePlist) {
-      emit('firebase_provision', 'running', chalkForProvision.dim('Existing GoogleService-Info.plist preserved (no overwrite).'))
+      emit(
+        'firebase_provision',
+        'running',
+        chalkForProvision.dim('Existing GoogleService-Info.plist preserved (no overwrite).'),
+      )
     } else if (plistExists && overwritePlist) {
       emit('firebase_provision', 'running', 'Overwriting existing GoogleService-Info.plist...')
+    }
+
+    // Phase 4 (wr-01): guard against undefined baasSchema before calling runFirebaseProvision.
+    // On resume, baasSchema is rehydrated from previousContext — if the context is missing or
+    // baasContext.schema was never stored, baasSchema remains undefined and iterating over
+    // baasSchema.entities would throw a TypeError. Fail fast with a clear ProvisionError instead.
+    if (!baasSchema) {
+      throw new ProvisionError(
+        'firebase_provision: baasSchema is missing — re-run from baas_schema phase or provide a context with a valid baasContext.schema',
+      )
     }
 
     // Phase 4 (FIRE-05): lint runs inside runFirebaseProvision before rules are deployed (D-13).
@@ -2434,7 +2449,7 @@ export async function runPipeline(
       outputDir,
       runner,
       config,
-      baasSchema: baasSchema!,
+      baasSchema,
       plistExists,
       overwritePlist,
     })
