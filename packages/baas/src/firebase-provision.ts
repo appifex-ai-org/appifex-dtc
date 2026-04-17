@@ -71,14 +71,15 @@ export async function runFirebaseProvision(
   const { projectId, serviceAccountKeyPath } = firebaseConfig
 
   // ── Step 1: Security lint gate (FIRE-05 D-13) ──
-  // Read the generated security.rules file and lint before any deployment
-  const rulesPath = join(outputDir, 'Sources', 'security.rules')
+  // Read the generated firestore.rules file and lint before any deployment.
+  // Phase 4 (CR-01): path matches renderBaasTemplates output — written to join(outputDir, 'firestore.rules').
+  const rulesPath = join(outputDir, 'firestore.rules')
   let rulesContent: string
   try {
     rulesContent = await runner.readFile(rulesPath)
   } catch {
     throw new ProvisionError(
-      `firebase_provision: security.rules not found at ${rulesPath} — run baas_auth phase first`,
+      `firebase_provision: firestore.rules not found at ${rulesPath} — run baas_schema phase first`,
     )
   }
 
@@ -94,10 +95,7 @@ export async function runFirebaseProvision(
   // ── Step 2: firebase-admin rules deployment (D-07) ──
   // Named app avoids conflicts if admin SDK is initialized elsewhere in the pipeline
   const adminAppName = `provision-${Date.now()}`
-  const adminApp = initializeApp(
-    { credential: cert(serviceAccountKeyPath) },
-    adminAppName,
-  )
+  const adminApp = initializeApp({ credential: cert(serviceAccountKeyPath) }, adminAppName)
 
   let collectionsSeeded = 0
   try {
