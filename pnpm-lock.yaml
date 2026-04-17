@@ -335,6 +335,9 @@ importers:
       '@googleapis/androidpublisher':
         specifier: ^14.1.0
         version: 14.1.0
+      jose:
+        specifier: ^6.2.2
+        version: 6.2.2
 
   packages/report:
     dependencies:
