@@ -188,6 +188,10 @@ async function main() {
       // Failures appear in the report but xcode_archive + testflight_upload proceed anyway.
       // Hard-fail (security-lint + semgrep) is NOT bypassed.
       const skipValidationGate = args.flags['skip-validation-gate'] === true
+      // Phase 7 (MCP-03 D-10): --overwrite-user-edits bypasses user-edit preservation gate.
+      const overwriteUserEdits = args.overwriteUserEdits
+      // Phase 7 (OBS-03 D-16): --export-debug-bundle forces bundle creation on success too.
+      const exportDebugBundle = args.exportDebugBundle
 
       if (!prompt && !resumeRaw && !designFile && !designIrPath) {
         console.error(
@@ -283,6 +287,8 @@ async function main() {
         baasProvider: baasProviderFlag ? validateBaasProvider(baasProviderFlag) : undefined,
         skipTestflight,
         skipValidationGate,
+        overwriteUserEdits,
+        exportDebugBundle,
       })
       break
     }

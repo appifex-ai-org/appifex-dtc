@@ -174,6 +174,8 @@ export async function renderRunApp(opts: PipelineOpts) {
   progress.on(logEvent)
 
   try {
+    // Phase 7 (MCP-03 D-10 + OBS-03 D-16 — revision W-04): opts already contains
+    // overwriteUserEdits + exportDebugBundle threaded from ParsedArgs via entry.ts.
     const result = await runPipeline(opts, progress)
     stopSpinner()
 

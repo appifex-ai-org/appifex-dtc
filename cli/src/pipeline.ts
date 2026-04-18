@@ -17,6 +17,11 @@ import {
   loadFixture,
   EpipeError,
   ProvisionError,
+  readManifest,
+  writeManifest,
+  diffManifest,
+  computeSha256,
+  isExcluded,
   type AgentConfigType,
   type AppContext,
   type BackendContext,
@@ -29,6 +34,8 @@ import {
   type SkillContent,
   type DebugLogger,
   type PlatformSpec,
+  type Manifest,
+  type ManifestEntry,
 } from '@appifex/core'
 import { createRunner } from '@appifex/runner'
 import {
@@ -95,6 +102,51 @@ const FORCE_RERUN_PHASES: ReadonlySet<PhaseId> = new Set(['validate', 'fix', 'de
  */
 function isLayeredCodegenResult(result: { files: unknown[] }): result is LayeredCodegenResult {
   return 'presentationFiles' in result && 'domainFiles' in result && 'integrationFiles' in result
+}
+
+/**
+ * Phase 7 (MCP-03 I-03): extract relative paths of generated files from a codegen result.
+ * Both CodegenResult and LayeredCodegenResult have `files: GeneratedFile[]` (each with a `path` field).
+ * Falls back gracefully if the shape is unexpected.
+ */
+function extractGeneratedFiles(codegenResult: { files: unknown[] }): string[] {
+  if (Array.isArray(codegenResult.files)) {
+    return (codegenResult.files as Array<{ path?: string }>)
+      .map((f) => f.path)
+      .filter((p): p is string => typeof p === 'string')
+  }
+  return []
+}
+
+/**
+ * Phase 7 (MCP-03 D-11 — revision B-03): shared helper for fix-loop manifest refresh.
+ * Updates manifest entries in place for the given paths (refreshed sha256 + generatedAt).
+ * Uses `phase` to tag what kind of write last touched each file.
+ */
+async function refreshManifestEntries(
+  outputDir: string,
+  paths: string[],
+  phase: PhaseId,
+): Promise<void> {
+  const current = await readManifest(outputDir)
+  if (!current) return
+  const now = new Date().toISOString()
+  const byPath = new Map(current.entries.map((e) => [e.path, e]))
+  for (const rel of paths) {
+    if (isExcluded(rel)) continue
+    try {
+      const sha256 = await computeSha256(join(outputDir, rel))
+      byPath.set(rel, { path: rel, sha256, generatedAt: now, phase })
+    } catch {
+      // skip unreadable — not a show-stopper
+    }
+  }
+  const updated: Manifest = {
+    ...current,
+    generatedAt: now,
+    entries: Array.from(byPath.values()),
+  }
+  await writeManifest(outputDir, updated)
 }
 
 /** Map CLI Platform to BaaS TargetPlatform array. */
@@ -734,6 +786,10 @@ export interface PipelineOpts {
   /** Phase 6 (VAL-04 D-16): run all validation checks but don't block ship on failure.
    *  Hard-fail checks (security-lint + semgrep) STILL block. */
   skipValidationGate?: boolean
+  /** Phase 7 (MCP-03 D-10): bypass user-edit preservation gate; overwrite edited files. */
+  overwriteUserEdits?: boolean
+  /** Phase 7 (OBS-03 D-16): force debug bundle creation even on successful runs. */
+  exportDebugBundle?: boolean
 }
 
 export interface PipelineResult {
@@ -763,6 +819,38 @@ export async function runPipeline(
     ? opts.outputDir
     : join(process.cwd(), opts.outputDir)
   await mkdir(outputDir, { recursive: true })
+
+  // Phase 7 (MCP-03 D-10): user-edit preservation gate.
+  // If a previous run left .dtc-manifest.json, diff current on-disk state against it.
+  // Default: skip-with-warning (preserve user edits). --overwrite-user-edits bypasses.
+  const preservedPaths = new Set<string>()
+  {
+    const { default: chalkGate } = await import('chalk')
+    const existingManifest = await readManifest(outputDir)
+    if (existingManifest) {
+      const diff = await diffManifest(outputDir, existingManifest)
+      if (diff.userEdited.length > 0) {
+        if (opts.overwriteUserEdits) {
+          console.log(
+            chalkGate.red(
+              `Overwriting ${diff.userEdited.length} user-edited file(s) (--overwrite-user-edits):`,
+            ),
+          )
+          for (const p of diff.userEdited) console.log(chalkGate.red(`  ✗ ${p}`))
+        } else {
+          console.log(
+            chalkGate.yellow(
+              `Preserving ${diff.userEdited.length} user-edited file(s). Pass --overwrite-user-edits to force overwrite.`,
+            ),
+          )
+          for (const p of diff.userEdited) {
+            console.log(chalkGate.yellow(`  preserved (user-edited): ${p}`))
+            preservedPaths.add(p)
+          }
+        }
+      }
+    }
+  }
 
   // Best-effort preview opener — works on macOS/Linux/Windows, no-ops in CI
   async function openPreview(path: string) {
@@ -2999,6 +3087,16 @@ export async function runPipeline(
             tokenBudget: budget.totalRemaining,
             budgetInstance: budget,
           })
+          // Phase 7 (MCP-03 D-11 — revision B-03): fix-loop rewrites refresh manifest entry in place.
+          // FixResult has `attempts[].filesChanged: string[]` per attempt (NOT `filesRewritten`).
+          {
+            const rewrittenSet = new Set<string>()
+            for (const a of fr.attempts) for (const f of a.filesChanged) rewrittenSet.add(f)
+            const filesRewritten = Array.from(rewrittenSet)
+            if (filesRewritten.length > 0) {
+              await refreshManifestEntries(outputDir, filesRewritten, 'fix')
+            }
+          }
           emit(
             'fix',
             fr.status === 'all_green' ? 'completed' : 'failed',
@@ -3208,6 +3306,39 @@ export async function runPipeline(
       codegenResult = layeredResult
     }
 
+    // Phase 7 (MCP-03 D-11): write manifest after codegen. Single site per run.
+    // Fix-loop phase updates entries in place via refreshManifestEntries (see Task 2).
+    if (codegenResult.success) {
+      try {
+        const entries: ManifestEntry[] = []
+        const codegenOutputs: string[] = extractGeneratedFiles(codegenResult)
+        for (const rel of codegenOutputs) {
+          if (isExcluded(rel)) continue
+          try {
+            const sha256 = await computeSha256(join(outputDir, rel))
+            entries.push({
+              path: rel,
+              sha256,
+              generatedAt: new Date().toISOString(),
+              phase: 'codegen',
+            })
+          } catch {
+            // file not readable — skip; not a show-stopper
+          }
+        }
+        const runCtxForManifest = ctxBuilder.build('completed')
+        const manifest: Manifest = {
+          manifestVersion: 1,
+          generatedAt: new Date().toISOString(),
+          runId: runCtxForManifest.runId,
+          entries,
+        }
+        await writeManifest(outputDir, manifest)
+      } catch {
+        // manifest write failure must not block the pipeline
+      }
+    }
+
     emit(
       'codegen',
       codegenResult.success ? 'completed' : 'failed',
@@ -3362,6 +3493,16 @@ export async function runPipeline(
         disableCircuitBreakers: opts.benchmark,
       })
       fixResult = fr
+      // Phase 7 (MCP-03 D-11 — revision B-03): fix-loop rewrites refresh manifest entry in place.
+      // FixResult has `attempts[].filesChanged: string[]` per attempt (NOT `filesRewritten`).
+      {
+        const rewrittenSet = new Set<string>()
+        for (const a of fr.attempts) for (const f of a.filesChanged) rewrittenSet.add(f)
+        const filesRewritten = Array.from(rewrittenSet)
+        if (filesRewritten.length > 0) {
+          await refreshManifestEntries(outputDir, filesRewritten, 'fix')
+        }
+      }
       emit(
         'fix',
         fr.status === 'all_green' ? 'completed' : 'failed',
@@ -3419,6 +3560,16 @@ export async function runPipeline(
           disableCircuitBreakers: opts.benchmark,
         })
         fixResult = fr
+        // Phase 7 (MCP-03 D-11 — revision B-03): fix-loop rewrites refresh manifest entry in place.
+        // FixResult has `attempts[].filesChanged: string[]` per attempt (NOT `filesRewritten`).
+        {
+          const rewrittenSet = new Set<string>()
+          for (const a of fr.attempts) for (const f of a.filesChanged) rewrittenSet.add(f)
+          const filesRewritten = Array.from(rewrittenSet)
+          if (filesRewritten.length > 0) {
+            await refreshManifestEntries(outputDir, filesRewritten, 'fix')
+          }
+        }
         emit(
           'fix',
           fr.status === 'all_green' ? 'completed' : 'failed',
@@ -3497,6 +3648,16 @@ export async function runPipeline(
             budgetInstance: opts.benchmark ? undefined : budget,
             disableCircuitBreakers: opts.benchmark,
           })
+          // Phase 7 (MCP-03 D-11 — revision B-03): fix-loop rewrites refresh manifest entry in place.
+          // FixResult has `attempts[].filesChanged: string[]` per attempt (NOT `filesRewritten`).
+          {
+            const rewrittenSet = new Set<string>()
+            for (const a of fr.attempts) for (const f of a.filesChanged) rewrittenSet.add(f)
+            const filesRewritten = Array.from(rewrittenSet)
+            if (filesRewritten.length > 0) {
+              await refreshManifestEntries(outputDir, filesRewritten, 'fix')
+            }
+          }
           emit(
             'fix',
             fr.status === 'all_green' ? 'completed' : 'failed',
