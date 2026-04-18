@@ -116,9 +116,14 @@ export class FigmaMakeAdapter implements DesignToolAdapter {
   /** Write binary data via runner — uses base64 shell decode for remote runner compat */
   private async writeBinary(path: string, data: Buffer, runner: Runner): Promise<void> {
     // Encode as base64 and decode on the runner side so binary data
-    // travels correctly even over remote runner transports
+    // travels correctly even over remote runner transports.
+    // Phase 7 (CR-01): escape single quotes in b64 and path to prevent shell injection.
+    // Standard base64 never contains `'`, but defensive escaping protects against
+    // encoding variants and attacker-influenced outputDir values.
     const b64 = data.toString('base64')
-    await runner.exec('sh', ['-c', `echo '${b64}' | base64 -d > '${path}'`])
+    const safeB64 = b64.replace(/'/g, "'\\''")
+    const safePath = path.replace(/'/g, "'\\''")
+    await runner.exec('sh', ['-c', `printf '%s' '${safeB64}' | base64 -d > '${safePath}'`])
   }
 
   private async readDesign(
