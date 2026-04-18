@@ -58,8 +58,10 @@ export async function validateAll(
 
   const baseTestsPassed = ui.failed === 0 && unit.failed === 0
 
+  // Phase 6 (VAL-04 D-18): semgrep runs unconditionally when runSecurity is enabled.
+  // Removes the baseTestsPassed hole where a Maestro flake silently skipped the security scan.
   let security: SemgrepResult | undefined
-  if (opts.runSecurity && baseTestsPassed) {
+  if (opts.runSecurity) {
     security = await runSemgrep(runner, { projectDir: opts.projectDir, platform: opts.platform })
   }
 
