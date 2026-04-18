@@ -181,7 +181,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. `04-VERIFICATION.md` exists with confirmed truths for FIRE-01..05: AppDelegate + SPM, auth templates (hashed-nonce + REVERSED_CLIENT_ID), data service (Codable + realtime + offline), firebase_provision (idempotent + checkpointed), security lint (hard-fail)
   2. `07-VERIFICATION.md` exists with confirmed truths for DESIGN-01..04, MCP-01..03, OBS-01..03: sanitizeLayerName across 4 adapters, adapter-parity test passing, MCP tools dispatching correctly, manifest gate, cost/debug observability
   3. REQUIREMENTS.md traceability updated: FIRE-01..05, DESIGN-01..04, MCP-01..03, OBS-01..03 marked Verified
-**Plans**: 0 plans (pending /gsd-plan-phase 9)
+**Plans**: 3 plans
+  - [ ] 09-01-PLAN.md — Write 04-VERIFICATION.md for Phase 4 Firebase Integration (FIRE-01..05, wave 1)
+  - [ ] 09-02-PLAN.md — Write 07-VERIFICATION.md for Phase 7 Design Parity & Observability (DESIGN-01..04, MCP-01..03, OBS-01..03, wave 1)
+  - [ ] 09-03-PLAN.md — Update REQUIREMENTS.md traceability table (all 15 REQ-IDs, wave 2)
 
 ### Phase 10: Phase 1 Human Verification — Live Branch Protection (Gap Closure)
 **Goal**: Execute live branch protection setup and formally close the human_needed items in 01-VERIFICATION.md
