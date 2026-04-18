@@ -66,6 +66,18 @@ export interface ParsedArgs {
    * When true, doctor runs live credential probes via runCredentialChecks.
    */
   deep?: boolean
+
+  /**
+   * Phase 7 (MCP-03 D-10): --overwrite-user-edits bypasses the user-edit preservation gate.
+   * When true, pipeline rewrites files that have been modified since the last manifest sha256.
+   */
+  overwriteUserEdits?: boolean
+
+  /**
+   * Phase 7 (OBS-03 D-16): --export-debug-bundle forces bundle creation even on green runs
+   * (for bug reporting without a crash).
+   */
+  exportDebugBundle?: boolean
 }
 
 export function parseArgs(argv: string[]): ParsedArgs {
@@ -147,5 +159,10 @@ export function parseArgs(argv: string[]): ParsedArgs {
   // Phase 03 Plan 05 (SETUP-03, D-12): --deep flag for `dtc doctor`.
   const deep = command === 'doctor' && flags['deep'] === true ? true : undefined
 
-  return { command, subcommand, positional, flags, designIrPath, section, full, deep }
+  // Phase 7 (MCP-03 D-10): applies to the `run` and `add-feature` commands
+  const overwriteUserEdits = flags['overwrite-user-edits'] === true ? true : undefined
+  // Phase 7 (OBS-03 D-16): applies to all pipeline-invoking commands
+  const exportDebugBundle = flags['export-debug-bundle'] === true ? true : undefined
+
+  return { command, subcommand, positional, flags, designIrPath, section, full, deep, overwriteUserEdits, exportDebugBundle }
 }
