@@ -117,6 +117,7 @@ ${chalk.dim('OPTIONS')}
   --accept-drift          Non-interactive: accept design token drift without failing closed
   --no-resume             Force a fresh add-feature run even when a checkpoint DB exists
   --skip-testflight       Skip testflight_upload phase (xcode_archive still runs for local .ipa)
+  --skip-validation-gate  Run validation gate checks but don't block ship on failure
 
 ${chalk.dim('EXAMPLES')}
   dtc setup
@@ -183,6 +184,10 @@ async function main() {
       // Phase 5 Plan 06 (TF-04 D-04): --skip-testflight gates the testflight_upload phase only;
       // xcode_archive still runs so the .ipa artifact exists on disk for manual inspection / retry.
       const skipTestflight = args.flags['skip-testflight'] === true
+      // Phase 6 (VAL-04 D-16 D-17): --skip-validation-gate runs all checks but bypasses the terminal gate.
+      // Failures appear in the report but xcode_archive + testflight_upload proceed anyway.
+      // Hard-fail (security-lint + semgrep) is NOT bypassed.
+      const skipValidationGate = args.flags['skip-validation-gate'] === true
 
       if (!prompt && !resumeRaw && !designFile && !designIrPath) {
         console.error(
@@ -277,6 +282,7 @@ async function main() {
         noResume,
         baasProvider: baasProviderFlag ? validateBaasProvider(baasProviderFlag) : undefined,
         skipTestflight,
+        skipValidationGate,
       })
       break
     }

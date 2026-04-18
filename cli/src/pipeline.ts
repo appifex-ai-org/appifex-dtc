@@ -731,6 +731,9 @@ export interface PipelineOpts {
   baasProvider?: BaasProvider
   /** Phase 5 (TF-04 D-04): skip testflight_upload phase; xcode_archive still runs. */
   skipTestflight?: boolean
+  /** Phase 6 (VAL-04 D-16): run all validation checks but don't block ship on failure.
+   *  Hard-fail checks (security-lint + semgrep) STILL block. */
+  skipValidationGate?: boolean
 }
 
 export interface PipelineResult {
