@@ -1,5 +1,5 @@
-// Phase 7 (MCP-01): Wave 0 RED stub — see 07-VALIDATION.md
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+// Phase 7 (MCP-01): Wave 0 RED stub — flipped GREEN in Plan 04a
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { Mock } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
@@ -16,7 +16,6 @@ vi.mock('@appifex/baas', () => ({
   runFirebaseProvision: vi.fn(),
 }))
 
-// @ts-expect-error — module does not exist yet; RED until Plan 02 creates src/tools/firebase-provision.ts
 import { handleFirebaseProvision } from '../src/tools/firebase-provision.js'
 import { runFirebaseProvision } from '@appifex/baas'
 
@@ -50,9 +49,7 @@ describe('handleFirebaseProvision (MCP-01)', () => {
     expect(result.text).toMatch(/firebase.*projectId|projectId.*missing|firebase.*config/i)
   })
 
-  it('invokes runFirebaseProvision when config present', async () => {
-    ;(runFirebaseProvision as Mock).mockResolvedValue({ success: true, message: 'Provisioned' })
-
+  it('returns isError:true when config.firebase.serviceAccountKeyPath missing', async () => {
     const config = {
       firebase: { projectId: 'test-project-id' },
     } as unknown as import('@appifex/core').DtcConfig
@@ -63,21 +60,56 @@ describe('handleFirebaseProvision (MCP-01)', () => {
       config,
     )
 
+    expect(result.isError).toBe(true)
+    expect(result.text).toMatch(/serviceAccountKeyPath|service.account/i)
+  })
+
+  it('invokes runFirebaseProvision when config present', async () => {
+    ;(runFirebaseProvision as Mock).mockResolvedValue({
+      skipped: false,
+      projectId: 'test-project-id',
+      iosAppId: 'test-app-id',
+      collectionsSeeded: 3,
+    })
+
+    const config = {
+      firebase: {
+        projectId: 'test-project-id',
+        serviceAccountKeyPath: '/tmp/sa.json',
+      },
+    } as unknown as import('@appifex/core').DtcConfig
+
+    const baasSchema = { entities: [] } as unknown as import('@appifex/core').BaasSchema
+
+    const result = await handleFirebaseProvision(
+      { projectDir: tmpDir, baasSchema },
+      mockRunner,
+      config,
+    )
+
     expect(runFirebaseProvision).toHaveBeenCalledWith(
-      expect.objectContaining({ runner: mockRunner, config, projectDir: tmpDir }),
+      expect.objectContaining({ outputDir: tmpDir, runner: mockRunner, config }),
     )
     expect(result.isError).toBe(false)
+    const parsed = JSON.parse(result.text) as { phase: string; success: boolean }
+    expect(parsed.phase).toBe('firebase_provision')
+    expect(parsed.success).toBe(true)
   })
 
   it('returns wrapped error when runFirebaseProvision throws', async () => {
     ;(runFirebaseProvision as Mock).mockRejectedValue(new Error('Firebase API unavailable'))
 
     const config = {
-      firebase: { projectId: 'test-project-id' },
+      firebase: {
+        projectId: 'test-project-id',
+        serviceAccountKeyPath: '/tmp/sa.json',
+      },
     } as unknown as import('@appifex/core').DtcConfig
 
+    const baasSchema = { entities: [] } as unknown as import('@appifex/core').BaasSchema
+
     const result = await handleFirebaseProvision(
-      { projectDir: tmpDir },
+      { projectDir: tmpDir, baasSchema },
       mockRunner,
       config,
     )

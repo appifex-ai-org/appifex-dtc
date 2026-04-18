@@ -25,6 +25,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^3.24.0",
     "@appifex/analysis": "workspace:*",
+    "@appifex/baas": "workspace:*",
     "@appifex/core": "workspace:*",
     "@appifex/runner": "workspace:*",
     "@appifex/design": "workspace:*",
