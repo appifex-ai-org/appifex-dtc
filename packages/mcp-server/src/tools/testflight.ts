@@ -55,11 +55,28 @@ export async function handleTestflightUpload(
       }
     }
 
+    // Phase 7 (WR-01): guard ipaPath before passing to upload — empty string causes
+    // altool to fail with a confusing error rather than a clear diagnostic.
+    if (!archive.ipaPath) {
+      return {
+        text: JSON.stringify(
+          {
+            phase: 'archive',
+            success: false,
+            error: 'Archive reported success but produced no .ipa path',
+          },
+          null,
+          2,
+        ),
+        isError: true,
+      }
+    }
+
     const upload = await runTestFlightUploadPhase({
       runner,
       config,
       emitter,
-      ipaPath: archive.ipaPath ?? '',
+      ipaPath: archive.ipaPath,
       buildNumber: archive.buildNumber,
       marketingVersion: archive.marketingVersion,
     })
@@ -73,7 +90,7 @@ export async function handleTestflightUpload(
           ipaPath: archive.ipaPath,
           buildId: upload.buildId,
           status: upload.status,
-          warnings: upload.status === 'completed_with_warnings' ? upload.warnings ?? [] : [],
+          warnings: upload.status === 'completed_with_warnings' ? (upload.warnings ?? []) : [],
         },
         null,
         2,
