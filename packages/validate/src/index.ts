@@ -7,3 +7,6 @@ export type { ValidateAllOpts, ValidationResult } from './validate-all.js'
 export { parseJunitXml } from './junit-parser.js'
 export { runSemgrep } from './semgrep.js'
 export type { SemgrepOpts } from './semgrep.js'
+// Phase 6 (VAL-01 D-01 D-06): real-Firebase e2e_gate phase
+export { runE2eGatePhase } from './e2e-gate.js'
+export type { E2eGatePhaseOpts } from './e2e-gate.js'
