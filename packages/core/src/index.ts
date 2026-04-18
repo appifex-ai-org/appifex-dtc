@@ -4,7 +4,7 @@ export { loadConfig, saveConfig } from './config.js'
 export { ProgressEmitter, terminalProgressListener } from './progress.js'
 export type { ProgressListener } from './progress.js'
 export { TokenBudget, FIX_LOOP_MIN_RESERVE_RATIO } from './token-budget.js'
-export type { BudgetSummary } from './token-budget.js'
+export type { BudgetSummary, TokenBreakdown } from './token-budget.js'
 // Phase 7 (OBS-01 D-13): pricing table + token → USD helper
 export { PRICING_USD_PER_MTOK, PRICING_AS_OF, tokensToUsd } from './pricing.js'
 export type { KnownModel } from './pricing.js'
