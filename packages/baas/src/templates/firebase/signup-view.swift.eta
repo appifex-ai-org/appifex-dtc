@@ -8,7 +8,6 @@ struct SignupView: View {
     @State private var confirmPassword = ""
     @State private var error: String?
     @State private var isLoading = false
-    @Environment(\.dismiss) private var dismiss // Phase 6 (VAL-01 D-05): dismiss for signIn_existingAccount affordance
 
     var body: some View {
         VStack(spacing: 24) {
@@ -22,19 +21,16 @@ struct SignupView: View {
                     .keyboardType(.emailAddress)
                     .autocapitalization(.none)
                     .textFieldStyle(.roundedBorder)
-                    .accessibilityIdentifier("signup_email") // Phase 6 (VAL-01 D-05)
                     .disabled(isLoading)
 
                 SecureField("Password", text: $password)
                     .textContentType(.newPassword)
                     .textFieldStyle(.roundedBorder)
-                    .accessibilityIdentifier("signup_password") // Phase 6 (VAL-01 D-05)
                     .disabled(isLoading)
 
                 SecureField("Confirm password", text: $confirmPassword)
                     .textContentType(.newPassword)
                     .textFieldStyle(.roundedBorder)
-                    .accessibilityIdentifier("signup_confirmPassword") // Phase 6 (VAL-01 D-05)
                     .disabled(isLoading)
             }
 
@@ -42,15 +38,6 @@ struct SignupView: View {
                 Text(error)
                     .font(.caption)
                     .foregroundColor(.red)
-
-                // Phase 6 (VAL-01 D-05): fall-through affordance for the e2e-gate flow.
-                // Visible ONLY when signup failed — stable id so Maestro can detect + tap.
-                Button("Sign in instead") {
-                    dismiss()
-                }
-                .accessibilityIdentifier("signIn_existingAccount")
-                .buttonStyle(.borderless)
-                .font(.footnote)
             }
 
             Button(action: signUp) {
@@ -65,7 +52,6 @@ struct SignupView: View {
             .background(Color.accentColor)
             .foregroundColor(.white)
             .cornerRadius(12)
-            .accessibilityIdentifier("signup_submit") // Phase 6 (VAL-01 D-05)
             .disabled(isLoading)
 
             NavigationLink {
