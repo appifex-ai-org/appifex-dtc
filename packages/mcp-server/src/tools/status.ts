@@ -26,17 +26,16 @@ export async function handleGetPipelineStatus(
   const ctx = await loadRunContext(args.projectDir)
   if (!ctx) {
     return {
-      text: JSON.stringify(
-        { runId: null, currentPhase: null, phases: [] },
-        null,
-        2,
-      ),
+      text: JSON.stringify({ runId: null, currentPhase: null, phases: [] }, null, 2),
       isError: false,
     }
   }
 
-  const checkpoint = new Checkpoint(join(args.projectDir, '.dtc', 'checkpoint.db'))
+  // Phase 7 (WR-01): Declare outside try so finally can call checkpoint?.close(),
+  // but assign inside try so a corrupt/locked DB throws into the catch envelope.
+  let checkpoint: InstanceType<typeof Checkpoint> | undefined
   try {
+    checkpoint = new Checkpoint(join(args.projectDir, '.dtc', 'checkpoint.db'))
     const phases = PHASE_ORDER.map((id: PhaseId) => {
       const outcome = ctx.phases[id]
 
@@ -45,7 +44,7 @@ export async function handleGetPipelineStatus(
       // can ONLY come from the Checkpoint side.
       let checkpointStatus: UnifiedStatus | undefined
       try {
-        const row = checkpoint.getPhase(ctx.runId, id) as { status?: string } | null
+        const row = checkpoint!.getPhase(ctx.runId, id) as { status?: string } | null
         if (row && typeof row.status === 'string') {
           if (
             row.status === 'running' ||
@@ -67,7 +66,7 @@ export async function handleGetPipelineStatus(
       const status: UnifiedStatus =
         checkpointStatus === 'running'
           ? 'running'
-          : outcomeStatus ?? checkpointStatus ?? 'pending'
+          : (outcomeStatus ?? checkpointStatus ?? 'pending')
 
       return {
         id,
@@ -113,7 +112,16 @@ export async function handleGetPipelineStatus(
       ),
       isError: false,
     }
+  } catch (err) {
+    return {
+      text: JSON.stringify(
+        { runId: ctx.runId, currentPhase: null, phases: [], error: String(err) },
+        null,
+        2,
+      ),
+      isError: false,
+    }
   } finally {
-    checkpoint.close()
+    checkpoint?.close()
   }
 }
