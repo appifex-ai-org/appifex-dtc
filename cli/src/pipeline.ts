@@ -3432,9 +3432,11 @@ export async function runPipeline(
         await flushContext()
       }
 
-      // 8. Security scan (only after tests pass)
-      const testsResolved = validation.allPassed || fixResult?.status === 'all_green'
-      if (testsResolved) {
+      // 8. Security scan — Phase 6 (VAL-04 D-18): unconditional hard-fail.
+      // Closes the hole where Maestro/unit flakes silently skipped the security scan.
+      // Semgrep runs regardless of test-pass state; findings block xcode_archive via the
+      // terminal hard-fail gate (see hardFailPassed derivation below).
+      {
         const { runSemgrep } = await import('@appifex/validate')
         emit(
           'security',
@@ -3521,9 +3523,6 @@ export async function runPipeline(
             allPassed: validation.allPassed && finalSec.failed === 0,
           }
         }
-      } else {
-        emit('security', 'skipped', 'Skipped — tests failing')
-        await flushContext()
       }
     } else {
       // Build still failing after fix attempts
