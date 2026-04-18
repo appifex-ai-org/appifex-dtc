@@ -1,0 +1,87 @@
+{
+  "name": "Parity Reference",
+  "lastModified": "2026-04-18T00:00:00.000Z",
+  "version": "1",
+  "document": {
+    "id": "0:0",
+    "name": "Document",
+    "type": "DOCUMENT",
+    "children": [
+      {
+        "id": "1:0",
+        "name": "HomeScreen",
+        "type": "CANVAS",
+        "children": [
+          {
+            "id": "1:1",
+            "name": "HomeScreen",
+            "type": "FRAME",
+            "absoluteBoundingBox": { "x": 0, "y": 0, "width": 390, "height": 844 },
+            "fills": [{ "type": "SOLID", "color": { "r": 1, "g": 1, "b": 1, "a": 1 } }],
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "2:0",
+        "name": "SettingsScreen",
+        "type": "CANVAS",
+        "children": [
+          {
+            "id": "2:1",
+            "name": "SettingsScreen",
+            "type": "FRAME",
+            "absoluteBoundingBox": { "x": 0, "y": 0, "width": 390, "height": 844 },
+            "fills": [{ "type": "SOLID", "color": { "r": 1, "g": 1, "b": 1, "a": 1 } }],
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "3:0",
+        "name": "Home Screen",
+        "type": "CANVAS",
+        "children": [
+          {
+            "id": "3:1",
+            "name": "Home Screen",
+            "type": "FRAME",
+            "absoluteBoundingBox": { "x": 0, "y": 0, "width": 390, "height": 844 },
+            "fills": [{ "type": "SOLID", "color": { "r": 1, "g": 1, "b": 1, "a": 1 } }],
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "4:0",
+        "name": "Settings",
+        "type": "CANVAS",
+        "children": [
+          {
+            "id": "4:1",
+            "name": "Settings",
+            "type": "FRAME",
+            "absoluteBoundingBox": { "x": 0, "y": 0, "width": 390, "height": 844 },
+            "fills": [{ "type": "SOLID", "color": { "r": 1, "g": 1, "b": 1, "a": 1 } }],
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "5:0",
+        "name": "🎉 Party",
+        "type": "CANVAS",
+        "children": [
+          {
+            "id": "5:1",
+            "name": "🎉 Party",
+            "type": "FRAME",
+            "absoluteBoundingBox": { "x": 0, "y": 0, "width": 390, "height": 844 },
+            "fills": [{ "type": "SOLID", "color": { "r": 1, "g": 1, "b": 1, "a": 1 } }],
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+}
