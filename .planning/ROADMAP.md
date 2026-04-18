@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 3: Setup & Diagnostics** - Credential wizard and doctor so the pipeline fails fast before any LLM spend
 - [ ] **Phase 4: Firebase Integration** - Wire Firebase auth/data/rules and provision the plist that the Xcode archive depends on
 - [ ] **Phase 5: Xcode Archive & TestFlight Upload** - Archive the app and upload to TestFlight via ASC REST — the core product promise
-- [ ] **Phase 6: Validation Gate Hardening** - Harden the Maestro E2E gate and fix loop so the one-command promise is trustworthy
+- [x] **Phase 6: Validation Gate Hardening** - Harden the Maestro E2E gate and fix loop so the one-command promise is trustworthy (completed 2026-04-18)
 - [ ] **Phase 7: Design Parity, MCP Surface & Observability** - Finish adapter parity fixtures, expose new pipeline phases as MCP tools, and add cost/debug visibility
 
 ## Phase Details
@@ -124,14 +124,14 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. The fix loop uses Anthropic structured outputs for its response schema — no custom delimiter parser needed
   4. Security lint and semgrep failures block the pipeline with no override; Maestro and unit test failures block the pipeline but can be bypassed with `--skip-validation-gate`
 **Plans**: 8 plans
-  - [ ] 06-00-PLAN.md — Wave 0 RED test stubs (Nyquist compliance: ranker/fixture/semgrep/PHASE_ORDER/signup-template/skip-flag/e2e-gate stubs) (wave 0)
-  - [ ] 06-01-PLAN.md — Types foundation: E2eGateError + PhaseId + CheckpointData + PHASE_ORDER + PHASE_LABELS (VAL-01, wave 1)
-  - [ ] 06-02-PLAN.md — fix-context-ranker.ts pure function + @appifex/analysis barrel re-export (VAL-02, wave 1)
-  - [ ] 06-03-PLAN.md — Unconditional semgrep: validate-all.ts:62 baseTestsPassed guard removal (VAL-04 D-18, wave 1)
-  - [ ] 06-04-PLAN.md — Signup/Login template accessibility IDs + signIn_existingAccount fall-through affordance (VAL-01 D-05, wave 1)
-  - [ ] 06-05-PLAN.md — SDK bump to ^0.90.0 + default-fix.ts tool-use rewrite + D-12 deletions + D-13 fallback + path guard + claude-cli-fix ranker hint (VAL-02, VAL-03, wave 2)
-  - [ ] 06-06-PLAN.md — e2e-gate.ts handler + golden-path Maestro YAML + barrel export (VAL-01, wave 2)
-  - [ ] 06-07-PLAN.md — Pipeline wiring: runE2eGatePhase block + --skip-validation-gate flag + terminal gate split (hard-fail/soft-fail) + second-site semgrep guard removal (VAL-01, VAL-04, wave 3)
+  - [x] 06-00-PLAN.md — Wave 0 RED test stubs (Nyquist compliance: ranker/fixture/semgrep/PHASE_ORDER/signup-template/skip-flag/e2e-gate stubs) (wave 0)
+  - [x] 06-01-PLAN.md — Types foundation: E2eGateError + PhaseId + CheckpointData + PHASE_ORDER + PHASE_LABELS (VAL-01, wave 1)
+  - [x] 06-02-PLAN.md — fix-context-ranker.ts pure function + @appifex/analysis barrel re-export (VAL-02, wave 1)
+  - [x] 06-03-PLAN.md — Unconditional semgrep: validate-all.ts:62 baseTestsPassed guard removal (VAL-04 D-18, wave 1)
+  - [x] 06-04-PLAN.md — Signup/Login template accessibility IDs + signIn_existingAccount fall-through affordance (VAL-01 D-05, wave 1)
+  - [x] 06-05-PLAN.md — SDK bump to ^0.90.0 + default-fix.ts tool-use rewrite + D-12 deletions + D-13 fallback + path guard + claude-cli-fix ranker hint (VAL-02, VAL-03, wave 2)
+  - [x] 06-06-PLAN.md — e2e-gate.ts handler + golden-path Maestro YAML + barrel export (VAL-01, wave 2)
+  - [x] 06-07-PLAN.md — Pipeline wiring: runE2eGatePhase block + --skip-validation-gate flag + terminal gate split (hard-fail/soft-fail) + second-site semgrep guard removal (VAL-01, VAL-04, wave 3)
 
 ### Phase 7: Design Parity, MCP Surface & Observability
 **Goal**: All four design adapters produce equivalent IR verified by fixture tests, the MCP server exposes the two new pipeline phases, and users can see token cost and access debug bundles
@@ -158,5 +158,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. Setup & Diagnostics | 0/TBD | Not started | - |
 | 4. Firebase Integration | 0/TBD | Not started | - |
 | 5. Xcode Archive & TestFlight Upload | 0/TBD | Not started | - |
-| 6. Validation Gate Hardening | 0/TBD | Not started | - |
+| 6. Validation Gate Hardening | 8/8 | Complete | 2026-04-18 |
 | 7. Design Parity, MCP Surface & Observability | 0/TBD | Not started | - |
