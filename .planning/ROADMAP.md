@@ -167,7 +167,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. `02-VERIFICATION.md` exists with confirmed truths for FOUND-01..04: bin/dtc shim, CHARS_PER_TOKEN=3 + 30% budget guard, EpipeError at 4 LLM stdin sites, wrapToolHandler MCP process.exit guard
   2. `03-VERIFICATION.md` exists with confirmed truths for SETUP-01..04: setup wizard sections, CredentialRegistry preflight wiring, dtc doctor --deep, Firebase project creation flow
   3. REQUIREMENTS.md traceability updated: FOUND-01..04 and SETUP-01..04 marked Verified
-**Plans**: 0 plans (pending /gsd-plan-phase 8)
+**Plans**: 3 plans
+  - [ ] 08-01-PLAN.md — Write 02-VERIFICATION.md for Phase 2 Foundation Hardening (FOUND-01..04, wave 1)
+  - [ ] 08-02-PLAN.md — Write 03-VERIFICATION.md for Phase 3 Setup & Diagnostics (SETUP-01..04, wave 1)
+  - [ ] 08-03-PLAN.md — Update REQUIREMENTS.md traceability table (FOUND-01..04, SETUP-01..04, wave 2)
 
 ### Phase 9: Formal Verification — Firebase Integration & Design Parity (Gap Closure)
 **Goal**: Produce VERIFICATION.md for Phase 4 and Phase 7 — formally document that all executed plans satisfy their success criteria
@@ -207,6 +210,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 5. Xcode Archive & TestFlight Upload | 6/6 | Complete | 2026-04-18 |
 | 6. Validation Gate Hardening | 8/8 | Complete | 2026-04-18 |
 | 7. Design Parity, MCP Surface & Observability | 9/9 | Complete (VERIFICATION.md pending — Phase 9) | 2026-04-18 |
-| 8. Formal Verification — Foundation & Setup | 0/TBD | Not started | - |
+| 8. Formal Verification — Foundation & Setup | 0/3 | Not started | - |
 | 9. Formal Verification — Firebase & Design Parity | 0/TBD | Not started | - |
 | 10. Phase 1 Human Verification — Live Branch Protection | 0/TBD | Not started | - |
