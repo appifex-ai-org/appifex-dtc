@@ -255,6 +255,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.90.0
         version: 0.90.0(zod@4.3.6)
+      '@appifex/analysis':
+        specifier: workspace:*
+        version: link:../analysis
       '@appifex/core':
         specifier: workspace:*
         version: link:../core
