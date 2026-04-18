@@ -18,7 +18,10 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 4: Firebase Integration** - Wire Firebase auth/data/rules and provision the plist that the Xcode archive depends on
 - [ ] **Phase 5: Xcode Archive & TestFlight Upload** - Archive the app and upload to TestFlight via ASC REST — the core product promise
 - [x] **Phase 6: Validation Gate Hardening** - Harden the Maestro E2E gate and fix loop so the one-command promise is trustworthy (completed 2026-04-18)
-- [ ] **Phase 7: Design Parity, MCP Surface & Observability** - Finish adapter parity fixtures, expose new pipeline phases as MCP tools, and add cost/debug visibility
+- [x] **Phase 7: Design Parity, MCP Surface & Observability** - Finish adapter parity fixtures, expose new pipeline phases as MCP tools, and add cost/debug visibility (completed 2026-04-18)
+- [ ] **Phase 8: Formal Verification — Foundation Hardening & Setup** - Write VERIFICATION.md for phases 2 & 3 to formally close FOUND-01..04 and SETUP-01..04 (gap closure)
+- [ ] **Phase 9: Formal Verification — Firebase Integration & Design Parity** - Write VERIFICATION.md for phases 4 & 7 to formally close FIRE-01..05, DESIGN-01..04, MCP-01..03, OBS-01..03 (gap closure)
+- [ ] **Phase 10: Phase 1 Human Verification — Live Branch Protection** - Execute setup-branch-protection.sh and confirm live branch protection to close FLOW-01 + GATE-03 (gap closure)
 
 ## Phase Details
 
@@ -143,8 +146,52 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Subsequent pipeline runs detect user-edited generated files (via `.dtc-manifest.json` hashes) and preserve them rather than overwriting
   4. The terminal UI shows live token count and USD cost per phase plus a run-total summary
   5. A failed run produces a `.dtc-report` with per-phase status and a zippable `.dtc-debug/bundle-<ts>.zip` with logs, LLM prompts, outputs, and checkpoint snapshot
-**Plans**: TBD
+**Plans**: 7 plans
+  - [x] 07-00-PLAN.md — Wave 0 RED test stubs (12 test files + parity fixture dir placeholder) (wave 0)
+  - [x] 07-01-PLAN.md — Shared sanitizeLayerName module + wire into @appifex/spec extractors + figma-rest-client (wave 1)
+  - [x] 07-02-PLAN.md — pricing.ts (verified 2026-04-18 rates) + TokenBudget input/output split + cost getters (wave 1)
+  - [x] 07-03-PLAN.md — .dtc-manifest.json read/write/diff module + --overwrite-user-edits + --export-debug-bundle flag parsing (wave 1)
+  - [x] 07-04a-PLAN.md — MCP tools (firebase_provision, testflight_upload, get_pipeline_status) (wave 2)
+  - [x] 07-04b-PLAN.md — Parity fixture harness + adapter-parity test (wave 2)
+  - [x] 07-05-PLAN.md — debug-bundle (archiver + secret scrubber) + PipelineView USD column + PHASE_ORDER drift fix + report formatters cost/remediation extensions (wave 2)
+  - [x] 07-06a-PLAN.md — Pipeline integration: manifest gate + write + fix-loop in-place refresh (wave 3)
+  - [x] 07-06b-PLAN.md — .dtc-report/{report.json,report.md} + debug-bundle trigger + help-text (wave 3)
 **UI hint**: yes
+
+### Phase 8: Formal Verification — Foundation Hardening & Setup (Gap Closure)
+**Goal**: Produce VERIFICATION.md for Phase 2 and Phase 3 — formally document that all executed plans satisfy their success criteria
+**Depends on**: Phase 2 (plans executed), Phase 3 (plans executed)
+**Requirements**: FOUND-01, FOUND-02, FOUND-03, FOUND-04, SETUP-01, SETUP-02, SETUP-03, SETUP-04
+**Gap Closure**: Closes gaps from v1-MILESTONE-AUDIT.md — PHASES-2-3-4-7-UNVERIFIED (phases 2 & 3)
+**Success Criteria** (what must be TRUE):
+  1. `02-VERIFICATION.md` exists with confirmed truths for FOUND-01..04: bin/dtc shim, CHARS_PER_TOKEN=3 + 30% budget guard, EpipeError at 4 LLM stdin sites, wrapToolHandler MCP process.exit guard
+  2. `03-VERIFICATION.md` exists with confirmed truths for SETUP-01..04: setup wizard sections, CredentialRegistry preflight wiring, dtc doctor --deep, Firebase project creation flow
+  3. REQUIREMENTS.md traceability updated: FOUND-01..04 and SETUP-01..04 marked Verified
+**Plans**: 0 plans (pending /gsd-plan-phase 8)
+
+### Phase 9: Formal Verification — Firebase Integration & Design Parity (Gap Closure)
+**Goal**: Produce VERIFICATION.md for Phase 4 and Phase 7 — formally document that all executed plans satisfy their success criteria
+**Depends on**: Phase 4 (plans executed), Phase 7 (plans executed)
+**Requirements**: FIRE-01, FIRE-02, FIRE-03, FIRE-04, FIRE-05, DESIGN-01, DESIGN-02, DESIGN-03, DESIGN-04, MCP-01, MCP-02, MCP-03, OBS-01, OBS-02, OBS-03
+**Gap Closure**: Closes gaps from v1-MILESTONE-AUDIT.md — PHASES-2-3-4-7-UNVERIFIED (phases 4 & 7)
+**Success Criteria** (what must be TRUE):
+  1. `04-VERIFICATION.md` exists with confirmed truths for FIRE-01..05: AppDelegate + SPM, auth templates (hashed-nonce + REVERSED_CLIENT_ID), data service (Codable + realtime + offline), firebase_provision (idempotent + checkpointed), security lint (hard-fail)
+  2. `07-VERIFICATION.md` exists with confirmed truths for DESIGN-01..04, MCP-01..03, OBS-01..03: sanitizeLayerName across 4 adapters, adapter-parity test passing, MCP tools dispatching correctly, manifest gate, cost/debug observability
+  3. REQUIREMENTS.md traceability updated: FIRE-01..05, DESIGN-01..04, MCP-01..03, OBS-01..03 marked Verified
+**Plans**: 0 plans (pending /gsd-plan-phase 9)
+
+### Phase 10: Phase 1 Human Verification — Live Branch Protection (Gap Closure)
+**Goal**: Execute live branch protection setup and formally close the human_needed items in 01-VERIFICATION.md
+**Depends on**: Phase 1 (scripts/setup-branch-protection.sh shipped), repo-admin GitHub auth
+**Requirements**: FLOW-01, GATE-02, GATE-03, GATE-04
+**Gap Closure**: Closes gaps from v1-MILESTONE-AUDIT.md — FLOW-01 + GATE-03 live confirmation pending
+**Success Criteria** (what must be TRUE):
+  1. `scripts/setup-branch-protection.sh` run successfully against the authenticated org; main and develop branch protection rules are live (PR required, required status checks: lint/typecheck/vitest + e2e-build + changeset-check, ≥1 code-owner review)
+  2. CODEOWNERS confirmed: @rayliu-factory (not @appifex/maintainers placeholder) is the active code owner; branch protection requires_code_owner_reviews=true confirmed via `gh api`
+  3. Scratch PR created without a changeset entry → changeset-check fails; changeset added → check passes
+  4. `01-VERIFICATION.md` human_verification section updated to `done` for all 4 human_needed items
+  5. REQUIREMENTS.md traceability: FLOW-01 and GATE-03 marked Verified
+**Plans**: 0 plans (pending /gsd-plan-phase 10)
 
 ## Progress
 
@@ -153,10 +200,13 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Open-Source Release Readiness | 0/9 | Not started | - |
-| 2. Foundation Hardening | 0/TBD | Not started | - |
-| 3. Setup & Diagnostics | 0/TBD | Not started | - |
-| 4. Firebase Integration | 0/TBD | Not started | - |
-| 5. Xcode Archive & TestFlight Upload | 0/TBD | Not started | - |
+| 1. Open-Source Release Readiness | 11/11 | Complete (human verification pending) | 2026-04-18 |
+| 2. Foundation Hardening | 5/5 | Complete (VERIFICATION.md pending — Phase 8) | 2026-04-18 |
+| 3. Setup & Diagnostics | 5/5 | Complete (VERIFICATION.md pending — Phase 8) | 2026-04-18 |
+| 4. Firebase Integration | 8/8 | Complete (VERIFICATION.md pending — Phase 9) | 2026-04-18 |
+| 5. Xcode Archive & TestFlight Upload | 6/6 | Complete | 2026-04-18 |
 | 6. Validation Gate Hardening | 8/8 | Complete | 2026-04-18 |
-| 7. Design Parity, MCP Surface & Observability | 0/TBD | Not started | - |
+| 7. Design Parity, MCP Surface & Observability | 9/9 | Complete (VERIFICATION.md pending — Phase 9) | 2026-04-18 |
+| 8. Formal Verification — Foundation & Setup | 0/TBD | Not started | - |
+| 9. Formal Verification — Firebase & Design Parity | 0/TBD | Not started | - |
+| 10. Phase 1 Human Verification — Live Branch Protection | 0/TBD | Not started | - |
