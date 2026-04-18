@@ -20,17 +20,17 @@
 
 ### Foundation Hardening
 
-- [ ] **FOUND-01**: `bin/dtc` resolves correctly on every install (replace absolute symlink with relative/shim so the CLI works on non-dev machines)
-- [ ] **FOUND-02**: Token estimator reflects real Swift token density (`CHARS_PER_TOKEN` corrected from 4 to 3) and the fix loop reserves at least 30% of the token budget for remediation
-- [ ] **FOUND-03**: Pipeline hard-fails on EPIPE during LLM I/O (no silent truncation of large prompts)
-- [ ] **FOUND-04**: Pipeline wrapped in a subprocess boundary so `process.exit(...)` calls within pipeline code cannot kill the MCP host process
+- [x] **FOUND-01**: `bin/dtc` resolves correctly on every install (replace absolute symlink with relative/shim so the CLI works on non-dev machines)
+- [x] **FOUND-02**: Token estimator reflects real Swift token density (`CHARS_PER_TOKEN` corrected from 4 to 3) and the fix loop reserves at least 30% of the token budget for remediation
+- [x] **FOUND-03**: Pipeline hard-fails on EPIPE during LLM I/O (no silent truncation of large prompts)
+- [x] **FOUND-04**: Pipeline wrapped in a subprocess boundary so `process.exit(...)` calls within pipeline code cannot kill the MCP host process
 
 ### Setup & Diagnostics
 
-- [ ] **SETUP-01**: `dtc setup --full` wizard captures Apple ASC key + issuer, Firebase project selection, LLM provider key, and Google/Apple OAuth client IDs end-to-end in one flow
-- [ ] **SETUP-02**: `CredentialRegistry` runs in `preflight.ts` and fails fast (before any LLM spend) with per-credential status of OK / MISSING / INVALID / EXPIRED
-- [ ] **SETUP-03**: `dtc doctor` checks presence and validity of `firebase-tools` CLI, the Firebase service-account JSON, and the ASC API key file, in addition to existing tool checks
-- [ ] **SETUP-04**: Wizard can create a new Firebase project (not only link an existing one) and auto-link the iOS app, downloading `GoogleService-Info.plist` into the project tree
+- [x] **SETUP-01**: `dtc setup --full` wizard captures Apple ASC key + issuer, Firebase project selection, LLM provider key, and Google/Apple OAuth client IDs end-to-end in one flow
+- [x] **SETUP-02**: `CredentialRegistry` runs in `preflight.ts` and fails fast (before any LLM spend) with per-credential status of OK / MISSING / INVALID / EXPIRED
+- [x] **SETUP-03**: `dtc doctor` checks presence and validity of `firebase-tools` CLI, the Firebase service-account JSON, and the ASC API key file, in addition to existing tool checks
+- [x] **SETUP-04**: Wizard can create a new Firebase project (not only link an existing one) and auto-link the iOS app, downloading `GoogleService-Info.plist` into the project tree
 
 ### Firebase Integration
 
@@ -112,14 +112,14 @@
 | GATE-02 | Phase 1 | Complete (human confirmation pending — Phase 10) |
 | GATE-03 | Phase 1 → Phase 10 (gap closure) | Pending |
 | GATE-04 | Phase 1 | Complete (human confirmation pending — Phase 10) |
-| FOUND-01 | Phase 2 → Phase 8 (gap closure) | Pending |
-| FOUND-02 | Phase 2 → Phase 8 (gap closure) | Pending |
-| FOUND-03 | Phase 2 → Phase 8 (gap closure) | Pending |
-| FOUND-04 | Phase 2 → Phase 8 (gap closure) | Pending |
-| SETUP-01 | Phase 3 → Phase 8 (gap closure) | Pending |
-| SETUP-02 | Phase 3 → Phase 8 (gap closure) | Pending |
-| SETUP-03 | Phase 3 → Phase 8 (gap closure) | Pending |
-| SETUP-04 | Phase 3 → Phase 8 (gap closure) | Pending |
+| FOUND-01 | Phase 2 → Phase 8 (gap closure) | Verified |
+| FOUND-02 | Phase 2 → Phase 8 (gap closure) | Verified |
+| FOUND-03 | Phase 2 → Phase 8 (gap closure) | Verified |
+| FOUND-04 | Phase 2 → Phase 8 (gap closure) | Verified |
+| SETUP-01 | Phase 3 → Phase 8 (gap closure) | Verified (code-level; SETUP-04 human step pending) |
+| SETUP-02 | Phase 3 → Phase 8 (gap closure) | Verified (code-level; SETUP-04 human step pending) |
+| SETUP-03 | Phase 3 → Phase 8 (gap closure) | Verified (code-level; SETUP-04 human step pending) |
+| SETUP-04 | Phase 3 → Phase 8 (gap closure) | Verified (code-level; SETUP-04 human step pending) |
 | FIRE-01 | Phase 4 → Phase 9 (gap closure) | Pending |
 | FIRE-02 | Phase 4 → Phase 9 (gap closure) | Pending |
 | FIRE-03 | Phase 4 → Phase 9 (gap closure) | Pending |
