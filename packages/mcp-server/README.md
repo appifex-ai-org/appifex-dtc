@@ -397,7 +397,7 @@ Tool handlers are separated from MCP wiring in `src/tools/` — each is a plain 
 The MCP server reads DTC config from `~/.dtc/config.json` (or a custom path via the `configDir` parameter on most tools). Run `dtc setup` to configure:
 
 - LLM provider (Anthropic, OpenAI, Google, Copilot, Claude CLI)
-- Design tool (Pencil)
+- Design tool (Pencil, Google Stitch, or Figma Make; plus zero-config `.zip` import for Stitch / Figma Make / Claude Design exports via `designFile`)
 - Runner type (local, E2B, remote)
 - Apple credentials (optional)
 - Deliver config (optional)

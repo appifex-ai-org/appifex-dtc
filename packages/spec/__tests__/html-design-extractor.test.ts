@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { parseDesignMd, extractSpecFromStitch } from '../src/stitch-extractor.js'
+import { parseDesignMd, extractSpecFromHtmlDesign } from '../src/html-design-extractor.js'
 import type { CreateMessageFn } from '../src/generate-spec.js'
 
 /** Minimal 1x1 transparent PNG */
@@ -120,7 +120,7 @@ lg: 32
   })
 })
 
-describe('extractSpecFromStitch', () => {
+describe('extractSpecFromHtmlDesign', () => {
   let workDir: string
 
   const cannedSpec = {
@@ -143,7 +143,7 @@ describe('extractSpecFromStitch', () => {
   }
 
   beforeEach(() => {
-    workDir = mkdtempSync(join(tmpdir(), 'dtc-stitch-spec-'))
+    workDir = mkdtempSync(join(tmpdir(), 'dtc-html-design-spec-'))
   })
 
   afterEach(() => {
@@ -155,7 +155,7 @@ describe('extractSpecFromStitch', () => {
     writeFileSync(pngPath, TINY_PNG)
 
     const createMessage = mockCreateMessage(cannedSpec)
-    const result = await extractSpecFromStitch({
+    const result = await extractSpecFromHtmlDesign({
       screenshotPaths: [pngPath],
       htmlContents: [],
       prompt: 'A todo app',
@@ -179,7 +179,7 @@ describe('extractSpecFromStitch', () => {
 - **accent**: #00FF00
 `
     const createMessage = mockCreateMessage(cannedSpec)
-    const result = await extractSpecFromStitch({
+    const result = await extractSpecFromHtmlDesign({
       designMdContent: designMd,
       screenshotPaths: [pngPath],
       htmlContents: [],
@@ -199,7 +199,7 @@ describe('extractSpecFromStitch', () => {
     writeFileSync(pngPath, TINY_PNG)
 
     const createMessage = mockCreateMessage(cannedSpec)
-    await extractSpecFromStitch({
+    await extractSpecFromHtmlDesign({
       screenshotPaths: [pngPath],
       htmlContents: [{ name: 'login.html', html: '<div class="bg-blue-500">Login</div>' }],
       prompt: 'A login app',
@@ -222,7 +222,7 @@ describe('extractSpecFromStitch', () => {
     writeFileSync(pngPath, TINY_PNG)
 
     const createMessage = mockCreateMessage(cannedSpec)
-    const result = await extractSpecFromStitch({
+    const result = await extractSpecFromHtmlDesign({
       screenshotPaths: [pngPath],
       htmlContents: [],
       prompt: 'A todo app',
@@ -240,7 +240,7 @@ describe('extractSpecFromStitch', () => {
     writeFileSync(pngPath, TINY_PNG)
 
     const createMessage = mockCreateMessage(cannedSpec)
-    const result = await extractSpecFromStitch({
+    const result = await extractSpecFromHtmlDesign({
       screenshotPaths: [pngPath],
       htmlContents: [],
       prompt: 'A todo app',

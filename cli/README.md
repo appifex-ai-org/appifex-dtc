@@ -22,6 +22,7 @@ Interactive wizard that walks you through:
 ◆  Design tool
 │  ● Pencil
 │  ○ Google Stitch
+│  ○ Figma Make
 │
 ◆  Runner environment
 │  ● Local
@@ -92,6 +93,30 @@ Final report:
 
   Tests: 17/17  Tokens: 26,800  Design: 1 iteration  Fix: 1 attempt  Duration: 45.2s
 ```
+
+## Import an external design export
+
+Bring a design from tools that aren't wired up as adapters — export a zip of
+HTML + screenshots and pass it via `--design`:
+
+```bash
+dtc run --design ~/Downloads/my-design.zip \
+        --prompt "Refine: make the browse grid 2-column" \
+        --platform swiftui \
+        --out ./pet-app
+```
+
+Works with:
+
+- **Google Stitch** — download the zip export
+- **Figma Make** — *File → Export HTML* → zip the folder
+- **Claude Design** (Anthropic Labs) — *Export → Standalone HTML files* → zip
+  the folder
+
+The zip is unpacked into `.design-import/`, HTML + screenshots (+ optional
+`design.md`) are fed through LLM vision to produce a normalized spec, and the
+rest of the pipeline (codegen → build → validate → fix → deliver) runs
+unchanged.
 
 ## Individual commands
 
