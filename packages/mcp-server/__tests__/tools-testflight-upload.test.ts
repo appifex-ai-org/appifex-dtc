@@ -1,4 +1,4 @@
-// Phase 7 (MCP-01): Wave 0 RED stub — see 07-VALIDATION.md
+// Phase 7 (MCP-01): Wave 0 RED stub — flipped GREEN in Plan 04a
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { Mock } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
@@ -22,7 +22,6 @@ vi.mock('@appifex/provision', () => ({
   PlayConsoleClient: vi.fn(),
 }))
 
-// @ts-expect-error — module does not exist yet; RED until Plan 02 creates src/tools/testflight.ts
 import { handleTestflightUpload } from '../src/tools/testflight.js'
 import { runXcodeArchivePhase } from '@appifex/build'
 import { runTestFlightUploadPhase } from '@appifex/provision'
@@ -64,14 +63,19 @@ describe('handleTestflightUpload (MCP-01)', () => {
   it('invokes runXcodeArchivePhase + runTestFlightUploadPhase in sequence', async () => {
     const archiveResult = {
       success: true,
-      skipped: false,
+      skipped: false as const,
       ipaPath: `${tmpDir}/MyApp.ipa`,
       exportDir: tmpDir,
+      marketingVersion: '1.0.0',
+      buildNumber: '42',
+      duration: 100,
+      bundleId: 'com.example.app',
     }
     const uploadResult = {
-      success: true,
-      buildNumber: '42',
-      message: 'Uploaded to TestFlight',
+      status: 'completed' as const,
+      buildId: 'build-42',
+      groupId: 'group-1',
+      testersAdded: [],
     }
 
     ;(runXcodeArchivePhase as Mock).mockResolvedValue(archiveResult)
@@ -97,22 +101,23 @@ describe('handleTestflightUpload (MCP-01)', () => {
     expect(runTestFlightUploadPhase).toHaveBeenCalledOnce()
 
     // Archive result must feed into upload call
-    const uploadCallArgs = (runTestFlightUploadPhase as Mock).mock.calls[0][0] as { ipaPath?: string }
-    expect(uploadCallArgs.ipaPath ?? uploadCallArgs).toEqual(
+    expect(runTestFlightUploadPhase).toHaveBeenCalledWith(
       expect.objectContaining({ ipaPath: archiveResult.ipaPath }),
     )
 
     expect(result.isError).toBe(false)
+    const parsed = JSON.parse(result.text) as { phase: string; platform: string; success: boolean }
+    expect(parsed.phase).toBe('submit')
+    expect(parsed.platform).toBe('ios')
+    expect(parsed.success).toBe(true)
   })
 
   it('returns archive.skipped envelope when archive reports skipped', async () => {
     // Matches pattern at packages/mcp-server/src/tools/provision.ts:117-128
     const archiveResult = {
-      success: true,
-      skipped: true,
-      skipReason: 'No Swift sources found',
-      ipaPath: undefined,
-      exportDir: tmpDir,
+      skipped: true as const,
+      reason: 'No Swift sources found',
+      buildId: undefined,
     }
 
     ;(runXcodeArchivePhase as Mock).mockResolvedValue(archiveResult)
@@ -136,7 +141,8 @@ describe('handleTestflightUpload (MCP-01)', () => {
     // When archive is skipped, upload is never invoked
     expect(runTestFlightUploadPhase).not.toHaveBeenCalled()
     expect(result.isError).toBe(false)
-    const parsed = JSON.parse(result.text) as { skipped: boolean; skipReason?: string }
+    const parsed = JSON.parse(result.text) as { skipped: boolean; phase: string }
     expect(parsed.skipped).toBe(true)
+    expect(parsed.phase).toBe('archive')
   })
 })
