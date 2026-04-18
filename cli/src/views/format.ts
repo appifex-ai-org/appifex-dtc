@@ -34,6 +34,7 @@ const PHASE_LABELS: Record<string, string> = {
   security: 'Security',
   fix: 'Fix',
   deliver: 'Deliver',
+  e2e_gate: 'E2E gate', // Phase 6 (VAL-01 D-01)
   report: 'Report',
 }
 
