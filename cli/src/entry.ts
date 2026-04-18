@@ -118,6 +118,10 @@ ${chalk.dim('OPTIONS')}
   --no-resume             Force a fresh add-feature run even when a checkpoint DB exists
   --skip-testflight       Skip testflight_upload phase (xcode_archive still runs for local .ipa)
   --skip-validation-gate  Run validation gate checks but don't block ship on failure
+  --overwrite-user-edits  Overwrite files that have been edited since the last run
+                          (default: preserve user-edited files with a yellow warning)
+  --export-debug-bundle   Write .dtc-debug/bundle-<ts>.zip even on successful runs
+                          (bundle is always written on failure)
 
 ${chalk.dim('EXAMPLES')}
   dtc setup
