@@ -279,6 +279,9 @@ importers:
       '@appifex/analysis':
         specifier: workspace:*
         version: link:../analysis
+      '@appifex/baas':
+        specifier: workspace:*
+        version: link:../baas
       '@appifex/build':
         specifier: workspace:*
         version: link:../build
