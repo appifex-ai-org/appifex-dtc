@@ -7,6 +7,9 @@ import { handleRefinePrompt, handleFeatureRefine } from './tools/refine.js'
 import { handleAddFeature } from './tools/add-feature.js'
 import { handleLoadConfig } from './tools/config.js'
 import { handleDesignCreate, handleDesignIterate } from './tools/design.js'
+import { handleFirebaseProvision } from './tools/firebase-provision.js'
+import { handleTestflightUpload } from './tools/testflight.js'
+import { handleGetPipelineStatus } from './tools/status.js'
 
 const PLATFORM = z.enum(['swiftui', 'kotlin-compose']).describe('Target platform')
 
@@ -177,6 +180,59 @@ export function registerPipelineTools(
       const { runner, config } = await resolveRunner(dirname(args.inputPath), args.configDir)
       const raw = await handleDesignIterate(args, runner, config.design)
       const result = injectCommands(raw, runner)
+      return { content: [{ type: 'text' as const, text: result.text }], isError: result.isError }
+    },
+  )
+
+  // Phase 7 (MCP-01 D-05 D-07): Firebase provisioning standalone
+  server.tool(
+    'dtc_firebase_provision',
+    'Run the Firebase provisioning phase standalone against a pre-existing generated app. Creates/links Firebase project, downloads GoogleService-Info.plist, deploys Firestore security rules, and seeds empty collections. Idempotent (safe to re-run). Requires config.firebase.projectId + config.firebase.serviceAccountKeyPath in ~/.dtc/config.json.',
+    {
+      projectDir: z.string().describe('Absolute path to the generated iOS app directory'),
+      overwritePlist: z
+        .boolean()
+        .optional()
+        .describe('Force overwrite GoogleService-Info.plist if present (default: skip when present)'),
+      configDir: z.string().optional().describe('Config directory (defaults to ~/.dtc)'),
+    },
+    async (args) => {
+      const { runner, config } = await resolveRunner(args.projectDir, args.configDir)
+      const raw = await handleFirebaseProvision(args, runner, config)
+      const result = injectCommands(raw, runner)
+      return { content: [{ type: 'text' as const, text: result.text }], isError: result.isError }
+    },
+  )
+
+  // Phase 7 (MCP-01 D-05 D-07): TestFlight upload standalone (iOS only)
+  server.tool(
+    'dtc_testflight_upload',
+    'Run the xcode_archive + testflight_upload pipeline phases standalone against a pre-existing generated app. iOS-only. Uses xcrun altool --upload-package with ASC JWT authentication (no `asc` community CLI required). Requires config.apple in ~/.dtc/config.json.',
+    {
+      projectDir: z.string().describe('Absolute path to the generated iOS app directory'),
+      scheme: z.string().optional().describe('Xcode scheme to archive (default: "App")'),
+      marketingVersion: z.string().optional().describe('Override CFBundleShortVersionString'),
+      buildNumber: z.string().optional().describe('Override CFBundleVersion'),
+      configDir: z.string().optional().describe('Config directory (defaults to ~/.dtc)'),
+    },
+    async (args) => {
+      const { runner, config } = await resolveRunner(args.projectDir, args.configDir)
+      const raw = await handleTestflightUpload(args, runner, config)
+      const result = injectCommands(raw, runner)
+      return { content: [{ type: 'text' as const, text: result.text }], isError: result.isError }
+    },
+  )
+
+  // Phase 7 (MCP-02 D-05 D-06): read-only pipeline status snapshot
+  server.tool(
+    'dtc_get_pipeline_status',
+    'Read .dtc/run-context.json + .dtc/checkpoint.db for a project and return a flat snapshot: { runId, currentPhase, phases: Array<{id, status, summary?}>, lastError? }. Read-only — never mutates run state. Agents use this for resume-vs-restart decisions.',
+    {
+      projectDir: z.string().describe('Absolute path to the project directory'),
+      configDir: z.string().optional().describe('Config directory (defaults to ~/.dtc)'),
+    },
+    async (args) => {
+      const result = await handleGetPipelineStatus(args)
       return { content: [{ type: 'text' as const, text: result.text }], isError: result.isError }
     },
   )
