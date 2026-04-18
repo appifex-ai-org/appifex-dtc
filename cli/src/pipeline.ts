@@ -893,6 +893,10 @@ export async function runPipeline(
     }
   }
 
+  const runner = createRunner(config.runner, { cwd: outputDir })
+
+  // Phase 7 (WR-05): openPreview defined after runner assignment to eliminate latent
+  // ordering hazard — if called before runner was set it would crash with opaque TypeError.
   // Best-effort preview opener — works on macOS/Linux/Windows, no-ops in CI
   async function openPreview(path: string) {
     try {
@@ -904,8 +908,6 @@ export async function runPipeline(
       /* no GUI opener available */
     }
   }
-
-  const runner = createRunner(config.runner, { cwd: outputDir })
   const budget = new TokenBudget(config.tokenBudget ?? { total: 100_000 })
   const appName = deriveAppName(opts.prompt)
 
@@ -3432,7 +3434,9 @@ export async function runPipeline(
           ? `${codegenResult.files.length} files`
           : (codegenResult.error ?? 'Failed'),
         codegenResult.tokensUsed,
-        codegenResult.success ? { tokensInput: bd.input, tokensOutput: bd.output, costUsd } : undefined,
+        codegenResult.success
+          ? { tokensInput: bd.input, tokensOutput: bd.output, costUsd }
+          : undefined,
       )
     }
     await flushContext()
