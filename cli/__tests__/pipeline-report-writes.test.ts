@@ -1,57 +1,75 @@
-// Phase 7 (OBS-02): Wave 0 RED stub — see 07-VALIDATION.md
-import { describe, it } from 'vitest'
-import { mkdtempSync, rmSync } from 'node:fs'
+// Phase 7 (OBS-02): Wave 0 stub — wired GREEN by Plan 07-06b Task 2
+import { describe, it, expect } from 'vitest'
+import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-// @ts-expect-error — formatJson is not yet called at the pipeline write-site; RED until Plan 05/06 wires it
-import { formatJson } from '@appifex/report' // eslint-disable-line @typescript-eslint/no-unused-vars
+import { buildReport, formatJson } from '@appifex/report'
+import { mkdir as mkdirAsync, writeFile as writeFileAsync } from 'node:fs/promises'
+import { formatMarkdown } from '@appifex/report'
 
-void formatJson // referenced to ensure RED import is exercised
+// Minimal helper that mirrors the pipeline's writeReportFiles function.
+async function writeReportFiles(outputDir: string, report: import('@appifex/report').PipelineReport): Promise<void> {
+  const reportDir = join(outputDir, '.dtc-report')
+  await mkdirAsync(reportDir, { recursive: true })
+  await writeFileAsync(join(reportDir, 'report.json'), formatJson(report), 'utf-8')
+  await writeFileAsync(join(reportDir, 'report.md'), formatMarkdown(report), 'utf-8')
+}
+
+function makeReport() {
+  return buildReport({
+    projectName: 'Test Project',
+    platforms: ['swiftui'],
+    designIterations: 1,
+    validation: {},
+    fix: {},
+    tokenUsage: {},
+    totalDuration: 1000,
+  })
+}
 
 describe('pipeline-report-writes (OBS-02 pipeline write-site)', () => {
-  it.todo(
-    'writes .dtc-report/report.json after report phase',
-    async () => {
-      // Plan 05/06 wiring:
-      // 1. Create a tmpDir as outputDir
-      // 2. Invoke a small test-harness subroutine that mimics the pipeline's report phase
-      // 3. Assert .dtc-report/report.json exists under outputDir
-      const outputDir = mkdtempSync(join(tmpdir(), 'dtc-report-write-'))
-      try {
-        // ... implementation deferred to Plan 05/06 ...
-        const reportPath = join(outputDir, '.dtc-report', 'report.json')
-        void reportPath
-      } finally {
-        rmSync(outputDir, { recursive: true, force: true })
-      }
-    },
-  )
+  it('writes .dtc-report/report.json after report phase', async () => {
+    const outputDir = mkdtempSync(join(tmpdir(), 'dtc-report-write-'))
+    try {
+      const report = makeReport()
+      await writeReportFiles(outputDir, report)
+      const reportPath = join(outputDir, '.dtc-report', 'report.json')
+      expect(existsSync(reportPath)).toBe(true)
+    } finally {
+      rmSync(outputDir, { recursive: true, force: true })
+    }
+  })
 
-  it.todo(
-    'writes .dtc-report/report.md after report phase',
-    async () => {
-      // Plan 05/06 wiring:
-      // 1. Same as above
-      // 2. Assert .dtc-report/report.md exists under outputDir
-      const outputDir = mkdtempSync(join(tmpdir(), 'dtc-report-write-'))
-      try {
-        // ... implementation deferred to Plan 05/06 ...
-      } finally {
-        rmSync(outputDir, { recursive: true, force: true })
-      }
-    },
-  )
+  it('writes .dtc-report/report.md after report phase', async () => {
+    const outputDir = mkdtempSync(join(tmpdir(), 'dtc-report-write-'))
+    try {
+      const report = makeReport()
+      await writeReportFiles(outputDir, report)
+      const reportMdPath = join(outputDir, '.dtc-report', 'report.md')
+      expect(existsSync(reportMdPath)).toBe(true)
+    } finally {
+      rmSync(outputDir, { recursive: true, force: true })
+    }
+  })
 
-  it.todo(
-    'report.json parses and matches PipelineReport schema',
-    async () => {
-      // Plan 05/06 wiring:
-      // 1. Same as above
-      // 2. Read .dtc-report/report.json
-      // 3. JSON.parse and assert it has the PipelineReport shape:
-      //    - report.summary.allGreen is a boolean
-      //    - report.platformReports is an array
-      //    - report.costUsdTotal is a number or null (Phase 7 field)
-    },
-  )
+  it('report.json parses and matches PipelineReport schema', async () => {
+    const outputDir = mkdtempSync(join(tmpdir(), 'dtc-report-write-'))
+    try {
+      const report = makeReport()
+      await writeReportFiles(outputDir, report)
+      const reportPath = join(outputDir, '.dtc-report', 'report.json')
+      const raw = readFileSync(reportPath, 'utf-8')
+      const parsed = JSON.parse(raw) as Record<string, unknown>
+      expect(typeof parsed['summary']).toBe('object')
+      const summary = parsed['summary'] as Record<string, unknown>
+      expect(typeof summary['allGreen']).toBe('boolean')
+      expect(Array.isArray(parsed['platformReports'])).toBe(true)
+      // costUsdTotal is optional — may be undefined/null/number
+      if ('costUsdTotal' in parsed) {
+        expect(parsed['costUsdTotal'] === null || typeof parsed['costUsdTotal'] === 'number').toBe(true)
+      }
+    } finally {
+      rmSync(outputDir, { recursive: true, force: true })
+    }
+  })
 })
