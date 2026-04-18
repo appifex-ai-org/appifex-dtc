@@ -21,7 +21,7 @@
   "dependencies": {
     "@appifex/core": "workspace:*",
     "@appifex/runner": "workspace:*",
-    "@anthropic-ai/sdk": "^0.52.0"
+    "@anthropic-ai/sdk": "^0.90.0"
   },
   "author": "Appifex",
   "homepage": "https://github.com/appifex-ai-org/appifex-dtc#readme",
