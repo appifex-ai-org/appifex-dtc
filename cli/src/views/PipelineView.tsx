@@ -51,7 +51,10 @@ export function PipelineView({ projectName, onEvent, tokenBudget = 100_000 }: Pi
       // lives in 07-06b.
       setPhases((prev) => {
         const next = new Map(prev)
-        const existing = next.get(event.phase) ?? { id: event.phase, status: event.status as PhaseDisplayStatus }
+        const existing = next.get(event.phase) ?? {
+          id: event.phase,
+          status: event.status as PhaseDisplayStatus,
+        }
         const status: PhaseDisplayStatus =
           event.status === 'started' || event.status === 'running'
             ? 'running'
@@ -76,7 +79,12 @@ export function PipelineView({ projectName, onEvent, tokenBudget = 100_000 }: Pi
         return next
       })
 
-      if (event.tokensUsed) {
+      // Phase 7 (WR-02): avoid double-counting — if the event carries tokensInput/Output,
+      // accumulate from those (they are the authoritative per-call breakdown). Only fall
+      // back to tokensUsed when neither input nor output field is present.
+      if (event.tokensInput != null || event.tokensOutput != null) {
+        setTokensUsed((prev) => prev + (event.tokensInput ?? 0) + (event.tokensOutput ?? 0))
+      } else if (event.tokensUsed) {
         setTokensUsed((prev) => prev + event.tokensUsed!)
       }
 
