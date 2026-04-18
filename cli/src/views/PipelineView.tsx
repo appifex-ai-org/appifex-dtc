@@ -3,9 +3,13 @@ import { Box, Text } from 'ink'
 import Spinner from 'ink-spinner'
 import chalk from 'chalk'
 import type { ProgressEvent, PhaseId, FixStatus } from '@appifex/core'
+// Phase 7 (OBS-01 D-14 Pitfall 2 — revision B-05): import PHASE_ORDER from @appifex/core
+// (eliminates the stale hardcoded PIPELINE_PHASES list — single source of truth).
+import { PHASE_ORDER } from '@appifex/core'
 import {
   formatPhaseStatus,
   formatTokenBar,
+  formatUsd,
   formatValidationSummary,
   formatFixStatus,
   type PhaseState,
@@ -14,24 +18,9 @@ import {
   type FixStatusInput,
 } from './format.js'
 
-export const PIPELINE_PHASES: PhaseId[] = [
-  'design',
-  'spec',
-  'design_delta',
-  'baas_recommend',
-  'baas_schema',
-  'baas_auth',
-  'mock_service',
-  'test_gen',
-  'codegen',
-  'test_regen',
-  'build',
-  'validate',
-  'security',
-  'fix',
-  'deliver',
-  'report',
-]
+// Phase 7 (OBS-01 Pitfall 2): PIPELINE_PHASES deprecated in favor of PHASE_ORDER (single source of truth).
+// Kept for external consumers in this repo; remove in the next cleanup.
+export const PIPELINE_PHASES = PHASE_ORDER
 
 interface PipelineViewProps {
   projectName: string
@@ -42,7 +31,7 @@ interface PipelineViewProps {
 export function PipelineView({ projectName, onEvent, tokenBudget = 100_000 }: PipelineViewProps) {
   const [phases, setPhases] = useState<Map<string, PhaseState>>(() => {
     const map = new Map<string, PhaseState>()
-    for (const id of PIPELINE_PHASES) {
+    for (const id of PHASE_ORDER) {
       map.set(id, { id, status: 'pending' })
     }
     return map
@@ -51,12 +40,18 @@ export function PipelineView({ projectName, onEvent, tokenBudget = 100_000 }: Pi
   const [validations, setValidations] = useState<ValidationSummaryInput[]>([])
   const [fixResult, setFixResult] = useState<FixStatusInput | null>(null)
   const [isRunning, setIsRunning] = useState(true)
+  // Phase 7 (OBS-01 D-14 — revision B-05): running total USD cost across all phases.
+  const [totalCostUsd, setTotalCostUsd] = useState<number | null | undefined>(undefined)
 
   useEffect(() => {
     if (!onEvent) return
     onEvent((event: ProgressEvent) => {
+      // Phase 7 (OBS-01 D-14 — revision B-05): PipelineView reads live per-phase costUsd
+      // from the ProgressEvent's costUsd field. Write-side (pipeline emitting these values)
+      // lives in 07-06b.
       setPhases((prev) => {
         const next = new Map(prev)
+        const existing = next.get(event.phase) ?? { id: event.phase, status: event.status as PhaseDisplayStatus }
         const status: PhaseDisplayStatus =
           event.status === 'started' || event.status === 'running'
             ? 'running'
@@ -69,15 +64,25 @@ export function PipelineView({ projectName, onEvent, tokenBudget = 100_000 }: Pi
                   : 'pending'
 
         next.set(event.phase, {
-          id: event.phase,
+          ...existing,
           status,
           message: event.message,
+          tokens:
+            event.tokensInput != null || event.tokensOutput != null
+              ? (event.tokensInput ?? 0) + (event.tokensOutput ?? 0)
+              : (event.tokensUsed ?? existing.tokens),
+          costUsd: event.costUsd ?? existing.costUsd,
         })
         return next
       })
 
       if (event.tokensUsed) {
         setTokensUsed((prev) => prev + event.tokensUsed!)
+      }
+
+      // Accumulate total USD cost when phase completes with a cost value
+      if (event.status === 'completed' && typeof event.costUsd === 'number') {
+        setTotalCostUsd((prev) => (prev ?? 0) + event.costUsd!)
       }
 
       // Update validation summaries when validate phase reports results
@@ -128,7 +133,7 @@ export function PipelineView({ projectName, onEvent, tokenBudget = 100_000 }: Pi
       </Box>
 
       <Box flexDirection="column">
-        {PIPELINE_PHASES.map((id) => {
+        {PHASE_ORDER.map((id) => {
           const phase = phases.get(id) ?? { id, status: 'pending' as const }
           return <Text key={id}>{formatPhaseStatus(phase)}</Text>
         })}
@@ -150,6 +155,9 @@ export function PipelineView({ projectName, onEvent, tokenBudget = 100_000 }: Pi
 
       <Box marginTop={1}>
         <Text>{formatTokenBar(tokensUsed, tokenBudget)}</Text>
+        {totalCostUsd !== undefined && (
+          <Text>{`  ${chalk.dim('Total:')} ${tokensUsed.toLocaleString()} tok / ${formatUsd(totalCostUsd)}`}</Text>
+        )}
       </Box>
     </Box>
   )

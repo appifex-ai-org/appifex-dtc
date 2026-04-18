@@ -159,6 +159,13 @@ export interface ProgressEvent {
   detail?: unknown
   timestamp: number
   tokensUsed?: number
+  /** Phase 7 (OBS-01 D-14 — revision B-05): input tokens for this phase (live cost). */
+  tokensInput?: number
+  /** Phase 7 (OBS-01 D-14 — revision B-05): output tokens for this phase (live cost). */
+  tokensOutput?: number
+  /** Phase 7 (OBS-01 D-14 — revision B-05): USD cost for this phase, or omitted
+   *  when model unknown (UI renders em-dash). */
+  costUsd?: number
 }
 
 // ── Agent ──
