@@ -13,11 +13,17 @@ import { PHASE_ORDER, Checkpoint } from '@appifex/core'
 import type { PhaseId } from '@appifex/core'
 
 describe('Phase 5 wiring: PHASE_ORDER (VALIDATION 5-06-01)', () => {
-  it('xcode_archive immediately follows deliver', () => {
+  // Phase 6 (VAL-01 D-01): e2e_gate is now slotted between deliver and xcode_archive.
+  // Original Phase 5 contract was deliver→xcode_archive directly; the gate insertion is the
+  // documented architectural change in 06-CONTEXT.md D-01 and is also locked by
+  // packages/core/__tests__/phase-order-e2e-gate.test.ts.
+  it('xcode_archive follows deliver via e2e_gate (Phase 6 D-01)', () => {
     const deliver = PHASE_ORDER.indexOf('deliver' as PhaseId)
+    const e2eGate = PHASE_ORDER.indexOf('e2e_gate' as PhaseId)
     const archive = PHASE_ORDER.indexOf('xcode_archive' as PhaseId)
     expect(deliver).toBeGreaterThanOrEqual(0)
-    expect(archive).toBe(deliver + 1)
+    expect(e2eGate).toBe(deliver + 1)
+    expect(archive).toBe(e2eGate + 1)
   })
 
   it('testflight_upload immediately follows xcode_archive', () => {
