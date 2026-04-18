@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 5: Xcode Archive & TestFlight Upload** - Archive the app and upload to TestFlight via ASC REST — the core product promise
 - [x] **Phase 6: Validation Gate Hardening** - Harden the Maestro E2E gate and fix loop so the one-command promise is trustworthy (completed 2026-04-18)
 - [x] **Phase 7: Design Parity, MCP Surface & Observability** - Finish adapter parity fixtures, expose new pipeline phases as MCP tools, and add cost/debug visibility (completed 2026-04-18)
-- [ ] **Phase 8: Formal Verification — Foundation Hardening & Setup** - Write VERIFICATION.md for phases 2 & 3 to formally close FOUND-01..04 and SETUP-01..04 (gap closure)
+- [x] **Phase 8: Formal Verification — Foundation Hardening & Setup** - Write VERIFICATION.md for phases 2 & 3 to formally close FOUND-01..04 and SETUP-01..04 (gap closure) (completed 2026-04-19)
 - [ ] **Phase 9: Formal Verification — Firebase Integration & Design Parity** - Write VERIFICATION.md for phases 4 & 7 to formally close FIRE-01..05, DESIGN-01..04, MCP-01..03, OBS-01..03 (gap closure)
 - [ ] **Phase 10: Phase 1 Human Verification — Live Branch Protection** - Execute setup-branch-protection.sh and confirm live branch protection to close FLOW-01 + GATE-03 (gap closure)
 
@@ -168,9 +168,9 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. `03-VERIFICATION.md` exists with confirmed truths for SETUP-01..04: setup wizard sections, CredentialRegistry preflight wiring, dtc doctor --deep, Firebase project creation flow
   3. REQUIREMENTS.md traceability updated: FOUND-01..04 and SETUP-01..04 marked Verified
 **Plans**: 3 plans
-  - [ ] 08-01-PLAN.md — Write 02-VERIFICATION.md for Phase 2 Foundation Hardening (FOUND-01..04, wave 1)
-  - [ ] 08-02-PLAN.md — Write 03-VERIFICATION.md for Phase 3 Setup & Diagnostics (SETUP-01..04, wave 1)
-  - [ ] 08-03-PLAN.md — Update REQUIREMENTS.md traceability table (FOUND-01..04, SETUP-01..04, wave 2)
+  - [x] 08-01-PLAN.md — Write 02-VERIFICATION.md for Phase 2 Foundation Hardening (FOUND-01..04, wave 1)
+  - [x] 08-02-PLAN.md — Write 03-VERIFICATION.md for Phase 3 Setup & Diagnostics (SETUP-01..04, wave 1)
+  - [x] 08-03-PLAN.md — Update REQUIREMENTS.md traceability table (FOUND-01..04, SETUP-01..04, wave 2)
 
 ### Phase 9: Formal Verification — Firebase Integration & Design Parity (Gap Closure)
 **Goal**: Produce VERIFICATION.md for Phase 4 and Phase 7 — formally document that all executed plans satisfy their success criteria
@@ -210,6 +210,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 5. Xcode Archive & TestFlight Upload | 6/6 | Complete | 2026-04-18 |
 | 6. Validation Gate Hardening | 8/8 | Complete | 2026-04-18 |
 | 7. Design Parity, MCP Surface & Observability | 9/9 | Complete (VERIFICATION.md pending — Phase 9) | 2026-04-18 |
-| 8. Formal Verification — Foundation & Setup | 0/3 | Not started | - |
+| 8. Formal Verification — Foundation & Setup | 3/3 | Complete (human_needed: Firebase live step inherited from Phase 3) | 2026-04-19 |
 | 9. Formal Verification — Firebase & Design Parity | 0/TBD | Not started | - |
 | 10. Phase 1 Human Verification — Live Branch Protection | 0/TBD | Not started | - |
