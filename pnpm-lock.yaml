@@ -150,6 +150,9 @@ importers:
       '@appifex/runner':
         specifier: workspace:*
         version: link:../runner
+      '@appifex/validate':
+        specifier: workspace:*
+        version: link:../validate
 
   packages/baas:
     dependencies:
