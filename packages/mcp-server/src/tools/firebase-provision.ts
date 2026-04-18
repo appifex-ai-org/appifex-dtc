@@ -8,7 +8,7 @@
  * packages/baas/src/firebase-provision.ts:26-43 — outputDir (not projectDir),
  * REQUIRED baasSchema, plistExists computed via runner.glob, no emitter param.
  * FirebaseProvisionResult fields: skipped, projectId?, iosAppId?, plistPath?,
- * collectionsSeeded? — NOT rulesDeployed.
+ * collectionsSeeded? (revision B-01 — correct field name).
  */
 import { runFirebaseProvision } from '@appifex/baas'
 import type { Runner, DtcConfig, BaasSchema } from '@appifex/core'

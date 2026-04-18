@@ -3,7 +3,7 @@
  *
  * Extracted iOS branch of packages/mcp-server/src/tools/provision.ts::handleIosSubmit.
  * - `projectDir` is now required (no pre-built-IPA fallback).
- * - Android branch stays in handleAndroidSubmit under dtc_provision_submit.
+ * - iOS-only; the existing dtc_provision_submit tool handles Android submission.
  */
 import { runXcodeArchivePhase } from '@appifex/build'
 import { runTestFlightUploadPhase } from '@appifex/provision'
