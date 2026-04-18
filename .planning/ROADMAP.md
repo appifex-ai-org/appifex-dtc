@@ -20,7 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 6: Validation Gate Hardening** - Harden the Maestro E2E gate and fix loop so the one-command promise is trustworthy (completed 2026-04-18)
 - [x] **Phase 7: Design Parity, MCP Surface & Observability** - Finish adapter parity fixtures, expose new pipeline phases as MCP tools, and add cost/debug visibility (completed 2026-04-18)
 - [x] **Phase 8: Formal Verification — Foundation Hardening & Setup** - Write VERIFICATION.md for phases 2 & 3 to formally close FOUND-01..04 and SETUP-01..04 (gap closure) (completed 2026-04-19)
-- [ ] **Phase 9: Formal Verification — Firebase Integration & Design Parity** - Write VERIFICATION.md for phases 4 & 7 to formally close FIRE-01..05, DESIGN-01..04, MCP-01..03, OBS-01..03 (gap closure)
+- [x] **Phase 9: Formal Verification — Firebase Integration & Design Parity** - Write VERIFICATION.md for phases 4 & 7 to formally close FIRE-01..05, DESIGN-01..04, MCP-01..03, OBS-01..03 (gap closure) (completed 2026-04-18)
 - [ ] **Phase 10: Phase 1 Human Verification — Live Branch Protection** - Execute setup-branch-protection.sh and confirm live branch protection to close FLOW-01 + GATE-03 (gap closure)
 
 ## Phase Details
@@ -182,9 +182,9 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. `07-VERIFICATION.md` exists with confirmed truths for DESIGN-01..04, MCP-01..03, OBS-01..03: sanitizeLayerName across 4 adapters, adapter-parity test passing, MCP tools dispatching correctly, manifest gate, cost/debug observability
   3. REQUIREMENTS.md traceability updated: FIRE-01..05, DESIGN-01..04, MCP-01..03, OBS-01..03 marked Verified
 **Plans**: 3 plans
-  - [ ] 09-01-PLAN.md — Write 04-VERIFICATION.md for Phase 4 Firebase Integration (FIRE-01..05, wave 1)
-  - [ ] 09-02-PLAN.md — Write 07-VERIFICATION.md for Phase 7 Design Parity & Observability (DESIGN-01..04, MCP-01..03, OBS-01..03, wave 1)
-  - [ ] 09-03-PLAN.md — Update REQUIREMENTS.md traceability table (all 15 REQ-IDs, wave 2)
+  - [x] 09-01-PLAN.md — Write 04-VERIFICATION.md for Phase 4 Firebase Integration (FIRE-01..05, wave 1)
+  - [x] 09-02-PLAN.md — Write 07-VERIFICATION.md for Phase 7 Design Parity & Observability (DESIGN-01..04, MCP-01..03, OBS-01..03, wave 1)
+  - [x] 09-03-PLAN.md — Update REQUIREMENTS.md traceability table (all 15 REQ-IDs, wave 2)
 
 ### Phase 10: Phase 1 Human Verification — Live Branch Protection (Gap Closure)
 **Goal**: Execute live branch protection setup and formally close the human_needed items in 01-VERIFICATION.md
@@ -214,5 +214,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 6. Validation Gate Hardening | 8/8 | Complete | 2026-04-18 |
 | 7. Design Parity, MCP Surface & Observability | 9/9 | Complete (VERIFICATION.md pending — Phase 9) | 2026-04-18 |
 | 8. Formal Verification — Foundation & Setup | 3/3 | Complete (human_needed: Firebase live step inherited from Phase 3) | 2026-04-19 |
-| 9. Formal Verification — Firebase & Design Parity | 0/TBD | Not started | - |
+| 9. Formal Verification — Firebase & Design Parity | 3/3 | Complete   | 2026-04-18 |
 | 10. Phase 1 Human Verification — Live Branch Protection | 0/TBD | Not started | - |
