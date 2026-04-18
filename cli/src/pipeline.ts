@@ -131,12 +131,19 @@ async function refreshManifestEntries(
   outputDir: string,
   paths: string[],
   phase: PhaseId,
+  debugLogger?: DebugLogger,
 ): Promise<void> {
   const current = await readManifest(outputDir)
   if (!current) {
     // Phase 7 (WR-06): Manifest does not exist yet — nothing to update. Caller must ensure
     // writeManifest is called after initial codegen before the fix-loop runs; otherwise
     // fix-loop edits will not be recorded and diffManifest will flag them as user-edited.
+    // Phase 7 (WR-04): Log so operators can diagnose stale-manifest misclassification.
+    debugLogger?.logJson('manifest-refresh-skipped', {
+      reason: 'no manifest found',
+      phase,
+      paths,
+    })
     return
   }
   const now = new Date().toISOString()
