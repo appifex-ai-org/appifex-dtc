@@ -87,12 +87,15 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Generated data layer exposes typed `Codable` Firestore models with realtime listeners and offline caching derived from the inferred schema
   4. The `firebase_provision` pipeline phase runs idempotently: Firebase project exists or is created, `GoogleService-Info.plist` is present, Firestore security rules are deployed, and the phase is skipped on resume if its checkpoint is complete
   5. Security lint blocks the pipeline (hard-fail, no override) when generated rules allow cross-user reads or are missing a deny-all default
-**Plans**: 5 plans
-  - [ ] 04-01-PLAN.md — Types foundation: ProvisionError/SecurityLintError + PhaseId + CheckpointData + PHASE_ORDER + format label (wave 1)
-  - [ ] 04-02-PLAN.md — Swift templates: SSO auth + realtime repository + PersistentCacheSettings + patchProjectDependencies with GoogleSignIn (wave 1)
-  - [ ] 04-03-PLAN.md — Security lint hardening: cross-user read + deny-all patterns (wave 2)
-  - [ ] 04-04-PLAN.md — firebase-provision.ts module + 5 implemented tests (wave 3)
-  - [ ] 04-05-PLAN.md — Pipeline wiring: firebase_provision phase handler + human-verify checkpoint (wave 4)
+**Plans**: 8 plans (00 wave-0 stubs + 01-05 core + 06-07 coverage-gap closure)
+  - [x] 04-00-PLAN.md — Wave-0 test stubs (Nyquist compliance: firebase-codegen/auth/data/security-lint stubs) (wave 0)
+  - [x] 04-01-PLAN.md — Types foundation: ProvisionError/SecurityLintError + PhaseId + CheckpointData + PHASE_ORDER + format label (wave 1)
+  - [x] 04-02-PLAN.md — Swift templates: SSO auth + realtime repository + PersistentCacheSettings + patchProjectDependencies with GoogleSignIn (wave 1)
+  - [x] 04-03-PLAN.md — Security lint hardening: cross-user read + deny-all patterns (wave 2)
+  - [x] 04-04-PLAN.md — firebase-provision.ts module + 5 implemented tests (wave 3)
+  - [x] 04-06-PLAN.md — security.rules.eta deny-all default block + render-templates lint assertion (wave 3, gap closure: RESEARCH Pitfall 7 / FIRE-05; depends_on 04-03 for non-vacuous lintSecurityRules assertion)
+  - [x] 04-05-PLAN.md — Pipeline wiring: firebase_provision phase handler + human-verify checkpoint (wave 4)
+  - [x] 04-07-PLAN.md — UI-SPEC overwrite-confirm prompt: clack confirm before plist overwrite + overwritePlist option in runFirebaseProvision (wave 5, gap closure: UI-SPEC destructive-action contract / FIRE-04)
 
 ### Phase 5: Xcode Archive & TestFlight Upload
 **Goal**: The pipeline archives the app and uploads it to TestFlight via direct ASC REST calls — no community CLI dependency — with release hygiene applied automatically
@@ -103,7 +106,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. `project.yml` mutations (Firebase SPM deps, entitlements, URL schemes) are performed via `js-yaml` parse/mutate/serialize — no regex patching
   3. Every archive automatically injects `ITSAppUsesNonExemptEncryption=false`, increments build number with collision guard, and sets `DEBUG_INFORMATION_FORMAT=dwarf-with-dsym` for dSYM symbolication
   4. Uploaded builds are assigned to the configured internal testing group and an internal-tester invite is issued without any manual App Store Connect step
-**Plans**: TBD
+**Plans**: 6 plans
+  - [x] 05-01-PLAN.md — Shared project-yml js-yaml mutator + swift.ts refactor (TF-02, wave 1)
+  - [x] 05-02-PLAN.md — Rewrite swift-archive.ts to js-yaml + stale xcodeproj cleanup (TF-02, wave 2)
+  - [x] 05-03-PLAN.md — ASC REST client + ArchiveError/TestFlightError (TF-01, TF-04, wave 1)
+  - [x] 05-04-PLAN.md — runXcodeArchivePhase orchestrator + hygiene test (TF-01, TF-03, wave 2)
+  - [x] 05-05-PLAN.md — altool driver + polling loop + runTestFlightUploadPhase (TF-01, TF-04, wave 2)
+  - [x] 05-06-PLAN.md — Pipeline wiring + PHASE_ORDER + --skip-testflight + wizard testers (TF-01, TF-04, wave 3)
 
 ### Phase 6: Validation Gate Hardening
 **Goal**: The Maestro E2E gate runs against a real Firebase dev project before any upload is attempted, and the fix loop is more precise and token-efficient
@@ -114,7 +123,15 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. The fix loop presents context ranked by modified-screen / failing-test locality rather than grabbing the first 20 files indiscriminately
   3. The fix loop uses Anthropic structured outputs for its response schema — no custom delimiter parser needed
   4. Security lint and semgrep failures block the pipeline with no override; Maestro and unit test failures block the pipeline but can be bypassed with `--skip-validation-gate`
-**Plans**: TBD
+**Plans**: 8 plans
+  - [ ] 06-00-PLAN.md — Wave 0 RED test stubs (Nyquist compliance: ranker/fixture/semgrep/PHASE_ORDER/signup-template/skip-flag/e2e-gate stubs) (wave 0)
+  - [ ] 06-01-PLAN.md — Types foundation: E2eGateError + PhaseId + CheckpointData + PHASE_ORDER + PHASE_LABELS (VAL-01, wave 1)
+  - [ ] 06-02-PLAN.md — fix-context-ranker.ts pure function + @appifex/analysis barrel re-export (VAL-02, wave 1)
+  - [ ] 06-03-PLAN.md — Unconditional semgrep: validate-all.ts:62 baseTestsPassed guard removal (VAL-04 D-18, wave 1)
+  - [ ] 06-04-PLAN.md — Signup/Login template accessibility IDs + signIn_existingAccount fall-through affordance (VAL-01 D-05, wave 1)
+  - [ ] 06-05-PLAN.md — SDK bump to ^0.90.0 + default-fix.ts tool-use rewrite + D-12 deletions + D-13 fallback + path guard + claude-cli-fix ranker hint (VAL-02, VAL-03, wave 2)
+  - [ ] 06-06-PLAN.md — e2e-gate.ts handler + golden-path Maestro YAML + barrel export (VAL-01, wave 2)
+  - [ ] 06-07-PLAN.md — Pipeline wiring: runE2eGatePhase block + --skip-validation-gate flag + terminal gate split (hard-fail/soft-fail) + second-site semgrep guard removal (VAL-01, VAL-04, wave 3)
 
 ### Phase 7: Design Parity, MCP Surface & Observability
 **Goal**: All four design adapters produce equivalent IR verified by fixture tests, the MCP server exposes the two new pipeline phases, and users can see token cost and access debug bundles
