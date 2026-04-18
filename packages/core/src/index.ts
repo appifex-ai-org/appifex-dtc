@@ -52,3 +52,14 @@ export {
 // Phase 03 Plan 01 (SETUP-02): CredentialRegistry + ASC JWT helpers
 export * from './credential-registry.js'
 export * from './asc-jwt.js'
+// Phase 7 (MCP-03 D-09..D-12): manifest read/write/diff + path guard
+export {
+  readManifest,
+  writeManifest,
+  diffManifest,
+  computeSha256,
+  isExcluded,
+  MANIFEST_FILENAME,
+  MANIFEST_EXCLUDE_GLOBS,
+} from './manifest.js'
+export type { Manifest, ManifestEntry, ManifestDiff } from './manifest.js'
