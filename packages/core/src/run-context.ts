@@ -62,6 +62,7 @@ export const PHASE_ORDER: PhaseId[] = [
   'security',
   'fix',
   'deliver',
+  'e2e_gate', // Phase 6 (VAL-01 D-01): real-Firebase e2e gate before TestFlight
   'xcode_archive', // Phase 5 (TF-01 D-02)
   'testflight_upload', // Phase 5 (TF-01 D-02)
   'report',
