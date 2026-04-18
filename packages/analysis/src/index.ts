@@ -8,3 +8,6 @@ export { planModifications } from './modification-planner.js'
 export type { ModificationPlan, ModificationItem, ModificationChangeType } from '@appifex/core'
 export { diffScreenInventory } from './modified-screens.js'
 export { diffDesignTokens } from './design-delta.js'
+// Phase 6 (VAL-02 D-10): fix-context ranker — consumed by @appifex/fix
+export { rankFixContext, CHARS_PER_TOKEN, FIX_CONTEXT_BUDGET_RATIO } from './fix-context-ranker.js'
+export type { RankFixContextInput, RankFixContextResult } from './fix-context-ranker.js'
