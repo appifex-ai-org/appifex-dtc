@@ -54,8 +54,8 @@ export interface Manifest {
 }
 
 export interface ManifestDiff {
-  userEdited: string[]  // paths in manifest whose on-disk sha256 no longer matches
-  missing: string[]     // paths in manifest that are no longer on disk
+  userEdited: string[] // paths in manifest whose on-disk sha256 no longer matches
+  missing: string[] // paths in manifest that are no longer on disk
 }
 
 /** Reject absolute paths and `..` segments. Return normalized forward-slash path. */
@@ -124,8 +124,13 @@ export async function readManifest(outputDir: string): Promise<Manifest | null> 
       ) {
         return null
       }
-      // Path guard — reject tampered manifest (T-07-03-01, T-07-03-02)
-      if (isAbsolute(e.path) || e.path.includes('..')) return null
+      // Phase 7 (WR-04): use validateRelativePath (same check as write) so that a path
+      // of exactly `..` is rejected — `includes('..')` alone misses that case.
+      try {
+        validateRelativePath(e.path)
+      } catch {
+        return null
+      }
     }
     // Filter excluded paths from read manifest so they are never returned
     const filtered: Manifest = {
@@ -161,10 +166,7 @@ export async function writeManifest(outputDir: string, manifest: Manifest): Prom
   await rename(tmp, out)
 }
 
-export async function diffManifest(
-  outputDir: string,
-  manifest: Manifest,
-): Promise<ManifestDiff> {
+export async function diffManifest(outputDir: string, manifest: Manifest): Promise<ManifestDiff> {
   const userEdited: string[] = []
   const missing: string[] = []
   for (const entry of manifest.entries) {
