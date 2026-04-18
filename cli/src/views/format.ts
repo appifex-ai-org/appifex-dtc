@@ -8,6 +8,10 @@ export interface PhaseState {
   status: PhaseDisplayStatus
   message?: string
   detail?: string
+  /** Phase 7 (OBS-01 D-14): tokens consumed by this phase (aggregate). */
+  tokens?: number
+  /** Phase 7 (OBS-01 D-14): USD cost for this phase, or null if model not in pricing table. */
+  costUsd?: number | null
 }
 
 const STATUS_ICONS: Record<PhaseDisplayStatus, string> = {
@@ -38,12 +42,30 @@ const PHASE_LABELS: Record<string, string> = {
   report: 'Report',
 }
 
+/**
+ * Phase 7 (OBS-01 D-14): right-aligned 7-char USD field for PipelineView rows.
+ * null/undefined → dim em-dash. Sub-penny rounds up to $0.01. $1000+ uses $X.XK shorthand.
+ */
+export function formatUsd(n: number | null | undefined): string {
+  if (n == null) return chalk.dim('      —')
+  if (n > 0 && n < 0.01) return '  $0.01'
+  if (n >= 1000) return `$${(n / 1000).toFixed(1)}K`.padStart(7)
+  return `$${n.toFixed(2)}`.padStart(7)
+}
+
 export function formatPhaseStatus(phase: PhaseState): string {
   const icon = STATUS_ICONS[phase.status]
-  const label = PHASE_LABELS[phase.id] ?? phase.id.charAt(0).toUpperCase() + phase.id.slice(1)
+  const label = PHASE_LABELS[phase.id] ?? (phase.id as string).charAt(0).toUpperCase() + (phase.id as string).slice(1)
   const paddedLabel = label.padEnd(12)
 
-  let line = `  ${icon} ${paddedLabel}`
+  // Phase 7 (OBS-01 D-14): inline tokens + USD when present. Backward compatible — empty when absent.
+  const tokStr =
+    phase.tokens != null
+      ? `${phase.tokens.toLocaleString()} tok`.padStart(12)
+      : ''
+  const usdStr = phase.costUsd !== undefined ? ` ${formatUsd(phase.costUsd)}` : ''
+
+  let line = `  ${icon} ${paddedLabel}${tokStr}${usdStr}`
   if (phase.message) {
     line += chalk.dim(` ${phase.message}`)
   }

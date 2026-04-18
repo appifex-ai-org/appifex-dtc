@@ -66,3 +66,6 @@ export {
   MANIFEST_EXCLUDE_GLOBS,
 } from './manifest.js'
 export type { Manifest, ManifestEntry, ManifestDiff } from './manifest.js'
+// Phase 7 (OBS-03 D-16): debug bundle writer + secrets scrubber
+export { writeDebugBundle, scrub, SECRET_PATTERNS } from './debug-bundle.js'
+export type { WriteDebugBundleOptions } from './debug-bundle.js'

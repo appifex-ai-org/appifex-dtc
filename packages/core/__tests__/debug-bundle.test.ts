@@ -128,7 +128,10 @@ describe('writeDebugBundle (OBS-03)', () => {
     const bundlePath = await writeDebugBundle(outputDir, { reason: 'failure' })
     const bundleFileName = bundlePath.split('/').pop()!
 
+    // [Rule 1 - Bug fix]: unzip -l outputs the archive path in the header line (Archive: <path>),
+    // so we skip the first line and only check the entry listing for the bundle filename.
     const listing = execSync(`unzip -l "${bundlePath}"`, { encoding: 'utf8' })
-    expect(listing).not.toContain(bundleFileName)
+    const entriesOnly = listing.split('\n').slice(1).join('\n')
+    expect(entriesOnly).not.toContain(bundleFileName)
   })
 })
