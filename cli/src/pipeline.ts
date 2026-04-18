@@ -133,7 +133,12 @@ async function refreshManifestEntries(
   phase: PhaseId,
 ): Promise<void> {
   const current = await readManifest(outputDir)
-  if (!current) return
+  if (!current) {
+    // Phase 7 (WR-06): Manifest does not exist yet — nothing to update. Caller must ensure
+    // writeManifest is called after initial codegen before the fix-loop runs; otherwise
+    // fix-loop edits will not be recorded and diffManifest will flag them as user-edited.
+    return
+  }
   const now = new Date().toISOString()
   const byPath = new Map(current.entries.map((e) => [e.path, e]))
   for (const rel of paths) {
