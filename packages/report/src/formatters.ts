@@ -6,7 +6,8 @@ const REMEDIATION_HINTS: Record<string, string> = {
   unit: 'Run the failing test locally via `pnpm vitest run <path>` for interactive debugging.',
   'security-lint': 'Review generated security.rules for cross-user reads; see 04-CONTEXT FIRE-05.',
   semgrep: 'Review semgrep findings in .dtc-debug/semgrep/. Hard-fail cannot be bypassed.',
-  parity: 'A design adapter produced IR that does not match the Pencil-authoritative fixture. Re-run fixture-gen.ts if the reference design changed.',
+  parity:
+    'A design adapter produced IR that does not match the Pencil-authoritative fixture. Re-run fixture-gen.ts if the reference design changed.',
   baas: 'Check ~/.dtc/config.json firebase.projectId + serviceAccountKeyPath. Run `dtc doctor --deep`.',
 }
 
@@ -41,13 +42,15 @@ export function formatMarkdown(report: PipelineReport): string {
     lines.push(`| Stop Reason | ${report.agent.stopReason} |`)
     if (report.agent.costUsd != null) lines.push(`| Cost | $${report.agent.costUsd.toFixed(4)} |`)
     if (report.agent.sessionId) lines.push(`| Session ID | \`${report.agent.sessionId}\` |`)
-    lines.push(`| Files Generated | ${report.agent.filesGenerated.length} |`)
+    // Phase 7 (WR-03): guard against missing filesGenerated (e.g. deserialized from older checkpoint)
+    const filesGenerated = report.agent.filesGenerated ?? []
+    lines.push(`| Files Generated | ${filesGenerated.length} |`)
     lines.push('')
 
-    if (report.agent.filesGenerated.length > 0) {
+    if (filesGenerated.length > 0) {
       lines.push('### Generated Files')
       lines.push('')
-      for (const f of report.agent.filesGenerated) {
+      for (const f of filesGenerated) {
         lines.push(`- \`${f}\``)
       }
       lines.push('')
@@ -174,7 +177,8 @@ export function formatMarkdown(report: PipelineReport): string {
   }
 
   // Phase 7 (OBS-01 D-15): Cost Estimate section
-  const hasCost = report.costUsdPerPhase != null || report.costUsdTotal != null || report.pricingAsOf != null
+  const hasCost =
+    report.costUsdPerPhase != null || report.costUsdTotal != null || report.pricingAsOf != null
   if (hasCost) {
     lines.push('## Cost Estimate')
     lines.push('')
@@ -190,7 +194,9 @@ export function formatMarkdown(report: PipelineReport): string {
         const bd = breakdown[phase as keyof typeof breakdown] ?? { input: 0, output: 0 }
         const c = costs[phase as keyof typeof costs]
         const usd = c == null ? '—' : `$${c.toFixed(2)}`
-        lines.push(`| ${phase} | ${bd.input.toLocaleString()} / ${bd.output.toLocaleString()} | ${usd} |`)
+        lines.push(
+          `| ${phase} | ${bd.input.toLocaleString()} / ${bd.output.toLocaleString()} | ${usd} |`,
+        )
       }
       lines.push('')
     }
