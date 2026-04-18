@@ -1,16 +1,26 @@
-// Phase 7 (MCP-02): Wave 0 RED stub — see 07-VALIDATION.md
+// Phase 7 (MCP-02): Wave 0 RED stub — flipped GREEN in Plan 04a
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
-// Mock @appifex/core so loadRunContext + Checkpoint can be overridden
+// Revision B-04: mock Checkpoint so we can inject 'running' status for mid-phase-crash tests.
+// Checkpoint constructor opens a real SQLite file; mock it to avoid filesystem deps in tests.
+const mockGetPhase = vi.fn().mockReturnValue(null)
+const mockClose = vi.fn()
+
 vi.mock('@appifex/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@appifex/core')>()
-  return { ...actual, loadRunContext: vi.fn() }
+  class MockCheckpoint {
+    getPhase = mockGetPhase
+    close = mockClose
+    savePhase = vi.fn()
+    completedPhases = vi.fn().mockReturnValue([])
+    lastCompletedPhase = vi.fn().mockReturnValue(null)
+  }
+  return { ...actual, loadRunContext: vi.fn(), Checkpoint: MockCheckpoint }
 })
 
-// @ts-expect-error — module does not exist yet; RED until Plan 02 creates src/tools/status.ts
 import { handleGetPipelineStatus } from '../src/tools/status.js'
 import { loadRunContext, PHASE_ORDER } from '@appifex/core'
 
@@ -22,6 +32,7 @@ describe('handleGetPipelineStatus (MCP-02)', () => {
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), 'dtc-status-'))
     vi.clearAllMocks()
+    mockGetPhase.mockReturnValue(null)
   })
 
   afterEach(() => {
@@ -88,9 +99,15 @@ describe('handleGetPipelineStatus (MCP-02)', () => {
       timestamp: Date.now(),
       phases: {
         design: { status: 'completed', summary: 'ok' },
-        spec: { status: 'running', summary: '' },
+        spec: { status: 'completed', summary: 'ok' },
       },
       filesGenerated: [],
+    })
+
+    // Simulate Checkpoint returning 'running' for test_gen phase (revision B-04)
+    mockGetPhase.mockImplementation((_runId: string, phase: string) => {
+      if (phase === 'test_gen') return { status: 'running' }
+      return null
     })
 
     const result = await handleGetPipelineStatus({ projectDir: tmpDir })
@@ -98,8 +115,8 @@ describe('handleGetPipelineStatus (MCP-02)', () => {
     const parsed = JSON.parse(result.text) as {
       currentPhase: string | null
     }
-    // When a phase has status 'running', currentPhase should reflect it
-    expect(parsed.currentPhase).toBe('spec')
+    // When a checkpoint phase has status 'running', currentPhase should reflect it
+    expect(parsed.currentPhase).toBe('test_gen')
   })
 
   it('populates lastError when a phase has status:failed', async () => {
@@ -125,5 +142,45 @@ describe('handleGetPipelineStatus (MCP-02)', () => {
     expect(parsed.lastError).toBeDefined()
     expect(parsed.lastError?.phase).toBe('codegen')
     expect(typeof parsed.lastError?.message).toBe('string')
+  })
+
+  // Revision B-04: mid-phase-crash test — Checkpoint has 'running' for a phase
+  // that is absent from RunContext (exactly the state a crashed in-progress run leaves behind).
+  it('surfaces running status from Checkpoint when RunContext has no entry for that phase (mid-phase crash)', async () => {
+    mockedLoadRunContext.mockResolvedValue({
+      runId: 'run-crash',
+      prompt: 'A test app',
+      platform: 'swiftui',
+      mode: 'create',
+      status: 'running',
+      timestamp: Date.now(),
+      phases: {
+        design: { status: 'completed', summary: 'ok' },
+        // NOTE: 'spec' is intentionally absent — simulates crash during spec phase
+      },
+      filesGenerated: [],
+    })
+
+    // Checkpoint row shows 'spec' was started but never committed
+    mockGetPhase.mockImplementation((_runId: string, phase: string) => {
+      if (phase === 'spec') return { status: 'running' }
+      return null
+    })
+
+    const result = await handleGetPipelineStatus({ projectDir: tmpDir })
+
+    expect(result.isError).toBe(false)
+    const parsed = JSON.parse(result.text) as {
+      runId: string
+      currentPhase: string | null
+      phases: Array<{ id: string; status: string }>
+    }
+
+    // The spec phase should surface as 'running' (from Checkpoint, not RunContext)
+    const specPhase = parsed.phases.find((p) => p.id === 'spec')
+    expect(specPhase?.status).toBe('running')
+
+    // currentPhase must point at the running phase
+    expect(parsed.currentPhase).toBe('spec')
   })
 })
