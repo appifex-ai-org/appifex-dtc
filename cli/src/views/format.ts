@@ -48,6 +48,7 @@ const PHASE_LABELS: Record<string, string> = {
  */
 export function formatUsd(n: number | null | undefined): string {
   if (n == null) return chalk.dim('      —')
+  if (n === 0) return chalk.dim('      —') // Phase 7 (WR-03): zero means "no cost recorded", same as null
   if (n > 0 && n < 0.01) return '  $0.01'
   if (n >= 1000) return `$${(n / 1000).toFixed(1)}K`.padStart(7)
   return `$${n.toFixed(2)}`.padStart(7)
@@ -55,14 +56,13 @@ export function formatUsd(n: number | null | undefined): string {
 
 export function formatPhaseStatus(phase: PhaseState): string {
   const icon = STATUS_ICONS[phase.status]
-  const label = PHASE_LABELS[phase.id] ?? (phase.id as string).charAt(0).toUpperCase() + (phase.id as string).slice(1)
+  const label =
+    PHASE_LABELS[phase.id] ??
+    (phase.id as string).charAt(0).toUpperCase() + (phase.id as string).slice(1)
   const paddedLabel = label.padEnd(12)
 
   // Phase 7 (OBS-01 D-14): inline tokens + USD when present. Backward compatible — empty when absent.
-  const tokStr =
-    phase.tokens != null
-      ? `${phase.tokens.toLocaleString()} tok`.padStart(12)
-      : ''
+  const tokStr = phase.tokens != null ? `${phase.tokens.toLocaleString()} tok`.padStart(12) : ''
   const usdStr = phase.costUsd !== undefined ? ` ${formatUsd(phase.costUsd)}` : ''
 
   let line = `  ${icon} ${paddedLabel}${tokStr}${usdStr}`

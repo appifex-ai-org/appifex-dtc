@@ -17,6 +17,12 @@ describe('formatUsd (OBS-01)', () => {
     expect(result).toBe(chalk.dim('      —'))
   })
 
+  it('0 → dim em-dash placeholder (zero means no cost recorded)', () => {
+    // Phase 7 (WR-03): zero must render the same as null/undefined
+    const result = formatUsd(0)
+    expect(result).toBe(chalk.dim('      —'))
+  })
+
   it('0.234 → "  $0.23" (right-aligned 7 chars)', () => {
     const result = formatUsd(0.234)
     // Strip chalk color codes for comparison
