@@ -19,7 +19,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@appifex/core": "workspace:*"
+    "@appifex/core": "workspace:*",
+    "@appifex/design": "workspace:*"
   },
   "author": "Appifex",
   "homepage": "https://github.com/appifex-ai-org/appifex-dtc#readme",

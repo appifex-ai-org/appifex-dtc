@@ -371,6 +371,9 @@ importers:
       '@appifex/core':
         specifier: workspace:*
         version: link:../core
+      '@appifex/design':
+        specifier: workspace:*
+        version: link:../design
 
   packages/test-gen:
     dependencies:

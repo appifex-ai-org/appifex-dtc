@@ -65,7 +65,8 @@ describe('FigmaRestClient', () => {
         fileUrl: 'https://www.figma.com/design/ABC123/Test',
       })
 
-      expect(result.screenNames).toEqual(['Home'])
+      // Phase 7 (DESIGN-02): expected output aligned with shared sanitizer — 'Home' → 'home'
+      expect(result.screenNames).toEqual(['home'])
       expect(result.code).toContain('Hello World')
       expect(result.metadata.fileName).toBe('TestDesign')
       expect(fetchImpl).toHaveBeenCalledWith('https://api.figma.com/v1/files/ABC123', {

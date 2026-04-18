@@ -6,6 +6,7 @@ import type {
   NavigationSpec,
   ComponentType,
 } from '@appifex/core'
+import { sanitizeLayerName } from '@appifex/design'
 import { extractNavigation, describeScreen } from './pen-navigation.js'
 
 /**
@@ -36,9 +37,12 @@ export function extractSpecFromPenObject(pen: PenDocument): DesignSpec {
     return val
   }
 
+  // Phase 7 (DESIGN-01): use shared sanitizeLayerName for screen-level dedup scope
+  const takenScreens = new Set<string>()
+
   // Extract screens from top-level frames only
   const frames = pen.children.filter((child) => child.type === 'frame')
-  const screens: ScreenSpec[] = frames.map((frame) => extractScreen(frame, resolveColor))
+  const screens: ScreenSpec[] = frames.map((frame) => extractScreen(frame, resolveColor, takenScreens))
 
   // Extract design tokens from variables
   const designTokens = extractDesignTokens(vars)
@@ -54,9 +58,15 @@ export function extractSpecFromPenObject(pen: PenDocument): DesignSpec {
   }
 }
 
-function extractScreen(frame: PenNode, resolveColor: (val: unknown) => string): ScreenSpec {
-  const id = `screen-${toKebab(frame.name ?? 'unnamed')}`
-  const seenIds = new Set<string>() // fresh per screen — no module-level state
+function extractScreen(
+  frame: PenNode,
+  resolveColor: (val: unknown) => string,
+  takenScreens: Set<string>,
+): ScreenSpec {
+  // Phase 7 (DESIGN-01): use shared sanitizeLayerName — see packages/design/src/sanitize.ts
+  const screenName = sanitizeLayerName(frame.name ?? 'unnamed', takenScreens)
+  const id = `screen-${screenName}`
+  const seenIds = new Set<string>() // fresh per screen — component scope
 
   const direction = frame.layout === 'horizontal' ? 'horizontal' : 'vertical'
   const layoutType = frame.layout === 'none' ? ('absolute' as const) : ('stack' as const)
@@ -72,18 +82,6 @@ function extractScreen(frame: PenNode, resolveColor: (val: unknown) => string): 
       spacing: frame.gap ?? 16,
     },
   }
-}
-
-function deduplicateId(baseId: string, seenIds: Set<string>): string {
-  if (!seenIds.has(baseId)) {
-    seenIds.add(baseId)
-    return baseId
-  }
-  let i = 2
-  while (seenIds.has(`${baseId}-${i}`)) i++
-  const uniqueId = `${baseId}-${i}`
-  seenIds.add(uniqueId)
-  return uniqueId
 }
 
 function extractComponents(
@@ -110,7 +108,8 @@ function nodeToComponent(
   seenIds: Set<string>,
 ): ComponentSpec | null {
   const name = node.name ?? 'unnamed'
-  const id = deduplicateId(`comp-${toKebab(name)}`, seenIds)
+  // Phase 7 (DESIGN-01): use shared sanitizeLayerName — see packages/design/src/sanitize.ts
+  const id = `comp-${sanitizeLayerName(name, seenIds)}`
   const type = mapPenType(node)
 
   // Extract style
@@ -254,15 +253,21 @@ function extractDesignTokens(vars: Record<string, PenVariable>): DesignTokens {
   const colors: Record<string, string> = {}
   const spacing: Record<string, number> = {}
   const borderRadius: Record<string, number> = {}
+  // Phase 7 (DESIGN-01): use shared sanitizeLayerName for token key scopes
+  const takenColors = new Set<string>()
+  const takenSpacing = new Set<string>()
+  const takenRadius = new Set<string>()
 
   for (const [name, v] of Object.entries(vars)) {
     if (v.type === 'color' && v.value) {
-      colors[toCamelCase(name)] = v.value as string
+      const key = sanitizeLayerName(name, takenColors)
+      colors[key] = v.value as string
     } else if (v.type === 'number' && v.value != null) {
-      const key = toCamelCase(name)
       if (name.includes('spacing') || name.includes('gap') || name.includes('padding')) {
+        const key = sanitizeLayerName(name, takenSpacing)
         spacing[key] = v.value as number
       } else if (name.includes('radius') || name.includes('corner')) {
+        const key = sanitizeLayerName(name, takenRadius)
         borderRadius[key] = v.value as number
       }
     }
@@ -278,18 +283,6 @@ function extractDesignTokens(vars: Record<string, PenVariable>): DesignTokens {
     spacing: Object.keys(spacing).length > 0 ? spacing : { sm: 8, md: 16, lg: 24 },
     borderRadius: Object.keys(borderRadius).length > 0 ? borderRadius : { sm: 8, md: 12, lg: 16 },
   }
-}
-
-function toKebab(name: string): string {
-  return name
-    .replace(/([a-z])([A-Z])/g, '$1-$2')
-    .replace(/\s+/g, '-')
-    .replace(/[^a-zA-Z0-9-]/g, '')
-    .toLowerCase()
-}
-
-function toCamelCase(name: string): string {
-  return name.replace(/[-._]([a-z])/g, (_, c) => c.toUpperCase())
 }
 
 // ── Pen file types ──
