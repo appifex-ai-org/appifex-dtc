@@ -3,12 +3,12 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { execSync } from 'node:child_process'
-import { extractStitchZip } from '../src/stitch-zip.js'
+import { extractDesignZip } from '../src/design-zip.js'
 
 let workDir: string
 
 beforeEach(() => {
-  workDir = mkdtempSync(join(tmpdir(), 'dtc-stitch-zip-'))
+  workDir = mkdtempSync(join(tmpdir(), 'dtc-design-zip-'))
 })
 
 afterEach(() => {
@@ -29,7 +29,7 @@ function createZip(zipPath: string, files: Record<string, string | Buffer>): voi
   execSync(`cd "${staging}" && zip -r "${zipPath}" .`, { stdio: 'ignore' })
 }
 
-describe('extractStitchZip', () => {
+describe('extractDesignZip', () => {
   it('finds HTML and PNG in a flat zip', async () => {
     const zipPath = join(workDir, 'export.zip')
     createZip(zipPath, {
@@ -37,13 +37,13 @@ describe('extractStitchZip', () => {
       'screen1.png': Buffer.from([0x89, 0x50, 0x4e, 0x47]), // PNG magic bytes
     })
 
-    const result = await extractStitchZip(zipPath, workDir)
+    const result = await extractDesignZip(zipPath, workDir)
 
     expect(result.htmlPaths).toHaveLength(1)
     expect(result.htmlPaths[0]).toContain('screen1.html')
     expect(result.screenshotPaths).toHaveLength(1)
     expect(result.screenshotPaths[0]).toContain('screen1.png')
-    expect(result.extractDir).toContain('.stitch')
+    expect(result.extractDir).toContain('.design-import')
   })
 
   it('finds artifacts in nested subdirectories', async () => {
@@ -55,7 +55,7 @@ describe('extractStitchZip', () => {
       'project/screens/home.png': Buffer.from([0x89, 0x50]),
     })
 
-    const result = await extractStitchZip(zipPath, workDir)
+    const result = await extractDesignZip(zipPath, workDir)
 
     expect(result.htmlPaths).toHaveLength(2)
     expect(result.screenshotPaths).toHaveLength(2)
@@ -68,7 +68,7 @@ describe('extractStitchZip', () => {
       'screen.html': '<html></html>',
     })
 
-    const result = await extractStitchZip(zipPath, workDir)
+    const result = await extractDesignZip(zipPath, workDir)
     expect(result.designMdPath).toBeDefined()
 
     // Also test lowercase
@@ -79,7 +79,7 @@ describe('extractStitchZip', () => {
     })
 
     const outputDir2 = join(workDir, 'out2')
-    const result2 = await extractStitchZip(zipPath2, outputDir2)
+    const result2 = await extractDesignZip(zipPath2, outputDir2)
     expect(result2.designMdPath).toBeDefined()
   })
 
@@ -90,13 +90,13 @@ describe('extractStitchZip', () => {
       'screen.png': Buffer.from([0x89]),
     })
 
-    const result = await extractStitchZip(zipPath, workDir)
+    const result = await extractDesignZip(zipPath, workDir)
     expect(result.designMdPath).toBeUndefined()
     expect(result.htmlPaths).toHaveLength(1)
     expect(result.screenshotPaths).toHaveLength(1)
   })
 
   it('throws for non-existent file', async () => {
-    await expect(extractStitchZip('/tmp/does-not-exist.zip', workDir)).rejects.toThrow()
+    await expect(extractDesignZip('/tmp/does-not-exist.zip', workDir)).rejects.toThrow()
   })
 })
