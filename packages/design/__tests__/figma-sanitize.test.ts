@@ -52,11 +52,13 @@ describe('FigmaRestClient — sanitized screen names (DESIGN-02)', () => {
       }) as unknown as typeof fetch,
     })
 
-    const context = await client.getDesignContext({ fileUrl: 'https://figma.com/design/ABC123/Test' })
+    const context = await client.getDesignContext({
+      fileUrl: 'https://figma.com/design/ABC123/Test',
+    })
 
-    // After Plan 01 wires sanitizer, screenNames must be sanitized.
-    // This assertion is RED until the sanitizer is applied inside FigmaRestClient / figma extractor.
-    expect(context.screenNames).toEqual(['home', 'class_', 'homeScreen', 'homeScreen_2'])
+    // Phase 7 (WR-06): screenNames returns raw Figma display names for callers to use as human-
+    // readable labels. Sanitized IDs are derived downstream (e.g. in FigmaMakeAdapter.readDesign).
+    expect(context.screenNames).toEqual(['🏠 Home', 'class', 'Home Screen', 'Home Screen'])
   })
 })
 
@@ -74,12 +76,20 @@ describe('FigmaMakeAdapter — sanitized screen names (DESIGN-02)', () => {
     }
 
     const runner = {
-      exec: vi.fn().mockResolvedValue({ exitCode: 0, stdout: '', stderr: '', duration: 0, command: '' }),
+      exec: vi
+        .fn()
+        .mockResolvedValue({ exitCode: 0, stdout: '', stderr: '', duration: 0, command: '' }),
       readFile: vi.fn().mockResolvedValue(''),
       writeFile: vi.fn().mockResolvedValue(undefined),
       exists: vi.fn().mockResolvedValue(true),
       glob: vi.fn().mockResolvedValue([]),
-      capabilities: { hasMaestro: false, hasXcode: false, hasNode: true, hasSemgrep: false, platform: 'darwin' as const },
+      capabilities: {
+        hasMaestro: false,
+        hasXcode: false,
+        hasNode: true,
+        hasSemgrep: false,
+        platform: 'darwin' as const,
+      },
     }
 
     const adapter = new FigmaMakeAdapter({
