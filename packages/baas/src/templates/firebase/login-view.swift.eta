@@ -21,11 +21,13 @@ struct LoginView: View {
                     .keyboardType(.emailAddress)
                     .autocapitalization(.none)
                     .textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier("login_email") // Phase 6 (VAL-01 D-05)
                     .disabled(isLoading)
 
                 SecureField("Password", text: $password)
                     .textContentType(.password)
                     .textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier("login_password") // Phase 6 (VAL-01 D-05)
                     .disabled(isLoading)
             }
 
@@ -47,6 +49,7 @@ struct LoginView: View {
             .background(Color.accentColor)
             .foregroundColor(.white)
             .cornerRadius(12)
+            .accessibilityIdentifier("login_submit") // Phase 6 (VAL-01 D-05)
             .disabled(isLoading)
 
             // Phase 4 (FIRE-02 D-01): SSO buttons below divider — Apple must appear before Google (Apple HIG)
@@ -85,6 +88,7 @@ struct LoginView: View {
                 Text("Don't have an account? Sign up")
                     .font(.body)
             }
+            .accessibilityIdentifier("signUp_navigate") // Phase 6 (VAL-01 D-05)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 32)
