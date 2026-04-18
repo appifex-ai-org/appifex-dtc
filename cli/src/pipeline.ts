@@ -22,6 +22,9 @@ import {
   diffManifest,
   computeSha256,
   isExcluded,
+  tokensToUsd,
+  PRICING_AS_OF,
+  writeDebugBundle,
   type AgentConfigType,
   type AppContext,
   type BackendContext,
@@ -80,7 +83,7 @@ import {
 import { PlayConsoleClient, runTestFlightUploadPhase } from '@appifex/provision'
 import { validateAll, type ValidationResult } from '@appifex/validate'
 import { fixLoop, createDefaultFixFn, createClaudeCliFixFn } from '@appifex/fix'
-import { buildReport, formatMarkdown, type PipelineReport } from '@appifex/report'
+import { buildReport, formatMarkdown, formatJson, type PipelineReport } from '@appifex/report'
 import { deliver, type DeliverResult } from '@appifex/deliver'
 import { detectBaasProvider } from '@appifex/baas'
 // Copilot provider is handled inline in buildCreateMessageFn
@@ -88,6 +91,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { writeFileSync as writeFileSyncFs, mkdirSync as mkdirSyncFs } from 'node:fs'
+import { writeFile as writeFileAsync, mkdir as mkdirAsync } from 'node:fs/promises'
 import type { DesignTokens, DesignDeltaReport } from '@appifex/core'
 
 // Phase 14 (D-09): phases that ALWAYS re-run on resume regardless of
@@ -147,6 +151,43 @@ async function refreshManifestEntries(
     entries: Array.from(byPath.values()),
   }
   await writeManifest(outputDir, updated)
+}
+
+/**
+ * Phase 7 (OBS-01 D-15): extract per-phase token + cost data from TokenBudget for report.
+ */
+function buildCostFields(
+  tokenBudget: TokenBudget,
+  model: string,
+): {
+  tokenUsageBreakdown: Partial<Record<PhaseId, { input: number; output: number }>>
+  costUsdPerPhase: Partial<Record<PhaseId, number | null>>
+  costUsdTotal: number | null
+} {
+  const tokenUsageBreakdown: Partial<Record<PhaseId, { input: number; output: number }>> = {}
+  const costUsdPerPhase: Partial<Record<PhaseId, number | null>> = {}
+  for (const phase of PHASE_ORDER) {
+    const bd = tokenBudget.phaseBreakdown(phase)
+    if (bd.input > 0 || bd.output > 0) {
+      tokenUsageBreakdown[phase] = bd
+      costUsdPerPhase[phase] = tokenBudget.phaseCostUsd(phase, model)
+    }
+  }
+  return {
+    tokenUsageBreakdown,
+    costUsdPerPhase,
+    costUsdTotal: tokenBudget.totalCostUsd(model),
+  }
+}
+
+/**
+ * Phase 7 (OBS-02 D-15): write report.json + report.md to the canonical .dtc-report/ directory.
+ */
+async function writeReportFiles(outputDir: string, report: PipelineReport): Promise<void> {
+  const reportDir = join(outputDir, '.dtc-report')
+  await mkdirAsync(reportDir, { recursive: true })
+  await writeFileAsync(join(reportDir, 'report.json'), formatJson(report), 'utf-8')
+  await writeFileAsync(join(reportDir, 'report.md'), formatMarkdown(report), 'utf-8')
 }
 
 /** Map CLI Platform to BaaS TargetPlatform array. */
@@ -1167,9 +1208,17 @@ export async function runPipeline(
     status: 'started' | 'running' | 'completed' | 'failed' | 'skipped',
     message: string,
     tokens?: number,
+    costFields?: { tokensInput?: number; tokensOutput?: number; costUsd?: number },
   ) => {
     currentPhase = phase // Phase 13: update before any side effects so the outer catch sees it
-    progress.emit({ phase, status, message, timestamp: Date.now(), tokensUsed: tokens })
+    progress.emit({
+      phase,
+      status,
+      message,
+      timestamp: Date.now(),
+      tokensUsed: tokens,
+      ...costFields,
+    })
     if (tokens) {
       budget.consume(phase, tokens)
       tokenUsage[phase] = (tokenUsage[phase] ?? 0) + tokens
@@ -3022,7 +3071,20 @@ export async function runPipeline(
       }
 
       if (result.success) {
-        emit('codegen', 'completed', 'Agent completed codegen')
+        // Phase 7 (OBS-01 D-14 — revision B-05): live per-phase cost on completed event.
+        {
+          const model = config.agent?.model ?? config.llm.model ?? 'claude-sonnet-4-6'
+          const bd = budget.phaseBreakdown('codegen')
+          const costUsd =
+            typeof result.costUsd === 'number'
+              ? result.costUsd
+              : (tokensToUsd(model, bd.input, bd.output) ?? undefined)
+          emit('codegen', 'completed', 'Agent completed codegen', undefined, {
+            tokensInput: bd.input,
+            tokensOutput: bd.output,
+            costUsd,
+          })
+        }
         emit('build', 'completed', 'Agent handled build')
         emit('validate', 'completed', 'Agent completed — all tests passing')
         emit('fix', 'skipped', 'Agent handled fixes inline')
@@ -3097,12 +3159,19 @@ export async function runPipeline(
               await refreshManifestEntries(outputDir, filesRewritten, 'fix')
             }
           }
-          emit(
-            'fix',
-            fr.status === 'all_green' ? 'completed' : 'failed',
-            `${fr.status} — ${fr.attempts.length} attempts`,
-            fr.totalTokensUsed,
-          )
+          // Phase 7 (OBS-01 D-14 — revision B-05): live per-phase cost on completed event.
+          {
+            const model = config.agent?.model ?? config.llm.model ?? 'claude-sonnet-4-6'
+            const bd = budget.phaseBreakdown('fix')
+            const costUsd = tokensToUsd(model, bd.input, bd.output) ?? undefined
+            emit(
+              'fix',
+              fr.status === 'all_green' ? 'completed' : 'failed',
+              `${fr.status} — ${fr.attempts.length} attempts`,
+              fr.totalTokensUsed,
+              { tokensInput: bd.input, tokensOutput: bd.output, costUsd },
+            )
+          }
           emit(
             'security',
             fr.status === 'all_green' ? 'completed' : 'failed',
@@ -3173,6 +3242,9 @@ export async function runPipeline(
         filesGenerated: generatedFiles,
         output: result.output?.slice(0, 2000),
       }
+      // Phase 7 (OBS-01 D-15): populate cost fields from TokenBudget + pricing table.
+      const agentModel = config.agent?.model ?? config.llm.model ?? 'claude-sonnet-4-6'
+      const agentCostFields = buildCostFields(budget, agentModel)
       const report = buildReport({
         projectName: opts.prompt.slice(0, 50),
         platforms: [opts.platform],
@@ -3182,10 +3254,19 @@ export async function runPipeline(
         tokenUsage,
         totalDuration: Date.now() - startTime,
         agent: agentReport,
+        tokenUsageBreakdown: agentCostFields.tokenUsageBreakdown,
+        costUsdPerPhase: agentCostFields.costUsdPerPhase,
+        costUsdTotal: agentCostFields.costUsdTotal,
+        model: agentModel,
+        pricingAsOf: PRICING_AS_OF,
       })
-      const markdown = formatMarkdown(report)
-      await runner.writeFile(join(outputDir, 'report.md'), markdown)
-      emit('report', 'completed', 'Report saved')
+      // Phase 7 (OBS-02 D-15): write to canonical .dtc-report/ (both JSON + MD).
+      try {
+        await writeReportFiles(outputDir, report)
+      } catch {
+        /* report write must not block pipeline return */
+      }
+      emit('report', 'completed', 'Report saved to .dtc-report/')
       await flushContext()
 
       // Save run context for future resume/add-feature/refactor (always, even on failure)
@@ -3209,7 +3290,7 @@ export async function runPipeline(
       }
       process.removeListener('SIGINT', sigintHandler)
       process.removeListener('exit', exitCleanup)
-      return { report, validation: finalValidation, markdown }
+      return { report, validation: finalValidation, markdown: formatMarkdown(report) }
     }
   }
 
@@ -3339,14 +3420,21 @@ export async function runPipeline(
       }
     }
 
-    emit(
-      'codegen',
-      codegenResult.success ? 'completed' : 'failed',
-      codegenResult.success
-        ? `${codegenResult.files.length} files`
-        : (codegenResult.error ?? 'Failed'),
-      codegenResult.tokensUsed,
-    )
+    // Phase 7 (OBS-01 D-14 — revision B-05): live per-phase cost on completed event.
+    {
+      const model = config.llm.model ?? 'claude-sonnet-4-6'
+      const bd = budget.phaseBreakdown('codegen')
+      const costUsd = tokensToUsd(model, bd.input, bd.output) ?? undefined
+      emit(
+        'codegen',
+        codegenResult.success ? 'completed' : 'failed',
+        codegenResult.success
+          ? `${codegenResult.files.length} files`
+          : (codegenResult.error ?? 'Failed'),
+        codegenResult.tokensUsed,
+        codegenResult.success ? { tokensInput: bd.input, tokensOutput: bd.output, costUsd } : undefined,
+      )
+    }
     await flushContext()
     await debug.logJson('codegen-result.json', {
       success: codegenResult.success,
@@ -3503,12 +3591,19 @@ export async function runPipeline(
           await refreshManifestEntries(outputDir, filesRewritten, 'fix')
         }
       }
-      emit(
-        'fix',
-        fr.status === 'all_green' ? 'completed' : 'failed',
-        `${fr.status} — ${fr.attempts.length} attempts`,
-        fr.totalTokensUsed,
-      )
+      // Phase 7 (OBS-01 D-14 — revision B-05): live per-phase cost on completed event.
+      {
+        const model = config.llm.model ?? 'claude-sonnet-4-6'
+        const bd = budget.phaseBreakdown('fix')
+        const costUsd = tokensToUsd(model, bd.input, bd.output) ?? undefined
+        emit(
+          'fix',
+          fr.status === 'all_green' ? 'completed' : 'failed',
+          `${fr.status} — ${fr.attempts.length} attempts`,
+          fr.totalTokensUsed,
+          { tokensInput: bd.input, tokensOutput: bd.output, costUsd },
+        )
+      }
       await flushContext()
       await debug.logJson('fix-result-build.json', fr)
 
@@ -3570,12 +3665,19 @@ export async function runPipeline(
             await refreshManifestEntries(outputDir, filesRewritten, 'fix')
           }
         }
-        emit(
-          'fix',
-          fr.status === 'all_green' ? 'completed' : 'failed',
-          `${fr.status} — ${fr.attempts.length} attempts`,
-          fr.totalTokensUsed,
-        )
+        // Phase 7 (OBS-01 D-14 — revision B-05): live per-phase cost on completed event.
+        {
+          const model = config.llm.model ?? 'claude-sonnet-4-6'
+          const bd = budget.phaseBreakdown('fix')
+          const costUsd = tokensToUsd(model, bd.input, bd.output) ?? undefined
+          emit(
+            'fix',
+            fr.status === 'all_green' ? 'completed' : 'failed',
+            `${fr.status} — ${fr.attempts.length} attempts`,
+            fr.totalTokensUsed,
+            { tokensInput: bd.input, tokensOutput: bd.output, costUsd },
+          )
+        }
         await flushContext()
         await debug.logJson('fix-result-test.json', fr)
       } else if (validation.allPassed && !fixResult) {
@@ -3658,12 +3760,19 @@ export async function runPipeline(
               await refreshManifestEntries(outputDir, filesRewritten, 'fix')
             }
           }
-          emit(
-            'fix',
-            fr.status === 'all_green' ? 'completed' : 'failed',
-            `Security fix ${fr.status} — ${fr.attempts.length} attempts`,
-            fr.totalTokensUsed,
-          )
+          // Phase 7 (OBS-01 D-14 — revision B-05): live per-phase cost on completed event.
+          {
+            const model = config.llm.model ?? 'claude-sonnet-4-6'
+            const bd = budget.phaseBreakdown('fix')
+            const costUsd = tokensToUsd(model, bd.input, bd.output) ?? undefined
+            emit(
+              'fix',
+              fr.status === 'all_green' ? 'completed' : 'failed',
+              `Security fix ${fr.status} — ${fr.attempts.length} attempts`,
+              fr.totalTokensUsed,
+              { tokensInput: bd.input, tokensOutput: bd.output, costUsd },
+            )
+          }
           await flushContext()
           emit(
             'security',
@@ -3700,6 +3809,9 @@ export async function runPipeline(
 
     // 9. Report
     emit('report', 'started', 'Generating report')
+    // Phase 7 (OBS-01 D-15): populate cost fields from TokenBudget + pricing table.
+    const apiModel = config.llm.model ?? 'claude-sonnet-4-6'
+    const apiCostFields = buildCostFields(budget, apiModel)
     const report = buildReport({
       projectName: opts.prompt.slice(0, 50),
       platforms: [opts.platform],
@@ -3708,10 +3820,16 @@ export async function runPipeline(
       fix: fixResult ? { [opts.platform]: fixResult } : {},
       tokenUsage,
       totalDuration: Date.now() - startTime,
+      tokenUsageBreakdown: apiCostFields.tokenUsageBreakdown,
+      costUsdPerPhase: apiCostFields.costUsdPerPhase,
+      costUsdTotal: apiCostFields.costUsdTotal,
+      model: apiModel,
+      pricingAsOf: PRICING_AS_OF,
     })
+    // Phase 7 (OBS-02 D-15): write to canonical .dtc-report/ (both JSON + MD).
+    await writeReportFiles(outputDir, report)
     const markdown = formatMarkdown(report)
-    await runner.writeFile(join(outputDir, 'report.md'), markdown)
-    emit('report', 'completed', 'Report saved')
+    emit('report', 'completed', 'Report saved to .dtc-report/')
     await flushContext()
 
     // 9. Deliver (git commit + push + PR)
@@ -4186,6 +4304,18 @@ export async function runPipeline(
     } catch {
       /* ignore */
     }
+    // Phase 7 (OBS-03 D-16): write debug bundle on green run when --export-debug-bundle is set.
+    if (opts.exportDebugBundle) {
+      try {
+        const bundlePath = await writeDebugBundle(outputDir, { reason: 'user-export' })
+        const { default: chalkBundle } = await import('chalk')
+        console.log(chalkBundle.green(`Debug bundle exported: ${bundlePath}`))
+      } catch (bundleErr) {
+        // bundling must not fail a green run
+        const { default: chalkBundle } = await import('chalk')
+        console.log(chalkBundle.yellow(`Debug bundle export failed: ${String(bundleErr)}`))
+      }
+    }
     process.removeListener('SIGINT', sigintHandler)
     process.removeListener('exit', exitCleanup)
     return { report, validation, markdown, deliver: deliverResult }
@@ -4221,6 +4351,17 @@ export async function runPipeline(
     }
     process.removeListener('SIGINT', sigintHandler)
     process.removeListener('exit', exitCleanup)
+    // Phase 7 (OBS-03 D-16): automatic debug bundle on non-zero exit.
+    // Bundler failure must not mask the original error — rethrow happens regardless.
+    try {
+      const bundlePath = await writeDebugBundle(outputDir, { reason: 'failure' })
+      const { default: chalkBundle } = await import('chalk')
+      console.log(chalkBundle.yellow(`Debug bundle written: ${bundlePath}`))
+    } catch (bundleErr) {
+      // bundling must not mask the original error
+      const { default: chalkBundle } = await import('chalk')
+      console.log(chalkBundle.red(`Debug bundle write also failed: ${String(bundleErr)}`))
+    }
     throw apiErr
   }
 }
