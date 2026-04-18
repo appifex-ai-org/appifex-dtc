@@ -159,9 +159,21 @@ export interface ProgressEvent {
   detail?: unknown
   timestamp: number
   tokensUsed?: number
-  /** Phase 7 (OBS-01 D-14 — revision B-05): input tokens for this phase (live cost). */
+  /**
+   * Phase 7 (OBS-01 D-14 — revision B-05): input tokens for this phase (live cost).
+   *
+   * MUST be a per-call delta (not cumulative). Consumers (e.g. PipelineView) accumulate
+   * these values across events. If this event has status 'completed', omit this field
+   * unless the completion itself consumed tokens (e.g. a summary LLM call at phase end).
+   */
   tokensInput?: number
-  /** Phase 7 (OBS-01 D-14 — revision B-05): output tokens for this phase (live cost). */
+  /**
+   * Phase 7 (OBS-01 D-14 — revision B-05): output tokens for this phase (live cost).
+   *
+   * MUST be a per-call delta (not cumulative). Consumers (e.g. PipelineView) accumulate
+   * these values across events. If this event has status 'completed', omit this field
+   * unless the completion itself consumed tokens (e.g. a summary LLM call at phase end).
+   */
   tokensOutput?: number
   /** Phase 7 (OBS-01 D-14 — revision B-05): USD cost for this phase, or omitted
    *  when model unknown (UI renders em-dash). */
