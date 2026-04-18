@@ -113,3 +113,17 @@ export class TestFlightError extends CliError {
     this.name = 'TestFlightError'
   }
 }
+
+// Phase 6 (VAL-01 D-06): thrown by e2e_gate phase on Maestro failure when --skip-validation-gate is not set.
+// Soft-fail per D-16: the phase handler catches this in the pipeline and either (a) rethrows to block
+// xcode_archive, or (b) records in report and continues when --skip-validation-gate is true.
+export class E2eGateError extends CliError {
+  constructor(
+    message: string,
+    public readonly flowFile?: string,
+    public readonly maestroError?: string,
+  ) {
+    super(message, 1)
+    this.name = 'E2eGateError'
+  }
+}
