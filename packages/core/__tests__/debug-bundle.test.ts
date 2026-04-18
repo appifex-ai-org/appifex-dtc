@@ -17,8 +17,14 @@ describe('writeDebugBundle (OBS-03)', () => {
     mkdirSync(join(outputDir, '.dtc'), { recursive: true })
     mkdirSync(join(outputDir, '.dtc-report'), { recursive: true })
 
-    writeFileSync(join(outputDir, '.dtc', 'run-context.json'), JSON.stringify({ runId: 'run-test' }))
-    writeFileSync(join(outputDir, '.dtc-report', 'report.json'), JSON.stringify({ status: 'completed' }))
+    writeFileSync(
+      join(outputDir, '.dtc', 'run-context.json'),
+      JSON.stringify({ runId: 'run-test' }),
+    )
+    writeFileSync(
+      join(outputDir, '.dtc-report', 'report.json'),
+      JSON.stringify({ status: 'completed' }),
+    )
     writeFileSync(join(outputDir, '.dtc-debug', 'debug.log'), 'some debug output')
   })
 
@@ -58,9 +64,12 @@ describe('writeDebugBundle (OBS-03)', () => {
     const bundlePath = await writeDebugBundle(outputDir, { reason: 'failure' })
 
     // Extract and read the fake.log from the zip
-    const extracted = execSync(`unzip -p "${bundlePath}" debug/fake.log 2>/dev/null || unzip -p "${bundlePath}" fake.log`, {
-      encoding: 'utf8',
-    })
+    const extracted = execSync(
+      `unzip -p "${bundlePath}" debug/fake.log 2>/dev/null || unzip -p "${bundlePath}" fake.log`,
+      {
+        encoding: 'utf8',
+      },
+    )
     expect(extracted).toContain('[REDACTED]')
     expect(extracted).not.toContain('sk-ant-aaaaaaaaaa')
   })
@@ -73,9 +82,12 @@ describe('writeDebugBundle (OBS-03)', () => {
 
     const bundlePath = await writeDebugBundle(outputDir, { reason: 'failure' })
 
-    const extracted = execSync(`unzip -p "${bundlePath}" debug/fake.log 2>/dev/null || unzip -p "${bundlePath}" fake.log`, {
-      encoding: 'utf8',
-    })
+    const extracted = execSync(
+      `unzip -p "${bundlePath}" debug/fake.log 2>/dev/null || unzip -p "${bundlePath}" fake.log`,
+      {
+        encoding: 'utf8',
+      },
+    )
     expect(extracted).toContain('[REDACTED]')
     expect(extracted).not.toContain('sk-bbbbbbbbbbbbbbbbbbbb')
   })
@@ -88,9 +100,12 @@ describe('writeDebugBundle (OBS-03)', () => {
 
     const bundlePath = await writeDebugBundle(outputDir, { reason: 'failure' })
 
-    const extracted = execSync(`unzip -p "${bundlePath}" debug/fake.log 2>/dev/null || unzip -p "${bundlePath}" fake.log`, {
-      encoding: 'utf8',
-    })
+    const extracted = execSync(
+      `unzip -p "${bundlePath}" debug/fake.log 2>/dev/null || unzip -p "${bundlePath}" fake.log`,
+      {
+        encoding: 'utf8',
+      },
+    )
     expect(extracted).toContain('[REDACTED]')
     expect(extracted).not.toContain('secret123')
   })
@@ -103,9 +118,12 @@ describe('writeDebugBundle (OBS-03)', () => {
 
     const bundlePath = await writeDebugBundle(outputDir, { reason: 'failure' })
 
-    const extracted = execSync(`unzip -p "${bundlePath}" debug/fake.log 2>/dev/null || unzip -p "${bundlePath}" fake.log`, {
-      encoding: 'utf8',
-    })
+    const extracted = execSync(
+      `unzip -p "${bundlePath}" debug/fake.log 2>/dev/null || unzip -p "${bundlePath}" fake.log`,
+      {
+        encoding: 'utf8',
+      },
+    )
     expect(extracted).toContain('[REDACTED]')
   })
 
@@ -117,11 +135,67 @@ describe('writeDebugBundle (OBS-03)', () => {
 
     const bundlePath = await writeDebugBundle(outputDir, { reason: 'failure' })
 
-    const extracted = execSync(`unzip -p "${bundlePath}" debug/fake.log 2>/dev/null || unzip -p "${bundlePath}" fake.log`, {
-      encoding: 'utf8',
-    })
+    const extracted = execSync(
+      `unzip -p "${bundlePath}" debug/fake.log 2>/dev/null || unzip -p "${bundlePath}" fake.log`,
+      {
+        encoding: 'utf8',
+      },
+    )
     expect(extracted).toContain('[REDACTED]')
     expect(extracted).not.toContain('BEGIN PRIVATE KEY')
+  })
+
+  it('scrubber redacts ASC key pattern (asc_key token)', async () => {
+    writeFileSync(
+      join(outputDir, '.dtc-debug', 'fake.log'),
+      'Apple auth: asc_key present in config',
+    )
+
+    const bundlePath = await writeDebugBundle(outputDir, { reason: 'failure' })
+
+    const extracted = execSync(
+      `unzip -p "${bundlePath}" debug/fake.log 2>/dev/null || unzip -p "${bundlePath}" fake.log`,
+      {
+        encoding: 'utf8',
+      },
+    )
+    expect(extracted).toContain('[REDACTED]')
+    expect(extracted).not.toContain('asc_key')
+  })
+
+  it('scrubber redacts service_account pattern', async () => {
+    writeFileSync(
+      join(outputDir, '.dtc-debug', 'fake.log'),
+      '{"type": "service_account", "project_id": "my-proj"}',
+    )
+
+    const bundlePath = await writeDebugBundle(outputDir, { reason: 'failure' })
+
+    const extracted = execSync(
+      `unzip -p "${bundlePath}" debug/fake.log 2>/dev/null || unzip -p "${bundlePath}" fake.log`,
+      {
+        encoding: 'utf8',
+      },
+    )
+    expect(extracted).toContain('[REDACTED]')
+  })
+
+  it('scrubber redacts PEM certificate block', async () => {
+    writeFileSync(
+      join(outputDir, '.dtc-debug', 'fake.log'),
+      '-----BEGIN CERTIFICATE-----\nMIIBxxx\n-----END CERTIFICATE-----',
+    )
+
+    const bundlePath = await writeDebugBundle(outputDir, { reason: 'failure' })
+
+    const extracted = execSync(
+      `unzip -p "${bundlePath}" debug/fake.log 2>/dev/null || unzip -p "${bundlePath}" fake.log`,
+      {
+        encoding: 'utf8',
+      },
+    )
+    expect(extracted).toContain('[REDACTED]')
+    expect(extracted).not.toContain('BEGIN CERTIFICATE')
   })
 
   it('does NOT include the bundle zip itself in its own contents', async () => {
