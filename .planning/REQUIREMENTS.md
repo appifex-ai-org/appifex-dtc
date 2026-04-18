@@ -34,11 +34,11 @@
 
 ### Firebase Integration
 
-- [ ] **FIRE-01**: Generated SwiftUI apps use `@UIApplicationDelegateAdaptor` with a Firebase-configured `AppDelegate`; Firebase SDK pulled via SPM only
-- [ ] **FIRE-02**: Generated auth supports email/password, Sign In with Apple (correct hashed-nonce handling), and Google Sign In (with `REVERSED_CLIENT_ID` URL scheme auto-injected into `project.yml`)
-- [ ] **FIRE-03**: Generated data layer exposes typed Firestore `Codable` models, realtime listeners, and offline caching from the inferred `BaasSchema`
-- [ ] **FIRE-04**: New `firebase_provision` pipeline phase creates/links the Firebase project, ensures the iOS app is registered, downloads `GoogleService-Info.plist`, deploys Firestore security rules via `firebase-admin`, and seeds collections — idempotent, skippable via checkpoint
-- [ ] **FIRE-05**: Security lint blocks ship on rules that allow cross-user reads (enforces `resource.data.ownerId == request.auth.uid` ownership pattern, `deny`-all default, and passes a generated cross-user denial test)
+- [x] **FIRE-01**: Generated SwiftUI apps use `@UIApplicationDelegateAdaptor` with a Firebase-configured `AppDelegate`; Firebase SDK pulled via SPM only
+- [x] **FIRE-02**: Generated auth supports email/password, Sign In with Apple (correct hashed-nonce handling), and Google Sign In (with `REVERSED_CLIENT_ID` URL scheme auto-injected into `project.yml`)
+- [x] **FIRE-03**: Generated data layer exposes typed Firestore `Codable` models, realtime listeners, and offline caching from the inferred `BaasSchema`
+- [x] **FIRE-04**: New `firebase_provision` pipeline phase creates/links the Firebase project, ensures the iOS app is registered, downloads `GoogleService-Info.plist`, deploys Firestore security rules via `firebase-admin`, and seeds collections — idempotent, skippable via checkpoint
+- [x] **FIRE-05**: Security lint blocks ship on rules that allow cross-user reads (enforces `resource.data.ownerId == request.auth.uid` ownership pattern, `deny`-all default, and passes a generated cross-user denial test)
 
 ### TestFlight / Distribution
 
@@ -56,22 +56,22 @@
 
 ### Design Adapter Parity
 
-- [ ] **DESIGN-01**: Pencil adapter handles pathological layer names (whitespace, emoji, duplicates, reserved words) via a shared sanitization step, verified by fixture tests
-- [ ] **DESIGN-02**: Figma REST and Figma-Make adapters pass the same layer-name sanitization fixtures and produce equivalent IR
-- [ ] **DESIGN-03**: Stitch adapter passes the same layer-name sanitization fixtures and produces equivalent IR
-- [ ] **DESIGN-04**: Golden-fixture IR consistency test: one reference design round-trips through all four adapters and produces structurally equivalent `PlatformSpec` + `DesignTokens`
+- [x] **DESIGN-01**: Pencil adapter handles pathological layer names (whitespace, emoji, duplicates, reserved words) via a shared sanitization step, verified by fixture tests
+- [x] **DESIGN-02**: Figma REST and Figma-Make adapters pass the same layer-name sanitization fixtures and produce equivalent IR
+- [x] **DESIGN-03**: Stitch adapter passes the same layer-name sanitization fixtures and produces equivalent IR
+- [x] **DESIGN-04**: Golden-fixture IR consistency test: one reference design round-trips through all four adapters and produces structurally equivalent `PlatformSpec` + `DesignTokens`
 
 ### MCP / Agent Surface
 
-- [ ] **MCP-01**: MCP server exposes `dtc_firebase_provision` and `dtc_testflight_upload` tools matching the new pipeline phases
-- [ ] **MCP-02**: MCP server exposes `dtc_get_pipeline_status` returning checkpoint + phase state so agents recover context across session resets
-- [ ] **MCP-03**: Pipeline writes `.dtc-manifest.json` listing generated files (with hashes); manifest is read on subsequent runs so user-edited files are detected and preserved
+- [x] **MCP-01**: MCP server exposes `dtc_firebase_provision` and `dtc_testflight_upload` tools matching the new pipeline phases
+- [x] **MCP-02**: MCP server exposes `dtc_get_pipeline_status` returning checkpoint + phase state so agents recover context across session resets
+- [x] **MCP-03**: Pipeline writes `.dtc-manifest.json` listing generated files (with hashes); manifest is read on subsequent runs so user-edited files are detected and preserved
 
 ### Observability
 
-- [ ] **OBS-01**: Terminal UI surfaces live token + USD cost per phase and a run-total summary
-- [ ] **OBS-02**: Each run produces a structured `.dtc-report` with per-phase status, artifacts, failure details, and remediation hints
-- [ ] **OBS-03**: Failed runs export a zippable debug bundle (`.dtc-debug/bundle-<ts>.zip`) containing logs, LLM prompts, LLM outputs, and checkpoint snapshot
+- [x] **OBS-01**: Terminal UI surfaces live token + USD cost per phase and a run-total summary
+- [x] **OBS-02**: Each run produces a structured `.dtc-report` with per-phase status, artifacts, failure details, and remediation hints
+- [x] **OBS-03**: Failed runs export a zippable debug bundle (`.dtc-debug/bundle-<ts>.zip`) containing logs, LLM prompts, LLM outputs, and checkpoint snapshot
 
 ## v2 / Deferred
 
@@ -120,11 +120,11 @@
 | SETUP-02 | Phase 3 → Phase 8 (gap closure) | Verified (code-level; SETUP-04 human step pending) |
 | SETUP-03 | Phase 3 → Phase 8 (gap closure) | Verified (code-level; SETUP-04 human step pending) |
 | SETUP-04 | Phase 3 → Phase 8 (gap closure) | Verified (code-level; SETUP-04 human step pending) |
-| FIRE-01 | Phase 4 → Phase 9 (gap closure) | Pending |
-| FIRE-02 | Phase 4 → Phase 9 (gap closure) | Pending |
-| FIRE-03 | Phase 4 → Phase 9 (gap closure) | Pending |
-| FIRE-04 | Phase 4 → Phase 9 (gap closure) | Pending |
-| FIRE-05 | Phase 4 → Phase 9 (gap closure) | Pending |
+| FIRE-01 | Phase 4 → Phase 9 (gap closure) | Verified |
+| FIRE-02 | Phase 4 → Phase 9 (gap closure) | Verified |
+| FIRE-03 | Phase 4 → Phase 9 (gap closure) | Verified |
+| FIRE-04 | Phase 4 → Phase 9 (gap closure) | Verified (code-level; FIRE-04 human Firebase provisioning step pending) |
+| FIRE-05 | Phase 4 → Phase 9 (gap closure) | Verified |
 | TF-01 | Phase 5 | Pending |
 | TF-02 | Phase 5 | Pending |
 | TF-03 | Phase 5 | Pending |
@@ -133,16 +133,16 @@
 | VAL-02 | Phase 6 | Verified |
 | VAL-03 | Phase 6 | Verified |
 | VAL-04 | Phase 6 | Verified |
-| DESIGN-01 | Phase 7 → Phase 9 (gap closure) | Pending |
-| DESIGN-02 | Phase 7 → Phase 9 (gap closure) | Pending |
-| DESIGN-03 | Phase 7 → Phase 9 (gap closure) | Pending |
-| DESIGN-04 | Phase 7 → Phase 9 (gap closure) | Pending |
-| MCP-01 | Phase 7 → Phase 9 (gap closure) | Pending |
-| MCP-02 | Phase 7 → Phase 9 (gap closure) | Pending |
-| MCP-03 | Phase 7 → Phase 9 (gap closure) | Pending |
-| OBS-01 | Phase 7 → Phase 9 (gap closure) | Pending |
-| OBS-02 | Phase 7 → Phase 9 (gap closure) | Pending |
-| OBS-03 | Phase 7 → Phase 9 (gap closure) | Pending |
+| DESIGN-01 | Phase 7 → Phase 9 (gap closure) | Verified |
+| DESIGN-02 | Phase 7 → Phase 9 (gap closure) | Verified |
+| DESIGN-03 | Phase 7 → Phase 9 (gap closure) | Verified |
+| DESIGN-04 | Phase 7 → Phase 9 (gap closure) | Verified |
+| MCP-01 | Phase 7 → Phase 9 (gap closure) | Verified |
+| MCP-02 | Phase 7 → Phase 9 (gap closure) | Verified |
+| MCP-03 | Phase 7 → Phase 9 (gap closure) | Verified |
+| OBS-01 | Phase 7 → Phase 9 (gap closure) | Verified |
+| OBS-02 | Phase 7 → Phase 9 (gap closure) | Verified |
+| OBS-03 | Phase 7 → Phase 9 (gap closure) | Verified |
 
 ---
 *Last updated: 2026-04-14 after roadmap revision — Phase 1 (Open-Source Release Readiness) inserted; existing phases shifted +1; 11 new REQ-IDs added (REPO-01..04, NPM-01..02, FLOW-01, GATE-01..04); total 42 REQ-IDs*
