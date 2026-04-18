@@ -3718,6 +3718,66 @@ export async function runPipeline(
     // Phase 5 Plan 06: SwiftUI no longer emits any 'provision' row — the xcode_archive +
     // testflight_upload phase blocks (added below) own the iOS path.
 
+    // ── Phase: e2e_gate ── Phase 6 (VAL-01 D-01): between deliver and xcode_archive.
+    // Mirrors the xcode_archive structural shape: guard → started emit → handler call →
+    // checkpoint save → completed/skipped/failed emit → flushContext. On failure, the error
+    // is RECORDED (not rethrown) because D-16 says --skip-validation-gate must be able to
+    // bypass the terminal block. The e2eGatePassed flag feeds into softFailPassed below.
+    //   e2eGatePassed: true   → gate ran + passed.
+    //   e2eGatePassed: false  → gate ran + failed.
+    //   e2eGatePassed: undef  → gate did not run (non-firebase path); treated as N/A.
+    let e2eGatePassed: boolean | undefined = undefined
+    const firebaseSeeded = opts.platform === 'swiftui' && config.baas?.provider === 'firebase'
+    if (opts.platform === 'swiftui' && firebaseSeeded && !canSkipPhase('e2e_gate')) {
+      currentPhase = 'e2e_gate'
+      emit('e2e_gate', 'started', 'Running real-Firebase golden-path gate')
+      try {
+        const { runE2eGatePhase } = await import('@appifex/validate')
+        const gateResult = await runE2eGatePhase({
+          runner,
+          projectDir: outputDir,
+          platform: opts.platform,
+          appId: bundleId,
+          reportDir: `${outputDir}/.dtc-report`,
+        })
+        e2eGatePassed = true
+        checkpoint.savePhase(checkpointRunId, 'e2e_gate', {
+          status: 'completed',
+          completedAt: new Date().toISOString(),
+          flowFile: `${outputDir}/.maestro/e2e/e2e-gate.yaml`,
+          passed: true,
+          totalFlows: gateResult.passed + gateResult.failed,
+        })
+        emit(
+          'e2e_gate',
+          'completed',
+          `Golden-path flow passed (${gateResult.passed}/${gateResult.passed + gateResult.failed})`,
+        )
+        await flushContext()
+      } catch (err) {
+        e2eGatePassed = false
+        const msg = err instanceof Error ? err.message : String(err)
+        try {
+          checkpoint.savePhase(checkpointRunId, 'e2e_gate', {
+            status: 'failed',
+            error: String(err),
+            failedAt: new Date().toISOString(),
+            completedAt: new Date().toISOString(),
+            failureSummary: msg,
+          })
+        } catch (ckptErr) {
+          console.error(`[checkpoint] e2e_gate savePhase failed: ${String(ckptErr)}`)
+        }
+        emit('e2e_gate', 'failed', `Gate failed: ${msg}`)
+        await flushContext()
+        // Phase 6 (VAL-04 D-16): DO NOT rethrow. The terminal-gate block below decides whether
+        // this failure blocks xcode_archive, using hardFailPassed + softFailPassed + skipValidationGate.
+      }
+    } else if (opts.platform === 'swiftui' && firebaseSeeded && canSkipPhase('e2e_gate')) {
+      emit('e2e_gate', 'skipped', 'skipped (checkpoint complete)')
+      e2eGatePassed = true
+    }
+
     // ── Phase: xcode_archive ── (Phase 5 TF-01 D-02: after deliver, before report).
     // Mirrors the firebase_provision structural shape: started emit → handler call →
     // checkpoint save → completed/skipped/failed emit → rethrow on error.
@@ -3727,10 +3787,42 @@ export async function runPipeline(
       config.apple.ascIssuerId &&
       config.apple.ascKeyPath
     )
+
+    // Phase 6 (VAL-04 D-15): HARD-FAIL — security-lint + semgrep, no override.
+    // Derived from fields that actually exist on the pipeline's data shapes. Defaults are
+    // FAIL-CLOSED: a missing signal means "block ship", never "ship anyway". Using `?? true`
+    // here would silently defeat the hard-fail invariant and is explicitly forbidden.
+    //
+    // Semgrep pass predicate: ValidationResult.security is SemgrepResult | undefined.
+    //   `security !== undefined && security.failed === 0`  → passed.
+    //   `security === undefined` (runSecurity disabled/skipped)  → NOT passed (fail-closed).
+    const semgrepPassed = validation?.security !== undefined && validation.security.failed === 0
+    //
+    // Security-lint pass predicate: per Phase 4 D-13, security-lint runs inside
+    // firebase_provision and throws SecurityLintError on failure, aborting the pipeline BEFORE
+    // deliver. If control flow has reached this terminal gate AND firebase is the BaaS
+    // provider, security-lint passed. For non-Firebase runs, security-lint is N/A → does not
+    // block.
+    const securityLintPassed = config.baas?.provider !== 'firebase' || true
+    //   ^ The `|| true` is intentional. For firebase runs, reaching this line IS the proof.
+    //   Explicit form documents intent for future reviewers.
+    //
+    const hardFailPassed = semgrepPassed && securityLintPassed
+
+    // Phase 6 (VAL-04 D-16): SOFT-FAIL — bypassable with --skip-validation-gate.
+    // `report.summary.allGreen` already encodes Maestro + unit + parity checks.
+    // e2eGatePassed:
+    //   true   → gate ran and passed.
+    //   false  → gate ran and failed.
+    //   undefined → gate did not run (non-firebase path); treated as pass (soft-fail N/A).
+    const softFailPassed = report.summary.allGreen && e2eGatePassed !== false
+
+    const gatePassed = hardFailPassed && (softFailPassed || opts.skipValidationGate === true)
+
     if (
       opts.platform === 'swiftui' &&
       hasFullAscCreds &&
-      report.summary.allGreen &&
+      gatePassed &&
       !canSkipPhase('xcode_archive')
     ) {
       currentPhase = 'xcode_archive'
@@ -3783,19 +3875,29 @@ export async function runPipeline(
         'skipped',
         'Apple TestFlight credentials not configured — run `dtc setup apple`',
       )
-    } else if (opts.platform === 'swiftui' && !report.summary.allGreen) {
-      emit('xcode_archive', 'skipped', 'Skipped — tests not all green')
+    } else if (opts.platform === 'swiftui' && !hardFailPassed) {
+      // Phase 6 (VAL-04 D-15): hard-fail — security/semgrep failures NEVER bypassable.
+      emit('xcode_archive', 'skipped', 'Skipped — security hard-fail (no override)')
+    } else if (opts.platform === 'swiftui' && !softFailPassed && !opts.skipValidationGate) {
+      // Phase 6 (VAL-04 D-16): soft-fail — user can override with --skip-validation-gate.
+      emit(
+        'xcode_archive',
+        'skipped',
+        'Skipped — validation failed. Re-run with --skip-validation-gate to ship anyway.',
+      )
     } else if (opts.platform === 'swiftui' && canSkipPhase('xcode_archive')) {
       emit('xcode_archive', 'skipped', 'skipped (checkpoint complete)')
     }
 
     // ── Phase: testflight_upload ── (Phase 5 TF-04 D-02, respects --skip-testflight D-04).
     // D-17 soft-fail: completed_with_warnings → emit 'completed' (NOT 'failed'), pipeline exits 0.
+    // Phase 6 (VAL-04 D-15 D-16): mirrors xcode_archive gate — hard-fail always blocks,
+    // soft-fail bypassable with --skip-validation-gate.
     if (
       opts.platform === 'swiftui' &&
       !opts.skipTestflight &&
       hasFullAscCreds &&
-      report.summary.allGreen &&
+      gatePassed &&
       !canSkipPhase('testflight_upload')
     ) {
       currentPhase = 'testflight_upload'
@@ -3877,8 +3979,16 @@ export async function runPipeline(
       emit('testflight_upload', 'skipped', 'skipped (--skip-testflight)')
     } else if (opts.platform === 'swiftui' && !hasFullAscCreds) {
       emit('testflight_upload', 'skipped', 'ASC credentials not configured — run `dtc setup apple`')
-    } else if (opts.platform === 'swiftui' && !report.summary.allGreen) {
-      emit('testflight_upload', 'skipped', 'Skipped — tests not all green')
+    } else if (opts.platform === 'swiftui' && !hardFailPassed) {
+      // Phase 6 (VAL-04 D-15): hard-fail propagates to testflight_upload too.
+      emit('testflight_upload', 'skipped', 'Skipped — security hard-fail (no override)')
+    } else if (opts.platform === 'swiftui' && !softFailPassed && !opts.skipValidationGate) {
+      // Phase 6 (VAL-04 D-16): soft-fail propagates to testflight_upload too.
+      emit(
+        'testflight_upload',
+        'skipped',
+        'Skipped — validation failed. Re-run with --skip-validation-gate to ship anyway.',
+      )
     } else if (opts.platform === 'swiftui' && canSkipPhase('testflight_upload')) {
       emit('testflight_upload', 'skipped', 'skipped (checkpoint complete)')
     }
