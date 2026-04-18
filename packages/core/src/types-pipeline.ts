@@ -20,6 +20,7 @@ export type PhaseId =
   | 'security'
   | 'fix'
   | 'deliver'
+  | 'e2e_gate' // Phase 6 (VAL-01 D-01): real-Firebase e2e gate before TestFlight
   | 'xcode_archive' // Phase 5 (TF-01 D-02): after deliver, before report
   | 'testflight_upload' // Phase 5 (TF-01 D-02): after xcode_archive, before report
   | 'report'
@@ -113,6 +114,16 @@ export type CheckpointData = {
   security: CheckpointBase | CheckpointFailed | CheckpointSkipped
   fix: CheckpointBase | CheckpointFailed | CheckpointSkipped
   deliver: CheckpointBase | CheckpointFailed | CheckpointSkipped
+  // Phase 6 (VAL-01 D-01): e2e_gate checkpoint — stores flow file + pass/fail state for idempotent resume
+  e2e_gate:
+    | (CheckpointBase & {
+        flowFile?: string
+        passed?: boolean
+        totalFlows?: number
+        failureSummary?: string
+      })
+    | CheckpointFailed
+    | CheckpointSkipped
   // Phase 5 (TF-01 D-01): xcode_archive checkpoint — stores .ipa path + version for idempotent resume (D-16)
   xcode_archive:
     | (CheckpointBase & {
