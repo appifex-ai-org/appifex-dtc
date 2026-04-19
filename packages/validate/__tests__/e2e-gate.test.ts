@@ -99,7 +99,9 @@ describe('runE2eGatePhase — Phase 6 (VAL-01 D-01 D-04 D-06)', () => {
     })
     const yamlWrite = runner.writes.find((w) => w.path.endsWith('e2e-gate.yaml'))
     expect(yamlWrite).toBeDefined()
-    expect(yamlWrite!.content).toMatch(/extendedWaitUntil[\s\S]+timeout:\s*(1[5-9]\d{3}|[2-9]\d{4})/)
+    expect(yamlWrite!.content).toMatch(
+      /extendedWaitUntil[\s\S]+timeout:\s*(1[5-9]\d{3}|[2-9]\d{4})/,
+    )
   })
 
   it('Test 4: throws E2eGateError (extends CliError) when Maestro fails', async () => {

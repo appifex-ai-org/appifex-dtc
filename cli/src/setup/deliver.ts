@@ -79,9 +79,7 @@ export async function runDeliverSection(
       } catch (err) {
         s.stop(chalk.red('Failed to create repo'))
         const msg =
-          err instanceof Error
-            ? ((err as { stderr?: string }).stderr ?? err.message)
-            : String(err)
+          err instanceof Error ? ((err as { stderr?: string }).stderr ?? err.message) : String(err)
         throw new Error(`gh repo create failed: ${msg}`)
       }
     } else {

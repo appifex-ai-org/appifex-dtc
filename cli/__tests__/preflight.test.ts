@@ -78,7 +78,10 @@ describe('runPreflight — Phase 03 Plan 02 (SETUP-02)', () => {
 
     const lines: string[] = []
     const buf = {
-      write: (data: string) => { lines.push(data); return true },
+      write: (data: string) => {
+        lines.push(data)
+        return true
+      },
     } as unknown as NodeJS.WritableStream
 
     const config = {
@@ -86,7 +89,9 @@ describe('runPreflight — Phase 03 Plan 02 (SETUP-02)', () => {
       design: { tool: 'pencil' as const },
       runner: { type: 'local' as const },
     }
-    await expect(runPreflight('swiftui', config, { deep: false, output: buf })).rejects.toThrow(PreflightError)
+    await expect(runPreflight('swiftui', config, { deep: false, output: buf })).rejects.toThrow(
+      PreflightError,
+    )
     const combined = lines.join('')
     expect(combined).toMatch(/\[MISSING\].*llm/i)
   })
@@ -105,7 +110,10 @@ describe('runPreflight — Phase 03 Plan 02 (SETUP-02)', () => {
 
     const lines: string[] = []
     const buf = {
-      write: (data: string) => { lines.push(data); return true },
+      write: (data: string) => {
+        lines.push(data)
+        return true
+      },
     } as unknown as NodeJS.WritableStream
 
     const config = {
@@ -113,7 +121,9 @@ describe('runPreflight — Phase 03 Plan 02 (SETUP-02)', () => {
       design: { tool: 'pencil' as const },
       runner: { type: 'local' as const },
     }
-    await expect(runPreflight('swiftui', config, { deep: false, output: buf })).resolves.not.toThrow()
+    await expect(
+      runPreflight('swiftui', config, { deep: false, output: buf }),
+    ).resolves.not.toThrow()
     const combined = lines.join('')
     expect(combined).toMatch(/\[OK\].*llm/i)
     expect(combined).toMatch(/\[OK\].*asc/i)
@@ -138,7 +148,10 @@ describe('runPreflight — Phase 03 Plan 02 (SETUP-02)', () => {
 
     const lines: string[] = []
     const buf = {
-      write: (data: string) => { lines.push(data); return true },
+      write: (data: string) => {
+        lines.push(data)
+        return true
+      },
     } as unknown as NodeJS.WritableStream
 
     const config = {
@@ -146,7 +159,9 @@ describe('runPreflight — Phase 03 Plan 02 (SETUP-02)', () => {
       design: { tool: 'pencil' as const },
       runner: { type: 'local' as const },
     }
-    await expect(runPreflight('swiftui', config, { deep: true, output: buf })).resolves.not.toThrow()
+    await expect(
+      runPreflight('swiftui', config, { deep: true, output: buf }),
+    ).resolves.not.toThrow()
     const combined = lines.join('')
     expect(combined).toMatch(/\[OK\].*llm/i)
     // Should note transient nature
@@ -184,7 +199,10 @@ describe('runPreflight — Phase 03 Plan 02 (SETUP-02)', () => {
 
     const lines: string[] = []
     const buf = {
-      write: (data: string) => { lines.push(data); return true },
+      write: (data: string) => {
+        lines.push(data)
+        return true
+      },
     } as unknown as NodeJS.WritableStream
 
     const config = {
@@ -214,9 +232,7 @@ describe('runPreflight — Phase 03 Plan 02 (SETUP-02)', () => {
     mockPrereqsPass()
     ;(runCredentialChecks as ReturnType<typeof vi.fn>).mockResolvedValue({
       hasBlockingFailures: true,
-      checks: [
-        { name: 'llm', severity: 'critical', status: 'MISSING', message: 'no api key' },
-      ],
+      checks: [{ name: 'llm', severity: 'critical', status: 'MISSING', message: 'no api key' }],
     })
 
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {

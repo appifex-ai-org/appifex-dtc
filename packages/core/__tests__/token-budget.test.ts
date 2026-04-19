@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { TokenBudget } from '../src/token-budget.js'
 
-
 describe('TokenBudget', () => {
   it('tracks total usage across phases', () => {
     const budget = new TokenBudget({ total: 100_000 })
@@ -121,7 +120,7 @@ describe('TokenBudget — Phase 7 (OBS-01 D-14) input/output breakdown + cost', 
   it('phaseCostUsd uses pricing table', () => {
     const b = new TokenBudget({ total: 1_000_000 })
     b.consumeBreakdown('codegen', { input: 1_000_000, output: 0 })
-    expect(b.phaseCostUsd('codegen', 'claude-sonnet-4-6')).toBe(3.00)
+    expect(b.phaseCostUsd('codegen', 'claude-sonnet-4-6')).toBe(3.0)
   })
 
   it('phaseCostUsd returns null for unknown model', () => {
@@ -132,9 +131,9 @@ describe('TokenBudget — Phase 7 (OBS-01 D-14) input/output breakdown + cost', 
 
   it('totalCostUsd sums per-phase costs', () => {
     const b = new TokenBudget({ total: 10_000_000 })
-    b.consumeBreakdown('codegen', { input: 1_000_000, output: 0 })    // $3.00
-    b.consumeBreakdown('fix',     { input: 500_000,   output: 100_000 }) // $1.50 + $1.50 = $3.00
-    expect(b.totalCostUsd('claude-sonnet-4-6')).toBeCloseTo(6.00, 2)
+    b.consumeBreakdown('codegen', { input: 1_000_000, output: 0 }) // $3.00
+    b.consumeBreakdown('fix', { input: 500_000, output: 100_000 }) // $1.50 + $1.50 = $3.00
+    expect(b.totalCostUsd('claude-sonnet-4-6')).toBeCloseTo(6.0, 2)
   })
 
   it('totalCostUsd returns null when any phase would be null', () => {
@@ -145,8 +144,8 @@ describe('TokenBudget — Phase 7 (OBS-01 D-14) input/output breakdown + cost', 
 
   it('does not break existing consume()', () => {
     const b = new TokenBudget({ total: 1_000_000 })
-    b.consume('design', 5_000)                              // legacy call
-    b.consumeBreakdown('codegen', { input: 10_000, output: 5_000 })  // new call
+    b.consume('design', 5_000) // legacy call
+    b.consumeBreakdown('codegen', { input: 10_000, output: 5_000 }) // new call
     expect(b.phaseUsed('design')).toBe(5_000)
     expect(b.phaseUsed('codegen')).toBe(15_000)
     expect(b.totalUsed).toBe(20_000)

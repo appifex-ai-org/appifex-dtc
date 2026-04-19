@@ -8,7 +8,10 @@ import { mkdir as mkdirAsync, writeFile as writeFileAsync } from 'node:fs/promis
 import { formatMarkdown } from '@appifex/report'
 
 // Minimal helper that mirrors the pipeline's writeReportFiles function.
-async function writeReportFiles(outputDir: string, report: import('@appifex/report').PipelineReport): Promise<void> {
+async function writeReportFiles(
+  outputDir: string,
+  report: import('@appifex/report').PipelineReport,
+): Promise<void> {
   const reportDir = join(outputDir, '.dtc-report')
   await mkdirAsync(reportDir, { recursive: true })
   await writeFileAsync(join(reportDir, 'report.json'), formatJson(report), 'utf-8')
@@ -66,7 +69,9 @@ describe('pipeline-report-writes (OBS-02 pipeline write-site)', () => {
       expect(Array.isArray(parsed['platformReports'])).toBe(true)
       // costUsdTotal is optional — may be undefined/null/number
       if ('costUsdTotal' in parsed) {
-        expect(parsed['costUsdTotal'] === null || typeof parsed['costUsdTotal'] === 'number').toBe(true)
+        expect(parsed['costUsdTotal'] === null || typeof parsed['costUsdTotal'] === 'number').toBe(
+          true,
+        )
       }
     } finally {
       rmSync(outputDir, { recursive: true, force: true })

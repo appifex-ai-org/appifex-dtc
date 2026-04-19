@@ -6,15 +6,8 @@ import type { DtcConfig } from '@appifex/core'
 import { assertNotCancelled } from './shared.js'
 import { existsSync } from 'node:fs'
 
-export async function runOauthSection(
-  configDir: string,
-  existingConfig: DtcConfig,
-): Promise<void> {
-  p.log.info(
-    chalk.dim(
-      'Google Sign In is auto-configured via GoogleService-Info.plist (D-06).',
-    ),
-  )
+export async function runOauthSection(configDir: string, existingConfig: DtcConfig): Promise<void> {
+  p.log.info(chalk.dim('Google Sign In is auto-configured via GoogleService-Info.plist (D-06).'))
 
   const wantAppleSignIn = await p.confirm({
     message: 'Configure Apple Sign In? (optional — not required for TestFlight)',
@@ -53,7 +46,9 @@ export async function runOauthSection(
         validate: (v) => {
           if (v.trim().length === 0) return 'Path is required'
           if (!existsSync(v)) {
-            p.log.warn(chalk.yellow(`Warning: .p8 file not found at ${v} — you can update this later.`))
+            p.log.warn(
+              chalk.yellow(`Warning: .p8 file not found at ${v} — you can update this later.`),
+            )
           }
           return undefined
         },

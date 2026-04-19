@@ -8,10 +8,30 @@ vi.mock('@appifex/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@appifex/core')>()
   return {
     ...actual,
-    checkPrerequisites: vi.fn().mockReturnValue({ platform: 'swiftui', checks: [], hasCriticalFailures: false, hasWarnings: false }),
-    checkFirebaseTools: vi.fn().mockReturnValue({ name: 'firebase CLI', severity: 'info', status: 'pass', message: 'firebase-tools 13.0.0' }),
-    checkServiceAccountJson: vi.fn().mockResolvedValue({ name: 'firebase service account', severity: 'warning', status: 'skip', message: 'not configured' }),
-    checkAscP8: vi.fn().mockResolvedValue({ name: 'ASC API key', severity: 'warning', status: 'skip', message: 'not configured' }),
+    checkPrerequisites: vi.fn().mockReturnValue({
+      platform: 'swiftui',
+      checks: [],
+      hasCriticalFailures: false,
+      hasWarnings: false,
+    }),
+    checkFirebaseTools: vi.fn().mockReturnValue({
+      name: 'firebase CLI',
+      severity: 'info',
+      status: 'pass',
+      message: 'firebase-tools 13.0.0',
+    }),
+    checkServiceAccountJson: vi.fn().mockResolvedValue({
+      name: 'firebase service account',
+      severity: 'warning',
+      status: 'skip',
+      message: 'not configured',
+    }),
+    checkAscP8: vi.fn().mockResolvedValue({
+      name: 'ASC API key',
+      severity: 'warning',
+      status: 'skip',
+      message: 'not configured',
+    }),
     runCredentialChecks: vi.fn().mockResolvedValue({
       checks: [{ name: 'llm', severity: 'critical', status: 'OK', message: 'live probe passed' }],
       hasBlockingFailures: false,
@@ -29,10 +49,16 @@ vi.mock('@appifex/core', async (importOriginal) => {
 
 // ── Helper: capture runDoctor output to a buffer ───────────────────────────
 
-async function captureDoctor(opts: { deep?: boolean; configDir?: string }): Promise<{ output: string; error: Error | null }> {
+async function captureDoctor(opts: {
+  deep?: boolean
+  configDir?: string
+}): Promise<{ output: string; error: Error | null }> {
   const chunks: string[] = []
   const fakeStream = {
-    write: (chunk: string) => { chunks.push(chunk); return true },
+    write: (chunk: string) => {
+      chunks.push(chunk)
+      return true
+    },
   } as unknown as NodeJS.WritableStream
 
   const { runDoctor } = await import('../src/doctor.js')
@@ -58,7 +84,8 @@ describe('runDoctor — shallow tier (no --deep)', () => {
   // Test 1: shallow calls checkPrerequisites + checkFirebaseTools + checkServiceAccountJson + checkAscP8 but NOT fetch
   it('Test 1: shallow calls shallow check functions, not fetch', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
-    const { checkPrerequisites, checkFirebaseTools, checkServiceAccountJson, checkAscP8 } = await import('@appifex/core')
+    const { checkPrerequisites, checkFirebaseTools, checkServiceAccountJson, checkAscP8 } =
+      await import('@appifex/core')
 
     await captureDoctor({ deep: false })
 
@@ -79,7 +106,9 @@ describe('runDoctor — shallow tier (no --deep)', () => {
 
   // Test 6 (MCP-safe): runDoctor never calls process.exit
   it('Test 6 (MCP-safe): never calls process.exit', async () => {
-    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((_code?: number | string) => { throw new Error('process.exit called') })
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((_code?: number | string) => {
+      throw new Error('process.exit called')
+    })
     try {
       await captureDoctor({ deep: false })
       expect(exitSpy).not.toHaveBeenCalled()
@@ -101,7 +130,8 @@ describe('runDoctor — deep tier (--deep)', () => {
 
   // Test 2: --deep calls same shallow functions AND runCredentialChecks
   it('Test 2: --deep calls shallow functions AND runCredentialChecks', async () => {
-    const { checkFirebaseTools, checkServiceAccountJson, checkAscP8, runCredentialChecks } = await import('@appifex/core')
+    const { checkFirebaseTools, checkServiceAccountJson, checkAscP8, runCredentialChecks } =
+      await import('@appifex/core')
 
     await captureDoctor({ deep: true })
 

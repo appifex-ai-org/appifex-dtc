@@ -40,7 +40,13 @@ function createMockRunner(
       pattern.endsWith('*.xcodeproj') ? (opts.staleProjs ?? []) : [],
     exec: async (cmd: string, args: string[]) => {
       execCalls.push({ cmd, args })
-      return { command: `${cmd} ${args.join(' ')}`, exitCode: 0, stdout: '', stderr: '', duration: 0 }
+      return {
+        command: `${cmd} ${args.join(' ')}`,
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        duration: 0,
+      }
     },
     capabilities: {
       hasMaestro: false,

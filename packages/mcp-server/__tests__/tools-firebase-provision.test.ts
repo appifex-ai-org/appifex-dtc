@@ -20,12 +20,20 @@ import { handleFirebaseProvision } from '../src/tools/firebase-provision.js'
 import { runFirebaseProvision } from '@appifex/baas'
 
 const mockRunner = {
-  exec: vi.fn().mockResolvedValue({ exitCode: 0, stdout: '', stderr: '', duration: 0, command: '' }),
+  exec: vi
+    .fn()
+    .mockResolvedValue({ exitCode: 0, stdout: '', stderr: '', duration: 0, command: '' }),
   readFile: vi.fn().mockResolvedValue(''),
   writeFile: vi.fn().mockResolvedValue(undefined),
   exists: vi.fn().mockResolvedValue(true),
   glob: vi.fn().mockResolvedValue([]),
-  capabilities: { hasMaestro: false, hasXcode: false, hasNode: true, hasSemgrep: false, platform: 'darwin' as const },
+  capabilities: {
+    hasMaestro: false,
+    hasXcode: false,
+    hasNode: true,
+    hasSemgrep: false,
+    platform: 'darwin' as const,
+  },
 }
 
 describe('handleFirebaseProvision (MCP-01)', () => {
@@ -39,11 +47,7 @@ describe('handleFirebaseProvision (MCP-01)', () => {
   it('returns isError:true when config.firebase.projectId missing', async () => {
     const config = {} as import('@appifex/core').DtcConfig
 
-    const result = await handleFirebaseProvision(
-      { projectDir: tmpDir },
-      mockRunner,
-      config,
-    )
+    const result = await handleFirebaseProvision({ projectDir: tmpDir }, mockRunner, config)
 
     expect(result.isError).toBe(true)
     expect(result.text).toMatch(/firebase.*projectId|projectId.*missing|firebase.*config/i)
@@ -54,11 +58,7 @@ describe('handleFirebaseProvision (MCP-01)', () => {
       firebase: { projectId: 'test-project-id' },
     } as unknown as import('@appifex/core').DtcConfig
 
-    const result = await handleFirebaseProvision(
-      { projectDir: tmpDir },
-      mockRunner,
-      config,
-    )
+    const result = await handleFirebaseProvision({ projectDir: tmpDir }, mockRunner, config)
 
     expect(result.isError).toBe(true)
     expect(result.text).toMatch(/serviceAccountKeyPath|service.account/i)

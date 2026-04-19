@@ -80,10 +80,7 @@ export async function runTestFlightUploadPhase(
     keyPath: apple.ascKeyPath,
   })
 
-  if (
-    !upload.success &&
-    upload.errors.some((e) => isDuplicateVersionError(e.itmsCode ?? null))
-  ) {
+  if (!upload.success && upload.errors.some((e) => isDuplicateVersionError(e.itmsCode ?? null))) {
     // Duplicate-version → re-query ASC max, bump +1, retry once.
     const freshNext = await computeNextBuildNumber(ascOpts, apple.ascAppId)
     currentBuildNumber = freshNext
@@ -98,10 +95,7 @@ export async function runTestFlightUploadPhase(
       issuerId: apple.ascIssuerId,
       keyPath: apple.ascKeyPath,
     })
-    if (
-      !upload.success &&
-      upload.errors.some((e) => isDuplicateVersionError(e.itmsCode ?? null))
-    ) {
+    if (!upload.success && upload.errors.some((e) => isDuplicateVersionError(e.itmsCode ?? null))) {
       // Second conflict — hard-fail per D-09.
       throw new TestFlightError(
         `altool upload failed twice with duplicate-version: another dtc run may have uploaded build ${currentBuildNumber}. Re-run dtc to continue.`,

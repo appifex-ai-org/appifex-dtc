@@ -40,10 +40,7 @@ beforeEach(() => {
 describe('computeNextBuildNumber', () => {
   it('returns "1" when getLatestBuild returns null', async () => {
     mockFetch.mockResolvedValueOnce(jsonRes({ data: [] }))
-    const next = await computeNextBuildNumber(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      '123',
-    )
+    const next = await computeNextBuildNumber({ creds: STUB_CREDS, fetchImpl: mockFetch }, '123')
     expect(next).toBe('1')
   })
 
@@ -64,10 +61,7 @@ describe('computeNextBuildNumber', () => {
         ],
       }),
     )
-    const next = await computeNextBuildNumber(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      '123',
-    )
+    const next = await computeNextBuildNumber({ creds: STUB_CREDS, fetchImpl: mockFetch }, '123')
     expect(next).toBe('43')
   })
 
@@ -112,21 +106,13 @@ describe('findBuildByVersion', () => {
         ],
       }),
     )
-    const build = await findBuildByVersion(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      '123',
-      '47',
-    )
+    const build = await findBuildByVersion({ creds: STUB_CREDS, fetchImpl: mockFetch }, '123', '47')
     expect(build?.id).toBe('b47')
   })
 
   it('returns null when data is empty', async () => {
     mockFetch.mockResolvedValueOnce(jsonRes({ data: [] }))
-    const build = await findBuildByVersion(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      '123',
-      '99',
-    )
+    const build = await findBuildByVersion({ creds: STUB_CREDS, fetchImpl: mockFetch }, '123', '99')
     expect(build).toBeNull()
   })
 })

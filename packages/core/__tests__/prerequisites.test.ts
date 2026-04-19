@@ -2,7 +2,12 @@
 // so hermetic CI (no ~/.dtc/config.json, no ANTHROPIC_API_KEY) can start the pipeline.
 // Phase 03 Plan 05 (SETUP-03, D-11): tests for checkFirebaseTools, checkServiceAccountJson, checkAscP8.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { checkCriticalPrerequisites, checkFirebaseTools, checkServiceAccountJson, checkAscP8 } from '../src/prerequisites.js'
+import {
+  checkCriticalPrerequisites,
+  checkFirebaseTools,
+  checkServiceAccountJson,
+  checkAscP8,
+} from '../src/prerequisites.js'
 import type { DtcConfig } from '../src/types.js'
 import { writeFile, rm, mkdtemp } from 'node:fs/promises'
 import { generateKeyPairSync } from 'node:crypto'
@@ -120,11 +125,14 @@ describe('checkServiceAccountJson', () => {
   // Test 4: valid service-account JSON
   it('returns pass with clientEmail for valid service-account JSON', async () => {
     const saPath = join(tmpDir, 'sa.json')
-    await writeFile(saPath, JSON.stringify({
-      type: 'service_account',
-      client_email: 'test@my-project.iam.gserviceaccount.com',
-      private_key: '-----BEGIN PRIVATE KEY-----\nfake\n-----END PRIVATE KEY-----\n',
-    }))
+    await writeFile(
+      saPath,
+      JSON.stringify({
+        type: 'service_account',
+        client_email: 'test@my-project.iam.gserviceaccount.com',
+        private_key: '-----BEGIN PRIVATE KEY-----\nfake\n-----END PRIVATE KEY-----\n',
+      }),
+    )
     const check = await checkServiceAccountJson(saPath)
     expect(check.status).toBe('pass')
     expect(check.message).toContain('test@my-project.iam.gserviceaccount.com')

@@ -30,13 +30,23 @@ function makeConfig(overrides: Record<string, unknown> = {}): import('@appifex/c
 }
 
 /** Success spawnSync result */
-function okResult(stdout = '{}', stderr = ''): ReturnType<typeof import('node:child_process').spawnSync> {
-  return { status: 0, stdout, stderr, pid: 1, output: [], signal: null } as ReturnType<typeof import('node:child_process').spawnSync>
+function okResult(
+  stdout = '{}',
+  stderr = '',
+): ReturnType<typeof import('node:child_process').spawnSync> {
+  return { status: 0, stdout, stderr, pid: 1, output: [], signal: null } as ReturnType<
+    typeof import('node:child_process').spawnSync
+  >
 }
 
 /** Failure spawnSync result */
-function failResult(stderr = 'error', stdout = ''): ReturnType<typeof import('node:child_process').spawnSync> {
-  return { status: 1, stdout, stderr, pid: 1, output: [], signal: null } as ReturnType<typeof import('node:child_process').spawnSync>
+function failResult(
+  stderr = 'error',
+  stdout = '',
+): ReturnType<typeof import('node:child_process').spawnSync> {
+  return { status: 1, stdout, stderr, pid: 1, output: [], signal: null } as ReturnType<
+    typeof import('node:child_process').spawnSync
+  >
 }
 
 const CREATE_JSON = JSON.stringify({ result: { projectId: 'coffee-tracker-a1b2' } })
@@ -91,13 +101,13 @@ describe('runFirebaseSection', () => {
     const { spawnSync } = await import('node:child_process')
     const { text } = await import('@clack/prompts')
     vi.mocked(text)
-      .mockResolvedValueOnce('my-app-a1b2')  // projectId
-      .mockResolvedValueOnce('com.appifex.myapp')  // bundleId
+      .mockResolvedValueOnce('my-app-a1b2') // projectId
+      .mockResolvedValueOnce('com.appifex.myapp') // bundleId
 
     // login:list fails, login --no-localhost also fails
     vi.mocked(spawnSync)
-      .mockReturnValueOnce(failResult('not logged in'))  // login:list
-      .mockReturnValueOnce(failResult('login failed'))   // login --no-localhost
+      .mockReturnValueOnce(failResult('not logged in')) // login:list
+      .mockReturnValueOnce(failResult('login failed')) // login --no-localhost
 
     const { ConfigError } = await import('@appifex/core')
     const { runFirebaseSection } = await import('../src/setup/firebase.js')
@@ -107,9 +117,11 @@ describe('runFirebaseSection', () => {
     ).rejects.toThrow(ConfigError)
 
     // Verify login was invoked with stdio: 'inherit' (Test 10 overlap)
-    const loginCall = vi.mocked(spawnSync).mock.calls.find(
-      (c) => Array.isArray(c[1]) && c[1].includes('login') && !c[1].includes('login:list'),
-    )
+    const loginCall = vi
+      .mocked(spawnSync)
+      .mock.calls.find(
+        (c) => Array.isArray(c[1]) && c[1].includes('login') && !c[1].includes('login:list'),
+      )
     expect(loginCall).toBeDefined()
     expect((loginCall![2] as { stdio?: unknown }).stdio).toBe('inherit')
   })
@@ -127,10 +139,10 @@ describe('runFirebaseSection', () => {
       .mockResolvedValueOnce('com.appifex.coffeetracker')
 
     vi.mocked(spawnSync)
-      .mockReturnValueOnce(okResult('sevenray@gmail.com'))  // login:list
-      .mockReturnValueOnce(okResult(CREATE_JSON))            // projects:create
-      .mockReturnValueOnce(okResult(APP_JSON))               // apps:create
-      .mockReturnValueOnce(okResult())                       // apps:sdkconfig
+      .mockReturnValueOnce(okResult('sevenray@gmail.com')) // login:list
+      .mockReturnValueOnce(okResult(CREATE_JSON)) // projects:create
+      .mockReturnValueOnce(okResult(APP_JSON)) // apps:create
+      .mockReturnValueOnce(okResult()) // apps:sdkconfig
 
     const { loadConfig, saveConfig } = await import('@appifex/core')
     const existingCfg = makeConfig()
@@ -159,8 +171,8 @@ describe('runFirebaseSection', () => {
       .mockResolvedValueOnce('com.appifex.coffeetracker')
 
     vi.mocked(spawnSync)
-      .mockReturnValueOnce(okResult('sevenray@gmail.com'))  // login:list
-      .mockReturnValueOnce(failResult('Project ID already exists'))  // projects:create
+      .mockReturnValueOnce(okResult('sevenray@gmail.com')) // login:list
+      .mockReturnValueOnce(failResult('Project ID already exists')) // projects:create
 
     const { ConfigError } = await import('@appifex/core')
     const { runFirebaseSection } = await import('../src/setup/firebase.js')
@@ -187,15 +199,13 @@ describe('runFirebaseSection', () => {
 
     const { spawnSync } = await import('node:child_process')
     const { text } = await import('@clack/prompts')
-    vi.mocked(text)
-      .mockResolvedValueOnce('my-app-a1b2')
-      .mockResolvedValueOnce('com.appifex.myapp')
+    vi.mocked(text).mockResolvedValueOnce('my-app-a1b2').mockResolvedValueOnce('com.appifex.myapp')
 
     vi.mocked(spawnSync)
-      .mockReturnValueOnce(okResult('user@example.com'))  // login:list
-      .mockReturnValueOnce(okResult(CREATE_JSON))          // projects:create
-      .mockReturnValueOnce(okResult(APP_JSON))             // apps:create IOS
-      .mockReturnValueOnce(okResult())                     // apps:sdkconfig
+      .mockReturnValueOnce(okResult('user@example.com')) // login:list
+      .mockReturnValueOnce(okResult(CREATE_JSON)) // projects:create
+      .mockReturnValueOnce(okResult(APP_JSON)) // apps:create IOS
+      .mockReturnValueOnce(okResult()) // apps:sdkconfig
 
     const { saveConfig } = await import('@appifex/core')
     await saveConfig(configDir, makeConfig())
@@ -224,9 +234,7 @@ describe('runFirebaseSection', () => {
 
     const { spawnSync } = await import('node:child_process')
     const { text } = await import('@clack/prompts')
-    vi.mocked(text)
-      .mockResolvedValueOnce('my-app-a1b2')
-      .mockResolvedValueOnce('com.appifex.myapp')
+    vi.mocked(text).mockResolvedValueOnce('my-app-a1b2').mockResolvedValueOnce('com.appifex.myapp')
 
     vi.mocked(spawnSync)
       .mockReturnValueOnce(okResult('user@example.com'))
@@ -246,9 +254,9 @@ describe('runFirebaseSection', () => {
     expect(updated.firebase?.plistPath).toBe(expectedPlist)
 
     // Verify spawnSync was called with the correct plist path
-    const sdkconfigCall = vi.mocked(spawnSync).mock.calls.find(
-      (c) => Array.isArray(c[1]) && c[1].includes('apps:sdkconfig'),
-    )
+    const sdkconfigCall = vi
+      .mocked(spawnSync)
+      .mock.calls.find((c) => Array.isArray(c[1]) && c[1].includes('apps:sdkconfig'))
     expect(sdkconfigCall).toBeDefined()
     expect(sdkconfigCall![1]).toContain(expectedPlist)
   })
@@ -305,12 +313,14 @@ describe('runFirebaseSection', () => {
     const { text } = await import('@clack/prompts')
     // User overrides projectId
     vi.mocked(text)
-      .mockResolvedValueOnce('my-custom-project-id')  // user-overridden projectId
-      .mockResolvedValueOnce('com.company.myapp')      // bundleId
+      .mockResolvedValueOnce('my-custom-project-id') // user-overridden projectId
+      .mockResolvedValueOnce('com.company.myapp') // bundleId
 
     vi.mocked(spawnSync)
       .mockReturnValueOnce(okResult('user@example.com'))
-      .mockReturnValueOnce(okResult(JSON.stringify({ result: { projectId: 'my-custom-project-id' } })))
+      .mockReturnValueOnce(
+        okResult(JSON.stringify({ result: { projectId: 'my-custom-project-id' } })),
+      )
       .mockReturnValueOnce(okResult(APP_JSON))
       .mockReturnValueOnce(okResult())
 
@@ -323,9 +333,9 @@ describe('runFirebaseSection', () => {
       projectDir: configDir,
     })
 
-    const createCall = vi.mocked(spawnSync).mock.calls.find(
-      (c) => Array.isArray(c[1]) && c[1].includes('projects:create'),
-    )
+    const createCall = vi
+      .mocked(spawnSync)
+      .mock.calls.find((c) => Array.isArray(c[1]) && c[1].includes('projects:create'))
     expect(createCall).toBeDefined()
     expect(createCall![1]).toContain('my-custom-project-id')
   })
@@ -334,9 +344,7 @@ describe('runFirebaseSection', () => {
     const { ConfigError } = await import('@appifex/core')
     const { SECTIONS } = await import('../src/setup/index.js')
 
-    await expect(
-      SECTIONS.firebase(configDir, makeConfig(), undefined),
-    ).rejects.toThrow(ConfigError)
+    await expect(SECTIONS.firebase(configDir, makeConfig(), undefined)).rejects.toThrow(ConfigError)
 
     try {
       await SECTIONS.firebase(configDir, makeConfig(), undefined)
@@ -353,14 +361,12 @@ describe('runFirebaseSection', () => {
 
     const { spawnSync } = await import('node:child_process')
     const { text } = await import('@clack/prompts')
-    vi.mocked(text)
-      .mockResolvedValueOnce('my-app-a1b2')
-      .mockResolvedValueOnce('com.appifex.myapp')
+    vi.mocked(text).mockResolvedValueOnce('my-app-a1b2').mockResolvedValueOnce('com.appifex.myapp')
 
     // login:list shows no '@' — forces login flow
     vi.mocked(spawnSync)
-      .mockReturnValueOnce(okResult('no account here'))  // login:list — no '@'
-      .mockReturnValueOnce(okResult())                    // login --no-localhost succeeds
+      .mockReturnValueOnce(okResult('no account here')) // login:list — no '@'
+      .mockReturnValueOnce(okResult()) // login --no-localhost succeeds
       .mockReturnValueOnce(okResult(CREATE_JSON))
       .mockReturnValueOnce(okResult(APP_JSON))
       .mockReturnValueOnce(okResult())
@@ -375,9 +381,11 @@ describe('runFirebaseSection', () => {
     })
 
     // Find the login call (not login:list)
-    const loginCall = vi.mocked(spawnSync).mock.calls.find(
-      (c) => Array.isArray(c[1]) && c[1].includes('login') && c[1].includes('--no-localhost'),
-    )
+    const loginCall = vi
+      .mocked(spawnSync)
+      .mock.calls.find(
+        (c) => Array.isArray(c[1]) && c[1].includes('login') && c[1].includes('--no-localhost'),
+      )
     expect(loginCall).toBeDefined()
     expect((loginCall![2] as { stdio?: unknown }).stdio).toBe('inherit')
   })

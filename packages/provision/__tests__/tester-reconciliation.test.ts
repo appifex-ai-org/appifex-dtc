@@ -42,10 +42,7 @@ beforeEach(() => {
 describe('findTesterByEmail', () => {
   it('URL contains /v1/betaTesters, filter[email] URL-encoded, limit=1', async () => {
     mockFetch.mockResolvedValueOnce(jsonRes({ data: [] }))
-    await findTesterByEmail(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      'alice@example.com',
-    )
+    await findTesterByEmail({ creds: STUB_CREDS, fetchImpl: mockFetch }, 'alice@example.com')
     const [url] = mockFetch.mock.calls[0]
     expect(url).toContain('/v1/betaTesters')
     expect(url).toContain('filter%5Bemail%5D=alice%40example.com')
@@ -88,11 +85,10 @@ describe('createTesterAndAddToGroup', () => {
 describe('addTestersToGroup — Pitfall 3 correct endpoint', () => {
   it('POST /v1/betaGroups/{groupId}/relationships/betaTesters with linkages body', async () => {
     mockFetch.mockResolvedValueOnce(jsonRes(null, { status: 204 }))
-    await addTestersToGroup(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      'group-1',
-      ['tester-a', 'tester-b'],
-    )
+    await addTestersToGroup({ creds: STUB_CREDS, fetchImpl: mockFetch }, 'group-1', [
+      'tester-a',
+      'tester-b',
+    ])
     const [url, opts] = mockFetch.mock.calls[0]
     expect(url).toContain('/v1/betaGroups/group-1/relationships/betaTesters')
     // Explicitly guard that the non-linkage endpoint is never used (Pitfall 3).
@@ -109,11 +105,7 @@ describe('addTestersToGroup — Pitfall 3 correct endpoint', () => {
   })
 
   it('does NOT call fetch when testerIds is empty', async () => {
-    await addTestersToGroup(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      'group-1',
-      [],
-    )
+    await addTestersToGroup({ creds: STUB_CREDS, fetchImpl: mockFetch }, 'group-1', [])
     expect(mockFetch).not.toHaveBeenCalled()
   })
 })
@@ -136,11 +128,9 @@ describe('reconcileTesters — add-only, never-remove', () => {
       // linkages POST
       .mockResolvedValueOnce(jsonRes(null, { status: 204 }))
 
-    const result = await reconcileTesters(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      'group-1',
-      ['alice@example.com'],
-    )
+    const result = await reconcileTesters({ creds: STUB_CREDS, fetchImpl: mockFetch }, 'group-1', [
+      'alice@example.com',
+    ])
     expect(result.added).toContain('alice@example.com')
     expect(result.warnings).toEqual([])
     const linkageCall = mockFetch.mock.calls.find(([u]) =>
@@ -162,11 +152,9 @@ describe('reconcileTesters — add-only, never-remove', () => {
         }),
       ) // POST createTesterAndAddToGroup
 
-    const result = await reconcileTesters(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      'group-1',
-      ['new@example.com'],
-    )
+    const result = await reconcileTesters({ creds: STUB_CREDS, fetchImpl: mockFetch }, 'group-1', [
+      'new@example.com',
+    ])
     expect(result.added).toContain('new@example.com')
     // Assert a POST to /v1/betaTesters was made
     const createCall = mockFetch.mock.calls.find(
@@ -191,11 +179,9 @@ describe('reconcileTesters — add-only, never-remove', () => {
       )
       .mockResolvedValueOnce(jsonRes(null, { status: 204 }))
 
-    await reconcileTesters(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      'group-1',
-      ['alice@example.com'],
-    )
+    await reconcileTesters({ creds: STUB_CREDS, fetchImpl: mockFetch }, 'group-1', [
+      'alice@example.com',
+    ])
     mockFetch.mock.calls.forEach(([, opts]) => {
       expect((opts as { method?: string }).method).not.toBe('DELETE')
     })
@@ -203,30 +189,24 @@ describe('reconcileTesters — add-only, never-remove', () => {
 
   it('returns D-21 remediation warning when createTester 409s with team detail', async () => {
     // findTester GET returns empty → forces create path
-    mockFetch
-      .mockResolvedValueOnce(jsonRes({ data: [] }))
-      .mockResolvedValueOnce(
-        jsonRes(
-          {
-            errors: [
-              {
-                code: 'ENTITY_ERROR',
-                detail: 'Tester must be a member of your team.',
-              },
-            ],
-          },
-          { status: 409, ok: false },
-        ),
-      )
+    mockFetch.mockResolvedValueOnce(jsonRes({ data: [] })).mockResolvedValueOnce(
+      jsonRes(
+        {
+          errors: [
+            {
+              code: 'ENTITY_ERROR',
+              detail: 'Tester must be a member of your team.',
+            },
+          ],
+        },
+        { status: 409, ok: false },
+      ),
+    )
 
-    const result = await reconcileTesters(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      'group-1',
-      ['outsider@example.com'],
-    )
-    const hit = result.warnings.find((w) =>
-      w.includes('not in your App Store Connect team'),
-    )
+    const result = await reconcileTesters({ creds: STUB_CREDS, fetchImpl: mockFetch }, 'group-1', [
+      'outsider@example.com',
+    ])
+    const hit = result.warnings.find((w) => w.includes('not in your App Store Connect team'))
     expect(hit).toBeDefined()
     expect(result.added).not.toContain('outsider@example.com')
   })
@@ -243,11 +223,9 @@ describe('reconcileTesters — add-only, never-remove', () => {
         },
       }),
     )
-    const out = await reconcileTesters(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      'group-1',
-      ['alice@example.com'],
-    )
+    const out = await reconcileTesters({ creds: STUB_CREDS, fetchImpl: mockFetch }, 'group-1', [
+      'alice@example.com',
+    ])
     expect(Array.isArray(out.added)).toBe(true)
     expect(Array.isArray(out.warnings)).toBe(true)
   })
@@ -267,15 +245,11 @@ describe('reconcileTesters — add-only, never-remove', () => {
       )
       .mockResolvedValueOnce(jsonRes(null, { status: 204 }))
 
-    await reconcileTesters(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      'group-1',
-      ['alice@example.com'],
-    )
+    await reconcileTesters({ creds: STUB_CREDS, fetchImpl: mockFetch }, 'group-1', [
+      'alice@example.com',
+    ])
     const urls = mockFetch.mock.calls.map(([u]) => String(u))
-    expect(urls.some((u) => /\/v1\/betaGroups\/.+\/relationships\/betaTesters/.test(u))).toBe(
-      true,
-    )
+    expect(urls.some((u) => /\/v1\/betaGroups\/.+\/relationships\/betaTesters/.test(u))).toBe(true)
     // Pitfall 3 guard — the non-linkage endpoint is constructed dynamically so the
     // literal path never appears in source (keeps grep acceptance guards clean).
     const WRONG_ENDPOINT = '/v1/' + 'betaGroup' + 'BetaTesters'

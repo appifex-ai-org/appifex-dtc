@@ -16,7 +16,9 @@ import { registerDevTools } from './server-tools-dev.js'
  */
 export function wrapToolHandler<Args, Result extends { content: unknown; isError?: boolean }>(
   handler: (args: Args) => Promise<Result>,
-): (args: Args) => Promise<Result | { content: Array<{ type: 'text'; text: string }>; isError: true }> {
+): (
+  args: Args,
+) => Promise<Result | { content: Array<{ type: 'text'; text: string }>; isError: true }> {
   return async (args: Args) => {
     try {
       return await handler(args)
@@ -44,7 +46,9 @@ function patchServerForCliErrorTranslation(server: McpServer): void {
   ;(server as any).tool = (...args: any[]) => {
     const cb = args[args.length - 1]
     if (typeof cb === 'function') {
-      args[args.length - 1] = wrapToolHandler(cb as (a: unknown) => Promise<{ content: unknown; isError?: boolean }>)
+      args[args.length - 1] = wrapToolHandler(
+        cb as (a: unknown) => Promise<{ content: unknown; isError?: boolean }>,
+      )
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (rawTool as any)(...args)

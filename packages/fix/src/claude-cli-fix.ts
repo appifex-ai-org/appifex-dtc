@@ -75,8 +75,7 @@ export function createClaudeCliFixFn(
       let rankerHint = ''
       try {
         const platform: Platform = opts.platform ?? 'swiftui'
-        const modifiedScreens: ModifiedScreens =
-          opts.modifiedScreens ?? { added: [], modified: [] }
+        const modifiedScreens: ModifiedScreens = opts.modifiedScreens ?? { added: [], modified: [] }
         const remainingTokens = opts.tokenBudget?.totalRemaining ?? Infinity
         const inventory = await scanProject(opts.projectDir, platform, opts.runner)
         const navGraph = await buildNavGraph(opts.projectDir, platform, opts.runner)

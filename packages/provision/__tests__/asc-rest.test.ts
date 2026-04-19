@@ -45,11 +45,7 @@ beforeEach(() => {
 describe('callAsc — GET success', () => {
   it('returns { ok: true } with decoded body and headers', async () => {
     mockFetch.mockResolvedValueOnce(jsonRes({ data: [] }))
-    const out = await callAsc(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      'GET',
-      '/v1/builds',
-    )
+    const out = await callAsc({ creds: STUB_CREDS, fetchImpl: mockFetch }, 'GET', '/v1/builds')
     expect(out.ok).toBe(true)
     if (out.ok) {
       expect(out.status).toBe(200)
@@ -66,11 +62,7 @@ describe('callAsc — auth errors', () => {
         { status: 401, ok: false },
       ),
     )
-    const out = await callAsc(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      'GET',
-      '/v1/apps',
-    )
+    const out = await callAsc({ creds: STUB_CREDS, fetchImpl: mockFetch }, 'GET', '/v1/apps')
     expect(out.ok).toBe(false)
     if (!out.ok) {
       expect(out.kind).toBe('AUTH_REJECTED')
@@ -82,16 +74,9 @@ describe('callAsc — auth errors', () => {
 
   it('returns AUTH_REJECTED on 403 (revoked keys can transiently 403 — Q2)', async () => {
     mockFetch.mockResolvedValueOnce(
-      jsonRes(
-        { errors: [{ code: 'FORBIDDEN', detail: 'revoked' }] },
-        { status: 403, ok: false },
-      ),
+      jsonRes({ errors: [{ code: 'FORBIDDEN', detail: 'revoked' }] }, { status: 403, ok: false }),
     )
-    const out = await callAsc(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      'GET',
-      '/v1/apps',
-    )
+    const out = await callAsc({ creds: STUB_CREDS, fetchImpl: mockFetch }, 'GET', '/v1/apps')
     expect(out.ok).toBe(false)
     if (!out.ok) {
       expect(out.kind).toBe('AUTH_REJECTED')
@@ -107,11 +92,7 @@ describe('callAsc — server + other errors', () => {
         { status: 500, ok: false },
       ),
     )
-    const out = await callAsc(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      'GET',
-      '/v1/apps',
-    )
+    const out = await callAsc({ creds: STUB_CREDS, fetchImpl: mockFetch }, 'GET', '/v1/apps')
     expect(out.ok).toBe(false)
     if (!out.ok) {
       expect(out.kind).toBe('TRANSIENT')
@@ -120,16 +101,9 @@ describe('callAsc — server + other errors', () => {
 
   it('returns OTHER with status on 404', async () => {
     mockFetch.mockResolvedValueOnce(
-      jsonRes(
-        { errors: [{ code: 'NOT_FOUND', detail: 'missing' }] },
-        { status: 404, ok: false },
-      ),
+      jsonRes({ errors: [{ code: 'NOT_FOUND', detail: 'missing' }] }, { status: 404, ok: false }),
     )
-    const out = await callAsc(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      'GET',
-      '/v1/nonexistent',
-    )
+    const out = await callAsc({ creds: STUB_CREDS, fetchImpl: mockFetch }, 'GET', '/v1/nonexistent')
     expect(out.ok).toBe(false)
     if (!out.ok && out.kind === 'OTHER') {
       expect(out.status).toBe(404)
@@ -143,11 +117,7 @@ describe('callAsc — JWT signing failures', () => {
   it('returns KEY_MISSING when .p8 path does not exist (ENOENT)', async () => {
     const enoent = Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
     vi.mocked(signAscJwt).mockRejectedValueOnce(enoent)
-    const out = await callAsc(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      'GET',
-      '/v1/apps',
-    )
+    const out = await callAsc({ creds: STUB_CREDS, fetchImpl: mockFetch }, 'GET', '/v1/apps')
     expect(out.ok).toBe(false)
     if (!out.ok && out.kind === 'KEY_MISSING') {
       expect(out.path).toBe(STUB_CREDS.keyPath)
@@ -161,11 +131,7 @@ describe('callAsc — JWT signing failures', () => {
     // JWSInvalid extends JOSEError in jose ^6.
     const joseErr = new joseErrors.JWSInvalid('invalid PKCS8 key')
     vi.mocked(signAscJwt).mockRejectedValueOnce(joseErr)
-    const out = await callAsc(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      'GET',
-      '/v1/apps',
-    )
+    const out = await callAsc({ creds: STUB_CREDS, fetchImpl: mockFetch }, 'GET', '/v1/apps')
     expect(out.ok).toBe(false)
     if (!out.ok && out.kind === 'KEY_INVALID') {
       expect(typeof out.detail).toBe('string')
@@ -211,10 +177,7 @@ describe('getLatestBuild', () => {
         ],
       }),
     )
-    const build = await getLatestBuild(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      '123456789',
-    )
+    const build = await getLatestBuild({ creds: STUB_CREDS, fetchImpl: mockFetch }, '123456789')
     expect(mockFetch).toHaveBeenCalledOnce()
     const [url, opts] = mockFetch.mock.calls[0]
     expect(url).toContain('/v1/builds')
@@ -228,10 +191,7 @@ describe('getLatestBuild', () => {
 
   it('returns null when data is empty', async () => {
     mockFetch.mockResolvedValueOnce(jsonRes({ data: [] }))
-    const build = await getLatestBuild(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      '123',
-    )
+    const build = await getLatestBuild({ creds: STUB_CREDS, fetchImpl: mockFetch }, '123')
     expect(build).toBeNull()
   })
 })
@@ -254,11 +214,7 @@ describe('findBuildByVersion', () => {
         ],
       }),
     )
-    const build = await findBuildByVersion(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      '123',
-      '47',
-    )
+    const build = await findBuildByVersion({ creds: STUB_CREDS, fetchImpl: mockFetch }, '123', '47')
     const [url] = mockFetch.mock.calls[0]
     expect(url).toContain('filter%5Bversion%5D=47')
     expect(build?.attributes.version).toBe('47')
@@ -266,11 +222,7 @@ describe('findBuildByVersion', () => {
 
   it('returns null when data is empty', async () => {
     mockFetch.mockResolvedValueOnce(jsonRes({ data: [] }))
-    const build = await findBuildByVersion(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      '123',
-      '99',
-    )
+    const build = await findBuildByVersion({ creds: STUB_CREDS, fetchImpl: mockFetch }, '123', '99')
     expect(build).toBeNull()
   })
 })
@@ -286,10 +238,7 @@ describe('getBuildProcessingState', () => {
         },
       }),
     )
-    const state = await getBuildProcessingState(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      'b1',
-    )
+    const state = await getBuildProcessingState({ creds: STUB_CREDS, fetchImpl: mockFetch }, 'b1')
     const [url] = mockFetch.mock.calls[0]
     expect(url).toContain('/v1/builds/b1')
     expect(url).toContain('fields%5Bbuilds%5D=processingState')

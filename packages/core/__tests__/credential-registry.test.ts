@@ -71,10 +71,7 @@ describe('CredentialRegistry — probe implementations', () => {
 
   // ── Test 3: LLM deep probes ─────────────────────────────────────────────
   it('Test 3a (llm deep): 401 response → INVALID', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({ ok: false, status: 401 } as Response),
-    )
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 401 } as Response))
     const config = {
       llm: { provider: 'anthropic' as const, apiKey: 'sk-ant-api03-valid-key-for-testing-1234' },
       design: { tool: 'pencil' as const },
@@ -138,7 +135,11 @@ describe('CredentialRegistry — probe implementations', () => {
 
   it('Test 4c (asc offline): malformed PEM → INVALID', async () => {
     const p8Path = join(tmpDir, 'AuthKey_BAD.p8')
-    await writeFile(p8Path, '-----BEGIN PRIVATE KEY-----\nNOTVALID\n-----END PRIVATE KEY-----\n', 'utf-8')
+    await writeFile(
+      p8Path,
+      '-----BEGIN PRIVATE KEY-----\nNOTVALID\n-----END PRIVATE KEY-----\n',
+      'utf-8',
+    )
     const config = {
       llm: { provider: 'anthropic' as const, apiKey: 'sk-ant-api03-x' },
       design: { tool: 'pencil' as const },
@@ -157,10 +158,7 @@ describe('CredentialRegistry — probe implementations', () => {
 
   // ── Test 5: ASC deep ────────────────────────────────────────────────────
   it('Test 5a (asc deep): valid key + mocked 200 → OK', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({ ok: true, status: 200 } as Response),
-    )
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200 } as Response))
     const pem = generateValidP8()
     const p8Path = join(tmpDir, 'AuthKey_DEEPOK.p8')
     await writeFile(p8Path, pem, 'utf-8')
@@ -181,10 +179,7 @@ describe('CredentialRegistry — probe implementations', () => {
   })
 
   it('Test 5b (asc deep): valid key + mocked 401 → EXPIRED', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({ ok: false, status: 401 } as Response),
-    )
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 401 } as Response))
     const pem = generateValidP8()
     const p8Path = join(tmpDir, 'AuthKey_EXPIRED.p8')
     await writeFile(p8Path, pem, 'utf-8')

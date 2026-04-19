@@ -40,11 +40,7 @@ beforeEach(() => {
 describe('findInternalGroup', () => {
   it('URL contains filter[app], filter[name], filter[isInternalGroup]=true, limit=1', async () => {
     mockFetch.mockResolvedValueOnce(jsonRes({ data: [] }))
-    await findInternalGroup(
-      { creds: STUB_CREDS, fetchImpl: mockFetch },
-      '123',
-      'dtc-internal',
-    )
+    await findInternalGroup({ creds: STUB_CREDS, fetchImpl: mockFetch }, '123', 'dtc-internal')
     const [url] = mockFetch.mock.calls[0]
     expect(url).toContain('/v1/betaGroups')
     expect(url).toContain('filter%5Bapp%5D=123')

@@ -104,10 +104,7 @@ export interface Build {
   }
 }
 
-export async function getLatestBuild(
-  opts: AscRestOpts,
-  ascAppId: string,
-): Promise<Build | null> {
+export async function getLatestBuild(opts: AscRestOpts, ascAppId: string): Promise<Build | null> {
   const qs = new URLSearchParams({
     'filter[app]': ascAppId,
     sort: '-uploadedDate',
@@ -120,17 +117,12 @@ export async function getLatestBuild(
   return data[0] ?? null
 }
 
-export async function computeNextBuildNumber(
-  opts: AscRestOpts,
-  ascAppId: string,
-): Promise<string> {
+export async function computeNextBuildNumber(opts: AscRestOpts, ascAppId: string): Promise<string> {
   const latest = await getLatestBuild(opts, ascAppId)
   if (!latest) return '1'
   const current = parseInt(latest.attributes.version, 10)
   if (isNaN(current)) {
-    throw new TestFlightError(
-      `ASC build version is not numeric: ${latest.attributes.version}`,
-    )
+    throw new TestFlightError(`ASC build version is not numeric: ${latest.attributes.version}`)
   }
   return String(current + 1)
 }
@@ -157,8 +149,8 @@ export async function getBuildProcessingState(
   const qs = new URLSearchParams({ 'fields[builds]': 'processingState' })
   const r = await callAsc(opts, 'GET', `/v1/builds/${buildId}?${qs.toString()}`)
   if (!r.ok) throw new TestFlightError(`getBuildProcessingState failed: ${JSON.stringify(r)}`)
-  const state = (r.body as { data: { attributes: { processingState: string } } }).data
-    .attributes.processingState
+  const state = (r.body as { data: { attributes: { processingState: string } } }).data.attributes
+    .processingState
   return state as 'PROCESSING' | 'VALID' | 'INVALID' | 'FAILED'
 }
 
@@ -280,14 +272,9 @@ export async function addTestersToGroup(
   testerIds: string[],
 ): Promise<void> {
   if (testerIds.length === 0) return
-  const r = await callAsc(
-    opts,
-    'POST',
-    `/v1/betaGroups/${groupId}/relationships/betaTesters`,
-    {
-      data: testerIds.map((id) => ({ type: 'betaTesters', id })),
-    },
-  )
+  const r = await callAsc(opts, 'POST', `/v1/betaGroups/${groupId}/relationships/betaTesters`, {
+    data: testerIds.map((id) => ({ type: 'betaTesters', id })),
+  })
   if (!r.ok) throw new TestFlightError(`addTestersToGroup failed: ${JSON.stringify(r)}`)
 }
 

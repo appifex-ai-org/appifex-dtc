@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { EventEmitter } from 'node:events'
-import { Writable } from 'node:stream'
+import type { Writable } from 'node:stream'
 import { EpipeError, CliError, type Runner } from '@appifex/core'
 import type { ValidationResult } from '@appifex/validate'
 
@@ -31,9 +31,7 @@ function makeFakeChildEmittingEpipeOnStdin() {
     emit: stdinEmitter.emit.bind(stdinEmitter),
     write: (_chunk: any) => {
       setImmediate(() => {
-        const err: NodeJS.ErrnoException = new Error(
-          'write EPIPE',
-        ) as NodeJS.ErrnoException
+        const err: NodeJS.ErrnoException = new Error('write EPIPE') as NodeJS.ErrnoException
         err.code = 'EPIPE'
         stdinEmitter.emit('error', err)
         // Also fire 'close' so the un-fixed code path (no stdin error handler)
@@ -86,9 +84,7 @@ describe('createClaudeCliFixFn — EPIPE handling', () => {
   })
 
   it('surfaces EPIPE as EpipeError-prefixed error from the inner spawn Promise', async () => {
-    vi.mocked(spawn).mockImplementation(
-      (() => makeFakeChildEmittingEpipeOnStdin()) as any,
-    )
+    vi.mocked(spawn).mockImplementation((() => makeFakeChildEmittingEpipeOnStdin()) as any)
 
     const fixFn = createClaudeCliFixFn({
       runner: fakeRunner(),

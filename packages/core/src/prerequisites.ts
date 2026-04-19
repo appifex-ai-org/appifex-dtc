@@ -455,7 +455,11 @@ export async function checkServiceAccountJson(path: string | undefined): Promise
     const raw = await readFile(path, 'utf-8')
     const json = JSON.parse(raw) as Record<string, string>
     if (json.type !== 'service_account')
-      return { ...base, status: 'fail', message: `type is "${json.type}", expected service_account` }
+      return {
+        ...base,
+        status: 'fail',
+        message: `type is "${json.type}", expected service_account`,
+      }
     if (!json.client_email || !json.private_key)
       return { ...base, status: 'fail', message: 'missing client_email or private_key' }
     return { ...base, status: 'pass', message: json.client_email }

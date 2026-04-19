@@ -16,31 +16,31 @@ describe('PRICING_USD_PER_MTOK', () => {
 
 describe('tokensToUsd', () => {
   it('claude-opus-4-7: 1M input tokens = $5.00', () => {
-    expect(tokensToUsd('claude-opus-4-7', 1_000_000, 0)).toBe(5.00)
+    expect(tokensToUsd('claude-opus-4-7', 1_000_000, 0)).toBe(5.0)
   })
 
   it('claude-opus-4-7: 1M output tokens = $25.00', () => {
-    expect(tokensToUsd('claude-opus-4-7', 0, 1_000_000)).toBe(25.00)
+    expect(tokensToUsd('claude-opus-4-7', 0, 1_000_000)).toBe(25.0)
   })
 
   it('claude-opus-4-6: 1M input tokens = $5.00', () => {
-    expect(tokensToUsd('claude-opus-4-6', 1_000_000, 0)).toBe(5.00)
+    expect(tokensToUsd('claude-opus-4-6', 1_000_000, 0)).toBe(5.0)
   })
 
   it('claude-opus-4-1: 1M input tokens = $15.00 (older model at old pricing)', () => {
-    expect(tokensToUsd('claude-opus-4-1', 1_000_000, 0)).toBe(15.00)
+    expect(tokensToUsd('claude-opus-4-1', 1_000_000, 0)).toBe(15.0)
   })
 
   it('claude-sonnet-4-6: 1M input tokens = $3.00', () => {
-    expect(tokensToUsd('claude-sonnet-4-6', 1_000_000, 0)).toBe(3.00)
+    expect(tokensToUsd('claude-sonnet-4-6', 1_000_000, 0)).toBe(3.0)
   })
 
   it('claude-sonnet-4-6: 1M output tokens = $15.00', () => {
-    expect(tokensToUsd('claude-sonnet-4-6', 0, 1_000_000)).toBe(15.00)
+    expect(tokensToUsd('claude-sonnet-4-6', 0, 1_000_000)).toBe(15.0)
   })
 
   it('claude-haiku-4-5: 1M input tokens = $1.00', () => {
-    expect(tokensToUsd('claude-haiku-4-5', 1_000_000, 0)).toBe(1.00)
+    expect(tokensToUsd('claude-haiku-4-5', 1_000_000, 0)).toBe(1.0)
   })
 
   it('gpt-5: 1M input tokens = $0.625', () => {

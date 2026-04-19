@@ -17,7 +17,9 @@ describe('bin/dtc launcher (FOUND-01)', () => {
     const { code, stdout } = await new Promise<{ code: number | null; stdout: string }>((res) => {
       const child = spawn(binPath, ['--help'], { stdio: ['ignore', 'pipe', 'pipe'] })
       let out = ''
-      child.stdout.on('data', (d) => { out += d.toString() })
+      child.stdout.on('data', (d) => {
+        out += d.toString()
+      })
       child.on('close', (code) => res({ code, stdout: out }))
     })
     expect(code).toBe(0)

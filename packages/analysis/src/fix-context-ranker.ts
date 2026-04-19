@@ -55,9 +55,7 @@ export interface RankFixContextResult {
   maxFiles: number
 }
 
-export async function rankFixContext(
-  input: RankFixContextInput,
-): Promise<RankFixContextResult> {
+export async function rankFixContext(input: RankFixContextInput): Promise<RankFixContextResult> {
   // Set preserves insertion order → highest-priority slot wins (dedup invariant).
   const candidates = new Set<string>()
 
@@ -128,15 +126,8 @@ export async function rankFixContext(
   if (!Number.isFinite(input.remainingTokens)) {
     maxFiles = orderedCandidates.length
   } else {
-    const avg = await estimateAvgFileTokens(
-      input.runner,
-      orderedCandidates,
-      input.projectDir,
-    )
-    maxFiles = Math.max(
-      0,
-      Math.floor((input.remainingTokens * FIX_CONTEXT_BUDGET_RATIO) / avg),
-    )
+    const avg = await estimateAvgFileTokens(input.runner, orderedCandidates, input.projectDir)
+    maxFiles = Math.max(0, Math.floor((input.remainingTokens * FIX_CONTEXT_BUDGET_RATIO) / avg))
     maxFiles = Math.min(maxFiles, orderedCandidates.length)
   }
 
@@ -150,10 +141,7 @@ export async function rankFixContext(
 // ── Internal helpers ──
 
 /** D-09 heuristic: `<prefix>_<suffix>` id → `<PrefixCap>*` screen file. */
-function resolveIdToScreenFile(
-  id: string,
-  inventory: InventoryEntry[],
-): string | null {
+function resolveIdToScreenFile(id: string, inventory: InventoryEntry[]): string | null {
   const [prefix] = id.split('_')
   if (!prefix) return null
   const cap = prefix.charAt(0).toUpperCase() + prefix.slice(1)

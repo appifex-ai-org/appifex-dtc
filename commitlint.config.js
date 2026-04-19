@@ -6,6 +6,10 @@ export default {
   // authored by the team and cannot be rewritten without force-push — skip them.
   ignores: [(commit) => /^Merge /.test(commit)],
   rules: {
+    // Allow long commit headers — many historical commits carry verbose phase/requirement refs
+    'header-max-length': [0, 'always'],
+    // Allow any subject casing — historical commits use sentence-case for test stubs etc.
+    'subject-case': [0, 'always'],
     // Allow long lines in commit bodies (verbatim text, URLs, multi-paragraph rationale)
     'body-max-line-length': [0, 'always'],
     'footer-max-line-length': [0, 'always'],

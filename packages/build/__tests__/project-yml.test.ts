@@ -75,9 +75,7 @@ describe('project-yml helpers', () => {
       name: 'Proj',
       targets: { FooTests: { type: 'bundle.unit-test' } },
     } as unknown as ProjectYml
-    expect(() => findAppTargetName(doc)).toThrowError(
-      'No app target found in project.yml',
-    )
+    expect(() => findAppTargetName(doc)).toThrowError('No app target found in project.yml')
   })
 
   it('Test 4: setBuildSetting writes into flat settings', async () => {

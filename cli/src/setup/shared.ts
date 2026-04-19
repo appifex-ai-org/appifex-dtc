@@ -11,22 +11,24 @@ import { ConfigError } from '@appifex/core'
  * Based on RESEARCH §Code Examples "Slug Derivation (D-02)".
  */
 export function derivedSlug(appName: string, maxLen = 20): string {
-  return appName
-    .normalize('NFD')
-    // Remove combining diacritics
-    .replace(/[\u0300-\u036f]/g, '')
-    // Lowercase
-    .toLowerCase()
-    // Replace anything that isn't alphanumeric or hyphen with a hyphen
-    .replace(/[^a-z0-9]+/g, '-')
-    // Collapse multiple hyphens
-    .replace(/-{2,}/g, '-')
-    // Strip leading/trailing hyphens
-    .replace(/^-+|-+$/g, '')
-    // Truncate
-    .slice(0, maxLen)
-    // Strip any trailing hyphen introduced by truncation
-    .replace(/-+$/, '')
+  return (
+    appName
+      .normalize('NFD')
+      // Remove combining diacritics
+      .replace(/[\u0300-\u036f]/g, '')
+      // Lowercase
+      .toLowerCase()
+      // Replace anything that isn't alphanumeric or hyphen with a hyphen
+      .replace(/[^a-z0-9]+/g, '-')
+      // Collapse multiple hyphens
+      .replace(/-{2,}/g, '-')
+      // Strip leading/trailing hyphens
+      .replace(/^-+|-+$/g, '')
+      // Truncate
+      .slice(0, maxLen)
+      // Strip any trailing hyphen introduced by truncation
+      .replace(/-+$/, '')
+  )
 }
 
 /**

@@ -52,7 +52,11 @@ export async function probeLlm(
     return { ...base, status: 'INVALID', message: 'API key format looks wrong (too short)' }
   }
   if (!opts.deep) {
-    return { ...base, status: 'OK', message: `${config?.llm?.provider ?? 'anthropic'} (shape-valid)` }
+    return {
+      ...base,
+      status: 'OK',
+      message: `${config?.llm?.provider ?? 'anthropic'} (shape-valid)`,
+    }
   }
   // Deep probe — 1-token ping per RESEARCH D-03.
   // T-03-02-03: explicit AbortSignal.timeout(5000) prevents infinite hang.
@@ -82,11 +86,25 @@ export async function probeLlm(
     return { ...base, status: 'INVALID', message: `HTTP ${res.status}` }
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code
-    if (code === 'ECONNRESET' || code === 'ETIMEDOUT' || code === 'ENOTFOUND' || code === 'ABORT_ERR' ||
-        (err as Error).name === 'TimeoutError') {
-      return { ...base, status: 'OK', message: `transient network error: ${code ?? 'timeout'}`, transientError: true }
+    if (
+      code === 'ECONNRESET' ||
+      code === 'ETIMEDOUT' ||
+      code === 'ENOTFOUND' ||
+      code === 'ABORT_ERR' ||
+      (err as Error).name === 'TimeoutError'
+    ) {
+      return {
+        ...base,
+        status: 'OK',
+        message: `transient network error: ${code ?? 'timeout'}`,
+        transientError: true,
+      }
     }
-    return { ...base, status: 'INVALID', message: `probe error: ${(err as Error).message ?? String(err)}` }
+    return {
+      ...base,
+      status: 'INVALID',
+      message: `probe error: ${(err as Error).message ?? String(err)}`,
+    }
   }
 }
 
@@ -146,11 +164,27 @@ export async function probeAsc(
     const jwt = await signAscJwt({ keyPath, keyId, issuerId })
     const liveResult = await probeAscLive(jwt)
     if (liveResult === 'OK') return { ...base, status: 'OK', message: 'ASC live probe passed' }
-    if (liveResult === 'EXPIRED') return { ...base, status: 'EXPIRED', message: 'ASC JWT rejected — key may be revoked or expired' }
-    if (liveResult === 'TRANSIENT') return { ...base, status: 'OK', message: 'transient network error on ASC probe', transientError: true }
+    if (liveResult === 'EXPIRED')
+      return {
+        ...base,
+        status: 'EXPIRED',
+        message: 'ASC JWT rejected — key may be revoked or expired',
+      }
+    if (liveResult === 'TRANSIENT')
+      return {
+        ...base,
+        status: 'OK',
+        message: 'transient network error on ASC probe',
+        transientError: true,
+      }
     return { ...base, status: 'INVALID', message: 'ASC live probe returned unexpected status' }
   } catch (err) {
-    return { ...base, status: 'OK', message: `transient: ${(err as Error).message}`, transientError: true }
+    return {
+      ...base,
+      status: 'OK',
+      message: `transient: ${(err as Error).message}`,
+      transientError: true,
+    }
   }
 }
 
@@ -175,7 +209,8 @@ export async function probeFirebase(
 
   // No firebase config at all — not critical unless provider explicitly set to firebase
   if (!config?.firebase) {
-    const severity = config?.baas?.provider === 'firebase' ? 'critical' as const : 'info' as const
+    const severity =
+      config?.baas?.provider === 'firebase' ? ('critical' as const) : ('info' as const)
     return {
       name: 'firebase-plist',
       severity,
@@ -192,7 +227,8 @@ export async function probeFirebase(
       severity: 'critical' as const,
       status: 'MISSING',
       message: 'Firebase plist path not configured',
-      remedy: 'Run `dtc setup firebase` to register your iOS app and download GoogleService-Info.plist.',
+      remedy:
+        'Run `dtc setup firebase` to register your iOS app and download GoogleService-Info.plist.',
     }
   }
 
@@ -256,7 +292,8 @@ async function probeFirebaseSa(config: DtcConfig | undefined): Promise<Credentia
       severity: 'warning' as const,
       status: 'INVALID',
       message: 'Firebase service account key file is not valid JSON',
-      remedy: 'Download a fresh service account key from Firebase Console > Project Settings > Service accounts.',
+      remedy:
+        'Download a fresh service account key from Firebase Console > Project Settings > Service accounts.',
     }
   }
 
@@ -266,8 +303,10 @@ async function probeFirebaseSa(config: DtcConfig | undefined): Promise<Credentia
       name: 'firebase-sa',
       severity: 'warning' as const,
       status: 'INVALID',
-      message: 'Firebase service account JSON is missing required fields (type, client_email, private_key)',
-      remedy: 'Download a fresh service account key from Firebase Console > Project Settings > Service accounts.',
+      message:
+        'Firebase service account JSON is missing required fields (type, client_email, private_key)',
+      remedy:
+        'Download a fresh service account key from Firebase Console > Project Settings > Service accounts.',
     }
   }
 

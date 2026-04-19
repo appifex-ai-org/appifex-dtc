@@ -25,7 +25,14 @@ export {
 } from './skill-loader.js'
 export { buildBackendPromptSection } from './backend-context.js'
 export { assessBaasAppropriateness, extractBaasSignals } from './baas-recommend.js'
-export { checkPrerequisites, checkCriticalPrerequisites, which, checkFirebaseTools, checkServiceAccountJson, checkAscP8 } from './prerequisites.js'
+export {
+  checkPrerequisites,
+  checkCriticalPrerequisites,
+  which,
+  checkFirebaseTools,
+  checkServiceAccountJson,
+  checkAscP8,
+} from './prerequisites.js'
 export {
   writePreAgentSnapshotSidecar,
   readPreAgentSnapshotSidecar,

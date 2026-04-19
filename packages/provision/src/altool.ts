@@ -98,11 +98,7 @@ export async function uploadIpa(args: AltoolUploadArgs): Promise<AltoolResult> {
  * 3. ContentDelivery error regex (Xcode 26 silent-failure pattern — fastlane #29739).
  * Fallback: non-zero exit with no parseable error → generic failure.
  */
-export function parseAltoolOutput(
-  stdout: string,
-  stderr: string,
-  exitCode: number,
-): AltoolResult {
+export function parseAltoolOutput(stdout: string, stderr: string, exitCode: number): AltoolResult {
   // Primary: parse JSON. altool prepends progress lines before the final JSON payload, so
   // take the JSON starting at the last `{` in stdout.
   let jsonResult: {

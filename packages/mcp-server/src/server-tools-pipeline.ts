@@ -193,7 +193,9 @@ export function registerPipelineTools(
       overwritePlist: z
         .boolean()
         .optional()
-        .describe('Force overwrite GoogleService-Info.plist if present (default: skip when present)'),
+        .describe(
+          'Force overwrite GoogleService-Info.plist if present (default: skip when present)',
+        ),
       configDir: z.string().optional().describe('Config directory (defaults to ~/.dtc)'),
     },
     async (args) => {

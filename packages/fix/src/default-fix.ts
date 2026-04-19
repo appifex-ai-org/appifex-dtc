@@ -191,8 +191,7 @@ export function createDefaultFixFn(
       // Phase 6 (VAL-02 D-07 D-10): resolve optional ranker inputs against defaults.
       // Matches the existing `opts.model ?? '...'` convention above.
       const platform: Platform = opts.platform ?? 'swiftui'
-      const modifiedScreens: ModifiedScreens =
-        opts.modifiedScreens ?? { added: [], modified: [] }
+      const modifiedScreens: ModifiedScreens = opts.modifiedScreens ?? { added: [], modified: [] }
       const remainingTokens = opts.tokenBudget?.totalRemaining ?? Infinity
 
       // Phase 6 (VAL-02 D-07 D-10): ranker-driven context selection.

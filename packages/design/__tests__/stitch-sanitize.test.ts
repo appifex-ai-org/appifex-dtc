@@ -45,12 +45,20 @@ describe('StitchAdapter — sanitized screen names (DESIGN-03)', () => {
     const screens = pathologicalNames.map((name, i) => mockScreen(`screen-${i}`, name))
 
     const runner = {
-      exec: vi.fn().mockResolvedValue({ exitCode: 0, stdout: '', stderr: '', duration: 0, command: '' }),
+      exec: vi
+        .fn()
+        .mockResolvedValue({ exitCode: 0, stdout: '', stderr: '', duration: 0, command: '' }),
       readFile: vi.fn().mockResolvedValue(''),
       writeFile: vi.fn().mockResolvedValue(undefined),
       exists: vi.fn().mockResolvedValue(true),
       glob: vi.fn().mockResolvedValue([]),
-      capabilities: { hasMaestro: false, hasXcode: false, hasNode: true, hasSemgrep: false, platform: 'darwin' as const },
+      capabilities: {
+        hasMaestro: false,
+        hasXcode: false,
+        hasNode: true,
+        hasSemgrep: false,
+        platform: 'darwin' as const,
+      },
     }
 
     const adapter = new StitchAdapter(runner, {

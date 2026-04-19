@@ -23,20 +23,20 @@ describe('config permissions', () => {
     rmSync(configDir, { recursive: true, force: true })
   })
 
-  it.skipIf(process.platform === 'win32')(
-    'saveConfig writes file with mode 0600',
-    async () => {
-      await saveConfig(configDir, baseConfig)
-      const mode = statSync(join(configDir, 'config.json')).mode & 0o777
-      expect(mode).toBe(0o600)
-    },
-  )
+  it.skipIf(process.platform === 'win32')('saveConfig writes file with mode 0600', async () => {
+    await saveConfig(configDir, baseConfig)
+    const mode = statSync(join(configDir, 'config.json')).mode & 0o777
+    expect(mode).toBe(0o600)
+  })
 
   it.skipIf(process.platform === 'win32')(
     'saveConfig is idempotent — second write still yields 0600',
     async () => {
       await saveConfig(configDir, baseConfig)
-      await saveConfig(configDir, { ...baseConfig, llm: { ...baseConfig.llm, apiKey: 'sk-updated' } })
+      await saveConfig(configDir, {
+        ...baseConfig,
+        llm: { ...baseConfig.llm, apiKey: 'sk-updated' },
+      })
       const mode = statSync(join(configDir, 'config.json')).mode & 0o777
       expect(mode).toBe(0o600)
     },

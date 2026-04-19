@@ -103,7 +103,8 @@ export async function runDoctor(opts: DoctorOpts = {}): Promise<void> {
   const checks = [...prereqReport.checks]
 
   // SETUP-03: add firebase-tools, service-account JSON, ASC .p8 shallow checks
-  const firebaseSeverity = config?.baas?.provider === 'firebase' ? 'critical' as const : 'info' as const
+  const firebaseSeverity =
+    config?.baas?.provider === 'firebase' ? ('critical' as const) : ('info' as const)
   checks.push(checkFirebaseTools(firebaseSeverity))
   checks.push(await checkServiceAccountJson(config?.firebase?.serviceAccountKeyPath))
   checks.push(await checkAscP8(config?.apple?.ascKeyPath))

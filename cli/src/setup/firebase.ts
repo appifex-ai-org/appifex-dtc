@@ -57,9 +57,7 @@ export async function runFirebaseSection(
     message: 'Firebase project ID',
     initialValue: defaultProjectId,
     validate: (v) =>
-      /^[a-z][a-z0-9-]{5,29}$/.test(v)
-        ? undefined
-        : 'Must be lowercase, 6-30 chars, letter-start',
+      /^[a-z][a-z0-9-]{5,29}$/.test(v) ? undefined : 'Must be lowercase, 6-30 chars, letter-start',
   })
   assertNotCancelled(projectId)
 
@@ -107,9 +105,7 @@ export async function runFirebaseSection(
     { encoding: 'utf-8' },
   )
   if (appRes.status !== 0) {
-    throw new ConfigError(
-      `firebase apps:create: ${appRes.stderr || appRes.stdout}`.trim(),
-    )
+    throw new ConfigError(`firebase apps:create: ${appRes.stderr || appRes.stdout}`.trim())
   }
   const appPayload = JSON.parse(appRes.stdout) as { result: { appId: string } }
   const appId = appPayload.result.appId
@@ -122,9 +118,7 @@ export async function runFirebaseSection(
     { encoding: 'utf-8' },
   )
   if (cfgRes.status !== 0) {
-    throw new ConfigError(
-      `firebase apps:sdkconfig: ${cfgRes.stderr || cfgRes.stdout}`.trim(),
-    )
+    throw new ConfigError(`firebase apps:sdkconfig: ${cfgRes.stderr || cfgRes.stdout}`.trim())
   }
 
   // ── Persist to DtcConfig ──

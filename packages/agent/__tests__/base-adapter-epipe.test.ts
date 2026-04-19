@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { EventEmitter } from 'node:events'
-import { Writable } from 'node:stream'
+import type { Writable } from 'node:stream'
 import { EpipeError, CliError } from '@appifex/core'
 
 // Phase 02 Plan 03 (FOUND-03): EPIPE surfaces in AgentResult via the settle() helper.
@@ -28,9 +28,7 @@ function makeFakeChildEmittingEpipeOnStdin() {
     emit: stdinEmitter.emit.bind(stdinEmitter),
     write: (_chunk: any) => {
       setImmediate(() => {
-        const err: NodeJS.ErrnoException = new Error(
-          'write EPIPE',
-        ) as NodeJS.ErrnoException
+        const err: NodeJS.ErrnoException = new Error('write EPIPE') as NodeJS.ErrnoException
         err.code = 'EPIPE'
         stdinEmitter.emit('error', err)
         // Fire close so un-fixed path settles — test fails because no EpipeError mention.

@@ -86,7 +86,11 @@ describe('formatMarkdown — Phase 7 cost fields (OBS-02)', () => {
       validation: {
         swiftui: {
           ui: { passed: 0, total: 2, results: [] },
-          unit: { passed: 0, total: 1, failures: [{ name: 'testLogin', output: 'AssertionError: expected true' }] },
+          unit: {
+            passed: 0,
+            total: 1,
+            failures: [{ name: 'testLogin', output: 'AssertionError: expected true' }],
+          },
           allPassed: false,
         },
       },

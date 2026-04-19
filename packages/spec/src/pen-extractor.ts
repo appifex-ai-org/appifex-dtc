@@ -42,7 +42,9 @@ export function extractSpecFromPenObject(pen: PenDocument): DesignSpec {
 
   // Extract screens from top-level frames only
   const frames = pen.children.filter((child) => child.type === 'frame')
-  const screens: ScreenSpec[] = frames.map((frame) => extractScreen(frame, resolveColor, takenScreens))
+  const screens: ScreenSpec[] = frames.map((frame) =>
+    extractScreen(frame, resolveColor, takenScreens),
+  )
 
   // Extract design tokens from variables
   const designTokens = extractDesignTokens(vars)

@@ -164,5 +164,16 @@ export function parseArgs(argv: string[]): ParsedArgs {
   // Phase 7 (OBS-03 D-16): applies to all pipeline-invoking commands
   const exportDebugBundle = flags['export-debug-bundle'] === true ? true : undefined
 
-  return { command, subcommand, positional, flags, designIrPath, section, full, deep, overwriteUserEdits, exportDebugBundle }
+  return {
+    command,
+    subcommand,
+    positional,
+    flags,
+    designIrPath,
+    section,
+    full,
+    deep,
+    overwriteUserEdits,
+    exportDebugBundle,
+  }
 }

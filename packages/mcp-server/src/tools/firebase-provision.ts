@@ -34,9 +34,7 @@ async function resolveBaasSchema(
     const raw = await readFile(schemaPath, 'utf-8')
     return JSON.parse(raw) as BaasSchema
   } catch {
-    throw new Error(
-      "baasSchema not found; run 'dtc_run_pipeline' first or pass baasSchema arg",
-    )
+    throw new Error("baasSchema not found; run 'dtc_run_pipeline' first or pass baasSchema arg")
   }
 }
 
@@ -62,9 +60,7 @@ export async function handleFirebaseProvision(
     const baasSchema = await resolveBaasSchema(args.projectDir, args.baasSchema)
 
     // plistExists: true if any GoogleService-Info.plist is present under projectDir
-    const plistMatches = await runner.glob(
-      join(args.projectDir, '**/GoogleService-Info.plist'),
-    )
+    const plistMatches = await runner.glob(join(args.projectDir, '**/GoogleService-Info.plist'))
     const plistExists = plistMatches.length > 0
 
     const result = await runFirebaseProvision({

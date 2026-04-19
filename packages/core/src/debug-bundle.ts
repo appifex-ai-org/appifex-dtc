@@ -93,7 +93,7 @@ export async function writeDebugBundle(
   // 1. All files under .dtc-debug/, scrubbed (text) or copied (binary)
   const debugFiles = await listFilesRecursive(debugDir)
   for (const f of debugFiles) {
-    if (f === bundlePath) continue  // don't include our own output
+    if (f === bundlePath) continue // don't include our own output
     const raw = await readFile(f)
     const name = `debug/${relative(debugDir, f).split(/[\\/]/).join('/')}`
     if (isTextFile(f)) {

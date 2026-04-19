@@ -99,13 +99,16 @@ describe('firebase-provision', () => {
     const runner = makeRunner()
     await runFirebaseProvision({ ...BASE_OPTS, runner, plistExists: false })
     // Verify the firebase-tools plist download call was made with correct args
-    expect(runner.exec).toHaveBeenCalledWith('firebase', expect.arrayContaining([
-      'apps:sdkconfig',
-      'IOS',
-      '1:123456:ios:abcdef',
-      '--project',
-      'test-project-123',
-    ]))
+    expect(runner.exec).toHaveBeenCalledWith(
+      'firebase',
+      expect.arrayContaining([
+        'apps:sdkconfig',
+        'IOS',
+        '1:123456:ios:abcdef',
+        '--project',
+        'test-project-123',
+      ]),
+    )
   })
 
   it('idempotent: re-running with existing projectId skips project:create', async () => {
@@ -116,7 +119,10 @@ describe('firebase-provision', () => {
   })
 
   it('throws ProvisionError when firebase-tools exits non-zero', async () => {
-    const runner = { readFile: vi.fn().mockRejectedValue(new Error('ENOENT: file not found')), exec: vi.fn() }
+    const runner = {
+      readFile: vi.fn().mockRejectedValue(new Error('ENOENT: file not found')),
+      exec: vi.fn(),
+    }
     await expect(
       runFirebaseProvision({ ...BASE_OPTS, runner, plistExists: false }),
     ).rejects.toThrow(ProvisionError)

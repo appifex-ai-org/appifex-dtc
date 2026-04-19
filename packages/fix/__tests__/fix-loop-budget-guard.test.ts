@@ -52,9 +52,7 @@ describe('fixLoop — budget guard (FOUND-02)', () => {
       budgetInstance: budget,
     }
 
-    await expect(fixLoop(makeValidationResult(), opts)).rejects.toBeInstanceOf(
-      BudgetExhaustedError,
-    )
+    await expect(fixLoop(makeValidationResult(), opts)).rejects.toBeInstanceOf(BudgetExhaustedError)
 
     expect(fixFnMock).not.toHaveBeenCalled()
     expect(buildFnMock).not.toHaveBeenCalled()
