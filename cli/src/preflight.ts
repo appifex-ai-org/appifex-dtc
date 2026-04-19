@@ -15,6 +15,8 @@ export interface PreflightOpts {
   deep?: boolean
   /** Output stream for status lines (default: process.stderr) */
   output?: NodeJS.WritableStream
+  /** Skip iOS Simulator runtime check — use when --skip-simulator is passed */
+  skipSimulator?: boolean
 }
 
 /**
@@ -46,7 +48,7 @@ export async function runPreflight(
   if (config?.runner.type && config.runner.type !== 'local') {
     // Still run credential checks even for non-local runners
   } else {
-    const prereqReport = checkCriticalPrerequisites(platform, config)
+    const prereqReport = checkCriticalPrerequisites(platform, config, opts?.skipSimulator)
 
     if (prereqReport.hasCriticalFailures) {
       // Phase 02 Plan 01 (FOUND-04): throw typed error instead of process.exit so

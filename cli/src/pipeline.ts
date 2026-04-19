@@ -843,6 +843,8 @@ export interface PipelineOpts {
   overwriteUserEdits?: boolean
   /** Phase 7 (OBS-03 D-16): force debug bundle creation even on successful runs. */
   exportDebugBundle?: boolean
+  /** Skip iOS Simulator runtime preflight check — for CI runners without simulator runtimes installed. */
+  skipSimulator?: boolean
 }
 
 export interface PipelineResult {
@@ -863,7 +865,7 @@ export async function runPipeline(
   // any generate/agent invocation. Do not move below this line.
   {
     const { runPreflight } = await import('./preflight.js')
-    await runPreflight(opts.platform, config, { deep: false })
+    await runPreflight(opts.platform, config, { deep: false, skipSimulator: opts.skipSimulator })
   }
 
   // Ensure output directory exists before creating runner

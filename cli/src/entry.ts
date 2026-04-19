@@ -192,6 +192,9 @@ async function main() {
       // Failures appear in the report but xcode_archive + testflight_upload proceed anyway.
       // Hard-fail (security-lint + semgrep) is NOT bypassed.
       const skipValidationGate = args.flags['skip-validation-gate'] === true
+      // --skip-simulator: omit iOS Simulator runtime from preflight — for CI runners (macos-14)
+      // that have Xcode but no simulator runtimes installed (e.g. when --skip-simulator is passed).
+      const skipSimulator = args.flags['skip-simulator'] === true
       // Phase 7 (MCP-03 D-10): --overwrite-user-edits bypasses user-edit preservation gate.
       const overwriteUserEdits = args.overwriteUserEdits
       // Phase 7 (OBS-03 D-16): --export-debug-bundle forces bundle creation on success too.
@@ -258,12 +261,12 @@ async function main() {
         const { join } = await import('node:path')
         try {
           const preflightConfig = await loadConfig(join(homedir(), '.dtc'))
-          await runPreflight(platform, preflightConfig)
+          await runPreflight(platform, preflightConfig, { skipSimulator })
         } catch (err) {
           // If loadConfig fails, fall back to default-config preflight
           // Re-throw PreflightError so handleCliError can catch it cleanly
           if ((err as NodeJS.ErrnoException).code !== undefined) {
-            await runPreflight(platform)
+            await runPreflight(platform, undefined, { skipSimulator })
           } else {
             throw err
           }
@@ -291,6 +294,7 @@ async function main() {
         baasProvider: baasProviderFlag ? validateBaasProvider(baasProviderFlag) : undefined,
         skipTestflight,
         skipValidationGate,
+        skipSimulator,
         overwriteUserEdits,
         exportDebugBundle,
       })

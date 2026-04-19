@@ -507,6 +507,7 @@ function buildChecks(
   platform: Platform,
   config?: DtcConfig,
   criticalOnly?: boolean,
+  skipSimulator?: boolean,
 ): PrereqCheck[] {
   const checks: PrereqCheck[] = []
 
@@ -514,7 +515,7 @@ function buildChecks(
     checks.push(checkMacOS())
     checks.push(checkXcode())
     checks.push(checkXcodegen())
-    checks.push(checkSimulatorRuntime())
+    if (!skipSimulator) checks.push(checkSimulatorRuntime())
   }
 
   if (platform === 'kotlin-compose') {
@@ -545,12 +546,20 @@ function buildReport(platform: Platform, checks: PrereqCheck[]): PrereqReport {
   }
 }
 
-export function checkPrerequisites(platform: Platform, config?: DtcConfig): PrereqReport {
-  const checks = buildChecks(platform, config, false)
+export function checkPrerequisites(
+  platform: Platform,
+  config?: DtcConfig,
+  skipSimulator?: boolean,
+): PrereqReport {
+  const checks = buildChecks(platform, config, false, skipSimulator)
   return buildReport(platform, checks)
 }
 
-export function checkCriticalPrerequisites(platform: Platform, config?: DtcConfig): PrereqReport {
-  const checks = buildChecks(platform, config, true)
+export function checkCriticalPrerequisites(
+  platform: Platform,
+  config?: DtcConfig,
+  skipSimulator?: boolean,
+): PrereqReport {
+  const checks = buildChecks(platform, config, true, skipSimulator)
   return buildReport(platform, checks)
 }
