@@ -197,7 +197,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Scratch PR created without a changeset entry → changeset-check fails; changeset added → check passes
   4. `01-VERIFICATION.md` human_verification section updated to `done` for all 4 human_needed items
   5. REQUIREMENTS.md traceability: FLOW-01 and GATE-03 marked Verified
-**Plans**: 0 plans (pending /gsd-plan-phase 10)
+**Plans**: 3 plans
+  - [ ] 10-01-PLAN.md — Live branch protection execution: run setup-branch-protection.sh + gh api verification (FLOW-01, GATE-02, GATE-03, wave 1)
+  - [ ] 10-02-PLAN.md — Scratch PR gate proof: changeset-check bites + e2e-build hermetic run (GATE-02, GATE-04, wave 1)
+  - [ ] 10-03-PLAN.md — Document closure: update 01-VERIFICATION.md + REQUIREMENTS.md traceability (FLOW-01, GATE-02, GATE-03, GATE-04, wave 2)
 
 ## Progress
 
@@ -215,4 +218,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 7. Design Parity, MCP Surface & Observability | 9/9 | Complete (VERIFICATION.md pending — Phase 9) | 2026-04-18 |
 | 8. Formal Verification — Foundation & Setup | 3/3 | Complete (human_needed: Firebase live step inherited from Phase 3) | 2026-04-19 |
 | 9. Formal Verification — Firebase & Design Parity | 3/3 | Complete   | 2026-04-18 |
-| 10. Phase 1 Human Verification — Live Branch Protection | 0/TBD | Not started | - |
+| 10. Phase 1 Human Verification — Live Branch Protection | 0/3 | Not started | - |
