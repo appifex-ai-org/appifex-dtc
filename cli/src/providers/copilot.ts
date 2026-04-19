@@ -1,6 +1,7 @@
 import type { CodegenInput, CodegenResult, GeneratedFile } from '@appifex/codegen'
 import type { ValidationResult } from '@appifex/validate'
 import type { Runner, DebugLogger } from '@appifex/core'
+import { extractJsonObject } from './json-extract.js'
 
 // Device flow constants
 const GITHUB_DEVICE_CODE_URL = 'https://github.com/login/device/code'
@@ -129,8 +130,10 @@ export function createCopilotGenerateFn(
       await session.disconnect()
       await client.stop()
 
-      const jsonMatch = text.match(/\{[\s\S]*"files"[\s\S]*\}/)
-      if (!jsonMatch) {
+      // Phase 03 (DX-02): balanced-brace walker replaces greedy regex
+      // that could match prose containing the literal word "files".
+      const jsonSpan = extractJsonObject(text)
+      if (!jsonSpan) {
         return {
           success: false,
           files: [],
@@ -139,7 +142,7 @@ export function createCopilotGenerateFn(
         }
       }
 
-      const parsed = JSON.parse(jsonMatch[0]) as { files: GeneratedFile[] }
+      const parsed = JSON.parse(jsonSpan) as { files: GeneratedFile[] }
       if (!Array.isArray(parsed.files)) {
         return { success: false, files: [], tokensUsed: 0, error: 'Response missing files array' }
       }
@@ -214,8 +217,10 @@ Respond with ONLY a JSON object:
       await session.disconnect()
       await client.stop()
 
-      const jsonMatch = text.match(/\{[\s\S]*"fixes"[\s\S]*\}/)
-      if (!jsonMatch) {
+      // Phase 03 (DX-02): balanced-brace walker replaces greedy regex
+      // that could match prose containing the literal word "fixes".
+      const jsonSpan = extractJsonObject(text)
+      if (!jsonSpan) {
         // Phase 02 (OBS-01): surface instead of silently dropping.
         await opts.debug?.logJson('copilot-fix-error.json', {
           kind: 'copilot-fix-no-json-match',
@@ -224,12 +229,12 @@ Respond with ONLY a JSON object:
         return { filesChanged: [], tokensUsed: 0 }
       }
 
-      const parsed = JSON.parse(jsonMatch[0]) as { fixes: Array<{ path: string; content: string }> }
+      const parsed = JSON.parse(jsonSpan) as { fixes: Array<{ path: string; content: string }> }
       if (!Array.isArray(parsed.fixes)) {
         // Phase 02 (OBS-01): surface instead of silently dropping.
         await opts.debug?.logJson('copilot-fix-error.json', {
           kind: 'copilot-fix-malformed-fixes',
-          raw: jsonMatch[0].slice(0, 500),
+          raw: jsonSpan.slice(0, 500),
         })
         return { filesChanged: [], tokensUsed: 0 }
       }

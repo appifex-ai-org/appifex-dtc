@@ -130,6 +130,25 @@ describe('createCopilotGenerateFn', () => {
     expect(result.success).toBe(false)
     expect(result.error).toBeDefined()
   })
+
+  // Phase 03 (DX-02): balanced-brace extractor must not be confused by
+  // prose containing the literal word "files" before the JSON payload.
+  it('parses response when prose contains "files" keyword before JSON', async () => {
+    const session = mockCopilotSession(
+      'Sure — the files you requested:\n{"files":[{"path":"A.swift","content":"x"}]}',
+    )
+    const client = mockCopilotClient(session)
+
+    const generateFn = createCopilotGenerateFn({
+      githubToken: 'ghu_test',
+      createClient: () => client as any,
+    })
+
+    const result = await generateFn(sampleInput)
+    expect(result.success).toBe(true)
+    expect(result.files).toHaveLength(1)
+    expect(result.files[0].path).toBe('A.swift')
+  })
 })
 
 describe('createCopilotFixFn', () => {
@@ -232,5 +251,36 @@ describe('createCopilotFixFn', () => {
 
     const result = await fixFn(failingValidation)
     expect(result).toEqual({ filesChanged: [], tokensUsed: 0 })
+  })
+
+  // Phase 03 (DX-02): balanced-brace extractor must not be confused by
+  // prose containing the literal word "fixes" before the JSON payload.
+  // Regression coverage — also verifies debug.logJson is NOT called on
+  // the happy path (the prose-with-keyword case is a SUCCESS, not an error).
+  it('parses fix response when prose contains "fixes" keyword before JSON', async () => {
+    const session = mockCopilotSession(
+      'Here are the fixes:\n{"fixes":[{"path":"/a.tsx","content":"y"}]}',
+    )
+    const client = mockCopilotClient(session)
+    const runner = mockRunner()
+    const debug = {
+      enabled: true,
+      log: vi.fn().mockResolvedValue(undefined),
+      logJson: vi.fn().mockResolvedValue(undefined),
+    }
+
+    const fixFn = createCopilotFixFn({
+      githubToken: 'ghu_test',
+      runner,
+      projectDir: '/app',
+      createClient: () => client as any,
+      debug,
+    })
+
+    const result = await fixFn(failingValidation)
+    expect(result).toEqual({ filesChanged: ['/a.tsx'], tokensUsed: 0 })
+    expect(runner.writeFile).toHaveBeenCalledWith('/a.tsx', 'y')
+    // Happy path — no error logging.
+    expect(debug.logJson).not.toHaveBeenCalled()
   })
 })
