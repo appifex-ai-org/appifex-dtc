@@ -9,6 +9,15 @@ export default defineConfig({
       'cli/__tests__/**/*.test.ts',
     ],
     testTimeout: 10_000,
+    // Phase 02 (DX-09): coverage reporting for CI + local use.
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      reportsDirectory: './coverage',
+      include: ['packages/*/src/**/*.ts', 'cli/src/**/*.ts'],
+      exclude: ['**/dist/**', '**/__tests__/**', '**/*.d.ts', '**/node_modules/**', 'sidecar/**'],
+      all: false,
+    },
   },
   resolve: {
     alias: {

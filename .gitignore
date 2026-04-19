@@ -4,6 +4,7 @@ dist/
 .dtc/
 .dtc-debug/
 .dtc-report/
+coverage/
 *.log
 .DS_Store
 .claude/
