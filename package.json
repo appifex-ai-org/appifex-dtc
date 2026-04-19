@@ -18,6 +18,7 @@
     "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test",
     "clean": "pnpm -r run clean",
     "setup": "node scripts/build-and-link.mjs",
+    "smoke": "pnpm build && node bin/dtc --version",
     "prepare": "lefthook install",
     "changeset": "changeset",
     "version-packages": "changeset version",
