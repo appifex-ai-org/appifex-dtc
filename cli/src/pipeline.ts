@@ -119,6 +119,24 @@ export function redactConfigForDebug(config: DtcConfig): DtcConfig {
   return redacted
 }
 
+/**
+ * Phase 02 (OBS-01): surface `claude --print` stdin errors (EPIPE when claude
+ * closes stdin early on large prompts) via `DebugLogger` instead of silently
+ * swallowing. The writer is fire-and-forget by design — the stdin 'error'
+ * listener is sync and must not block the stream — so the EPIPE handler
+ * wraps this call in `void`.
+ *
+ * Exported as a named helper so it can be unit-tested in isolation without
+ * spawning the real `claude` binary.
+ */
+export async function logClaudeStdinError(debug: DebugLogger, err: unknown): Promise<void> {
+  await debug.logJson('claude-epipe.json', {
+    message: err instanceof Error ? err.message : String(err),
+    code: (err as NodeJS.ErrnoException | undefined)?.code,
+    at: 'child.stdin',
+  })
+}
+
 /** Map CLI Platform to BaaS TargetPlatform array. */
 function platformToTarget(
   platform: Platform | undefined,
@@ -766,9 +784,10 @@ export async function runPipeline(
             stdio: ['pipe', 'pipe', 'pipe'],
             cwd: outputDir,
           })
-          // Handle EPIPE — claude may close stdin early for large prompts
-          child.stdin.on('error', () => {
-            /* swallow EPIPE */
+          // Phase 02 (OBS-01): surface EPIPE instead of swallowing it silently.
+          // Handler is sync — must not block the stream, so fire-and-forget.
+          child.stdin.on('error', (err) => {
+            void logClaudeStdinError(debug, err)
           })
           child.stdin.write(prompt)
           child.stdin.end()

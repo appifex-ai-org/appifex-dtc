@@ -1,6 +1,6 @@
 import type { CodegenInput, CodegenResult, GeneratedFile } from '@appifex/codegen'
 import type { ValidationResult } from '@appifex/validate'
-import type { Runner } from '@appifex/core'
+import type { Runner, DebugLogger } from '@appifex/core'
 
 // Device flow constants
 const GITHUB_DEVICE_CODE_URL = 'https://github.com/login/device/code'
@@ -159,6 +159,8 @@ export function createCopilotGenerateFn(
 export interface CopilotFixOpts extends CopilotProviderOpts {
   runner: Runner
   projectDir: string
+  /** Phase 02 (OBS-01): optional DebugLogger for failure diagnosis. */
+  debug?: DebugLogger
 }
 
 export function createCopilotFixFn(
@@ -213,10 +215,24 @@ Respond with ONLY a JSON object:
       await client.stop()
 
       const jsonMatch = text.match(/\{[\s\S]*"fixes"[\s\S]*\}/)
-      if (!jsonMatch) return { filesChanged: [], tokensUsed: 0 }
+      if (!jsonMatch) {
+        // Phase 02 (OBS-01): surface instead of silently dropping.
+        await opts.debug?.logJson('copilot-fix-error.json', {
+          kind: 'copilot-fix-no-json-match',
+          preview: text.slice(0, 500),
+        })
+        return { filesChanged: [], tokensUsed: 0 }
+      }
 
       const parsed = JSON.parse(jsonMatch[0]) as { fixes: Array<{ path: string; content: string }> }
-      if (!Array.isArray(parsed.fixes)) return { filesChanged: [], tokensUsed: 0 }
+      if (!Array.isArray(parsed.fixes)) {
+        // Phase 02 (OBS-01): surface instead of silently dropping.
+        await opts.debug?.logJson('copilot-fix-error.json', {
+          kind: 'copilot-fix-malformed-fixes',
+          raw: jsonMatch[0].slice(0, 500),
+        })
+        return { filesChanged: [], tokensUsed: 0 }
+      }
 
       const filesChanged: string[] = []
       for (const fix of parsed.fixes) {

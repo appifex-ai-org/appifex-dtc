@@ -153,4 +153,84 @@ describe('createCopilotFixFn', () => {
     expect(result.filesChanged).toEqual(['/app/src/Home.tsx'])
     expect(runner.writeFile).toHaveBeenCalledWith('/app/src/Home.tsx', 'fixed code')
   })
+
+  // Phase 02 (OBS-01): silent-return paths now route through DebugLogger.
+  it('logs copilot-fix-no-json-match when response has no fixes JSON block', async () => {
+    const session = mockCopilotSession('Sorry I cannot help right now.')
+    const client = mockCopilotClient(session)
+    const runner = mockRunner()
+    const debug = {
+      enabled: true,
+      log: vi.fn().mockResolvedValue(undefined),
+      logJson: vi.fn().mockResolvedValue(undefined),
+    }
+
+    const fixFn = createCopilotFixFn({
+      githubToken: 'ghu_test',
+      runner,
+      projectDir: '/app',
+      createClient: () => client as any,
+      debug,
+    })
+
+    const result = await fixFn(failingValidation)
+
+    expect(result).toEqual({ filesChanged: [], tokensUsed: 0 })
+    expect(debug.logJson).toHaveBeenCalledWith(
+      'copilot-fix-error.json',
+      expect.objectContaining({
+        kind: 'copilot-fix-no-json-match',
+        preview: expect.any(String),
+      }),
+    )
+  })
+
+  it('logs copilot-fix-malformed-fixes when parsed.fixes is not an array', async () => {
+    // Response contains "fixes" substring to pass the regex, but parsed value is not an array.
+    const responseJson = JSON.stringify({ fixes: 'not-an-array' })
+    const session = mockCopilotSession(responseJson)
+    const client = mockCopilotClient(session)
+    const runner = mockRunner()
+    const debug = {
+      enabled: true,
+      log: vi.fn().mockResolvedValue(undefined),
+      logJson: vi.fn().mockResolvedValue(undefined),
+    }
+
+    const fixFn = createCopilotFixFn({
+      githubToken: 'ghu_test',
+      runner,
+      projectDir: '/app',
+      createClient: () => client as any,
+      debug,
+    })
+
+    const result = await fixFn(failingValidation)
+
+    expect(result).toEqual({ filesChanged: [], tokensUsed: 0 })
+    expect(debug.logJson).toHaveBeenCalledWith(
+      'copilot-fix-error.json',
+      expect.objectContaining({
+        kind: 'copilot-fix-malformed-fixes',
+        raw: expect.any(String),
+      }),
+    )
+  })
+
+  it('works without a debug option (backward-compat with pre-OBS-01 callers)', async () => {
+    const session = mockCopilotSession('no json here')
+    const client = mockCopilotClient(session)
+    const runner = mockRunner()
+
+    const fixFn = createCopilotFixFn({
+      githubToken: 'ghu_test',
+      runner,
+      projectDir: '/app',
+      createClient: () => client as any,
+      // no `debug` — optional and must not crash
+    })
+
+    const result = await fixFn(failingValidation)
+    expect(result).toEqual({ filesChanged: [], tokensUsed: 0 })
+  })
 })
