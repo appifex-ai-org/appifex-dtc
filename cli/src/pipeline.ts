@@ -45,8 +45,8 @@ import {
   createDesignAdapter,
   PencilMcpClient,
   writeImageAssets,
-  extractStitchZip,
-  type StitchArtifacts,
+  extractDesignZip,
+  type DesignZipArtifacts,
 } from '@appifex/design'
 import type { DesignToolResult, ProgressEmitter } from '@appifex/core'
 import {
@@ -54,7 +54,7 @@ import {
   extractSpecFromMcp,
   translateSpec,
   generateSpecFromPrompt,
-  extractSpecFromStitch,
+  extractSpecFromHtmlDesign,
   extractSpecFromFigmaMake,
 } from '@appifex/spec'
 import { generateUITests, generateUnitTests, generateSpecUnitTests } from '@appifex/test-gen'
@@ -801,7 +801,7 @@ export interface PipelineOpts {
   prompt: string
   platform: Platform
   outputDir: string
-  /** Path to existing design file (.pen for Pencil, .zip for Stitch export) */
+  /** Path to existing design file (.pen for Pencil, .zip for any design-export — Stitch / Figma Make / Claude Design) */
   designFile?: string
   /**
    * Phase 1 Plan 07 (GATE-02): Path to a pre-extracted design IR JSON
@@ -1748,7 +1748,7 @@ export async function runPipeline(
   // designPath always points to the working copy (never the user's original)
   const designPath = join(outputDir, 'design.pen')
   const previewPath = join(outputDir, 'preview.png')
-  let stitchArtifacts: StitchArtifacts | undefined
+  let designArtifacts: DesignZipArtifacts | undefined
   let lastDesignResult: DesignToolResult | undefined
 
   if (designIrInjectedSpec) {
@@ -1768,16 +1768,16 @@ export async function runPipeline(
     }
 
     if (userPath.endsWith('.zip')) {
-      // Stitch zip export — extract to .stitch/ directory
-      stitchArtifacts = await extractStitchZip(userPath, outputDir)
+      // Design-export zip (Stitch / Figma Make / Claude Design) — extract to .design-import/
+      designArtifacts = await extractDesignZip(userPath, outputDir)
       // Copy first screenshot as preview
-      if (stitchArtifacts.screenshotPaths.length > 0) {
-        copyFileSync(stitchArtifacts.screenshotPaths[0], previewPath)
+      if (designArtifacts.screenshotPaths.length > 0) {
+        copyFileSync(designArtifacts.screenshotPaths[0], previewPath)
       }
       emit(
         'design',
         'completed',
-        `Using Stitch export: ${opts.designFile} (${stitchArtifacts.htmlPaths.length} screen(s))`,
+        `Using design import: ${opts.designFile} (${designArtifacts.htmlPaths.length} screen(s))`,
       )
       checkpoint.savePhase(checkpointRunId, 'design', { designFile: opts.designFile })
       await flushContext()
@@ -1833,9 +1833,9 @@ export async function runPipeline(
       throw new Error(`Design failed: ${lastDesignResult.error}`)
     }
 
-    // Populate stitchArtifacts from result for downstream spec extraction
+    // Populate designArtifacts from result for downstream spec extraction
     if (lastDesignResult.htmlPaths.length > 0) {
-      stitchArtifacts = {
+      designArtifacts = {
         htmlPaths: lastDesignResult.htmlPaths,
         screenshotPaths: lastDesignResult.screenshotPaths,
         extractDir: lastDesignResult.outputDir,
@@ -1894,7 +1894,7 @@ export async function runPipeline(
           previewPath,
         })
         if (iterResult.success && iterResult.htmlPaths.length > 0) {
-          stitchArtifacts = {
+          designArtifacts = {
             htmlPaths: iterResult.htmlPaths,
             screenshotPaths: iterResult.screenshotPaths,
             extractDir: iterResult.outputDir,
@@ -2025,20 +2025,20 @@ export async function runPipeline(
   if (!specSkipped) {
     emit('spec', 'started', 'Generating spec')
 
-    if (stitchArtifacts && adapter.tool === 'figma-make') {
+    if (designArtifacts && adapter.tool === 'figma-make') {
       // ── Figma Make spec extraction: Tailwind code + LLM vision ──
       emit('spec', 'running', 'Extracting spec from Figma Make design')
       const { readFileSync } = await import('node:fs')
       const codeContent =
-        stitchArtifacts.htmlPaths.length > 0
-          ? readFileSync(stitchArtifacts.htmlPaths[0], 'utf-8')
+        designArtifacts.htmlPaths.length > 0
+          ? readFileSync(designArtifacts.htmlPaths[0], 'utf-8')
           : ''
       const createMessage = await getCreateMessage()
       const canSendImages = config.llm.provider !== 'claude-cli'
       const result = await extractSpecFromFigmaMake({
         codeContent,
         metadata: {},
-        screenshotPaths: stitchArtifacts.screenshotPaths,
+        screenshotPaths: designArtifacts.screenshotPaths,
         prompt: opts.prompt,
         platform: opts.platform,
         createMessage,
@@ -2049,25 +2049,25 @@ export async function runPipeline(
       })
       spec = result.spec
       specTokens = result.tokensUsed
-    } else if (stitchArtifacts) {
+    } else if (designArtifacts) {
       // ── Stitch / zip import spec extraction: DESIGN.md tokens + LLM vision ──
       emit('spec', 'running', 'Extracting spec from design artifacts')
       const { readFileSync } = await import('node:fs')
-      const designMdContent = stitchArtifacts.designMdPath
-        ? readFileSync(stitchArtifacts.designMdPath, 'utf-8')
+      const designMdContent = designArtifacts.designMdPath
+        ? readFileSync(designArtifacts.designMdPath, 'utf-8')
         : undefined
       const htmlContents = await Promise.all(
-        stitchArtifacts.htmlPaths.map(async (p) => ({
+        designArtifacts.htmlPaths.map(async (p) => ({
           name: p.split('/').pop() ?? 'screen.html',
           html: readFileSync(p, 'utf-8'),
         })),
       )
       const createMessage = await getCreateMessage()
       const canSendImages = config.llm.provider !== 'claude-cli'
-      const result = await extractSpecFromStitch({
+      const result = await extractSpecFromHtmlDesign({
         designMdContent,
         htmlContents,
-        screenshotPaths: stitchArtifacts.screenshotPaths,
+        screenshotPaths: designArtifacts.screenshotPaths,
         prompt: opts.prompt,
         platform: opts.platform,
         createMessage,
@@ -2778,18 +2778,18 @@ export async function runPipeline(
     // For Pencil: use preview.png for the first screen (single export)
     // designScreenshots is hoisted at the top of the outer scope so the
     // Phase 11 test_regen block (in the agent path) can read the same map.
-    if (stitchArtifacts && stitchArtifacts.screenshotPaths.length > 0) {
+    if (designArtifacts && designArtifacts.screenshotPaths.length > 0) {
       // Copy screenshots into .maestro/designs/ so Maestro can reference them
       const designDir = join(flowDir, 'designs')
       const { mkdirSync, copyFileSync: cpSync } = await import('node:fs')
       mkdirSync(designDir, { recursive: true })
       for (
         let i = 0;
-        i < platformSpec.screens.length && i < stitchArtifacts.screenshotPaths.length;
+        i < platformSpec.screens.length && i < designArtifacts.screenshotPaths.length;
         i++
       ) {
         const screenId = platformSpec.screens[i].id
-        const srcPath = stitchArtifacts.screenshotPaths[i]
+        const srcPath = designArtifacts.screenshotPaths[i]
         const destName = `${screenId}.png`
         cpSync(srcPath, join(designDir, destName))
         designScreenshots[screenId] = `designs/${destName}`

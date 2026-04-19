@@ -40,7 +40,7 @@ export function registerPipelineTools(
         .string()
         .optional()
         .describe(
-          'Path to existing design file. Accepts .pen (Pencil), .zip (Stitch export), or Figma file URL.',
+          'Path to existing design file. Accepts .pen (Pencil), .zip (any design-export zip — Google Stitch, Figma Make "Export HTML", or Claude Design "Standalone HTML files"), or Figma file URL.',
         ),
       mode: z.enum(['fresh', 'resume', 'add-feature', 'refactor']).optional().describe('Run mode'),
       agentType: z

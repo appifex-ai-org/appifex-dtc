@@ -7,9 +7,12 @@ import { sanitizeLayerName as _sanitizeLayerName } from '@appifex/design'
 import { generateSpecFromPrompt, type CreateMessageFn } from './generate-spec.js'
 
 /**
- * Parse a Stitch DESIGN.md file into DesignTokens.
- * Extracts colors (hex values), typography (font families, sizes, weights),
- * spacing (numeric values), and border radius from markdown sections.
+ * Parse a design-export DESIGN.md file into DesignTokens.
+ *
+ * Works for any design tool that emits a markdown token sheet — e.g. Google
+ * Stitch, Figma Make, Claude Design. Extracts colors (hex values), typography
+ * (font families, sizes, weights), spacing (numeric values), and border radius
+ * from markdown sections.
  */
 export function parseDesignMd(markdown: string): DesignTokens {
   const colors: Record<string, string> = {}
@@ -105,9 +108,9 @@ function parseNumericEntries(body: string, out: Record<string, number>): void {
   }
 }
 
-// ── Stitch Spec Extraction ──
+// ── HTML Design Spec Extraction ──
 
-export interface ExtractSpecFromStitchOpts {
+export interface ExtractSpecFromHtmlDesignOpts {
   designMdContent?: string
   htmlContents: Array<{ name: string; html: string }>
   screenshotPaths: string[]
@@ -122,13 +125,18 @@ export interface ExtractSpecFromStitchOpts {
 }
 
 /**
- * Build a DesignSpec from Stitch artifacts:
+ * Build a DesignSpec from HTML-based design-export artifacts.
+ *
+ * Works for any design tool that exports HTML + screenshots (+ optional
+ * DESIGN.md) — e.g. Google Stitch, Figma Make "Export HTML", Claude Design
+ * "Standalone HTML files".
+ *
  * 1. Parse DESIGN.md → DesignTokens (deterministic)
  * 2. Feed PNG + HTML + tokens to LLM → ScreenSpec[] (vision)
  * 3. Merge: use deterministic tokens over LLM-generated tokens
  */
-export async function extractSpecFromStitch(
-  opts: ExtractSpecFromStitchOpts,
+export async function extractSpecFromHtmlDesign(
+  opts: ExtractSpecFromHtmlDesignOpts,
 ): Promise<{ spec: DesignSpec; tokensUsed: number }> {
   // 1. Parse deterministic tokens from DESIGN.md (if available)
   const mdTokens = opts.designMdContent ? parseDesignMd(opts.designMdContent) : undefined
@@ -139,7 +147,7 @@ export async function extractSpecFromStitch(
     const htmlSection = opts.htmlContents
       .map((h) => `### ${h.name}\n\`\`\`html\n${h.html}\n\`\`\``)
       .join('\n\n')
-    enhancedPrompt = `${opts.prompt}\n\n## HTML Source from Stitch Export\n${htmlSection}`
+    enhancedPrompt = `${opts.prompt}\n\n## HTML Source from Design Export\n${htmlSection}`
   }
   if (mdTokens) {
     const tokenSummary = Object.entries(mdTokens.colors)
