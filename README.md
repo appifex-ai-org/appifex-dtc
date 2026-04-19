@@ -38,3 +38,4 @@ See [docs/getting-started.md](docs/getting-started.md) for the full walkthrough.
 
 MIT — see [LICENSE](LICENSE).
 
+Sun 19 Apr 2026 20:28:30 NZST
