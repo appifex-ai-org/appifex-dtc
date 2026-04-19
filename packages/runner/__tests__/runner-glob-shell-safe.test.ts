@@ -71,7 +71,6 @@ describe('assertSafeGlobPattern (shared helper)', () => {
     })
 
     it('throws on embedded newline (multi-command)', () => {
-       
       expect(() => assertSafeGlobPattern('src/*.ts\nrm -rf /')).toThrow(/Unsafe glob pattern/)
     })
   })
