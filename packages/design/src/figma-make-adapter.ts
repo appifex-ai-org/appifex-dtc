@@ -90,12 +90,13 @@ export class FigmaMakeAdapter implements DesignToolAdapter {
   /** Write binary data via Node fs — no shell involved. */
   private async writeBinary(path: string, data: Buffer): Promise<void> {
     // Phase 04 (SEC-02, T-04-06): eliminate shell — Node fs handles binary writes
-    // directly. The former `sh -c echo '${b64}' | base64 -d > '${path}'` was
-    // vulnerable to single-quote injection in `path` (Figma-API-derived — untrusted)
-    // or in the base64 body. STRIDE Tampering / EoP mitigated by removing the shell
-    // entirely: content is the payload, not a command. The Figma Make adapter runs
-    // CLI-side (local host), so `node:fs/promises.writeFile` is the correct plumbing;
-    // remote-runner binary writes are out of scope (no transport carries binary today).
+    // directly. The former shell-pipe form was vulnerable to single-quote
+    // injection in the target filename (Figma-API-derived — untrusted) or in
+    // the base64 body. STRIDE Tampering / EoP mitigated by removing the shell
+    // entirely: content is the payload, not a command. The Figma Make adapter
+    // runs CLI-side (local host), so `node:fs/promises.writeFile` is the
+    // correct plumbing; remote-runner binary writes are out of scope (no
+    // transport carries binary today).
     const { writeFile } = await import('node:fs/promises')
     await writeFile(path, data)
   }
