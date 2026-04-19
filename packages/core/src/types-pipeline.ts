@@ -10,6 +10,7 @@ export type PhaseId =
   | 'baas_recommend'
   | 'baas_schema'
   | 'baas_auth'
+  | 'firebase_provision' // Phase 4 (FIRE-04)
   | 'mock_service'
   | 'test_gen'
   | 'codegen'
@@ -19,6 +20,9 @@ export type PhaseId =
   | 'security'
   | 'fix'
   | 'deliver'
+  | 'e2e_gate' // Phase 6 (VAL-01 D-01): real-Firebase e2e gate before TestFlight
+  | 'xcode_archive' // Phase 5 (TF-01 D-02): after deliver, before report
+  | 'testflight_upload' // Phase 5 (TF-01 D-02): after xcode_archive, before report
   | 'report'
   | 'provision'
 
@@ -77,6 +81,16 @@ export type CheckpointData = {
     | CheckpointFailed
     | CheckpointSkipped
   baas_auth: CheckpointBase | CheckpointFailed | CheckpointSkipped
+  // Phase 4 (FIRE-04): firebase_provision checkpoint — stores plist path and projectId for idempotency
+  firebase_provision:
+    | (CheckpointBase & {
+        projectId?: string
+        iosAppId?: string
+        plistPath?: string
+        collectionsSeeded?: number
+      })
+    | CheckpointFailed
+    | CheckpointSkipped
   mock_service:
     | (CheckpointBase & {
         fileCount?: number
@@ -100,6 +114,39 @@ export type CheckpointData = {
   security: CheckpointBase | CheckpointFailed | CheckpointSkipped
   fix: CheckpointBase | CheckpointFailed | CheckpointSkipped
   deliver: CheckpointBase | CheckpointFailed | CheckpointSkipped
+  // Phase 6 (VAL-01 D-01): e2e_gate checkpoint — stores flow file + pass/fail state for idempotent resume
+  e2e_gate:
+    | (CheckpointBase & {
+        flowFile?: string
+        passed?: boolean
+        totalFlows?: number
+        failureSummary?: string
+      })
+    | CheckpointFailed
+    | CheckpointSkipped
+  // Phase 5 (TF-01 D-01): xcode_archive checkpoint — stores .ipa path + version for idempotent resume (D-16)
+  xcode_archive:
+    | (CheckpointBase & {
+        ipaPath?: string
+        archivePath?: string
+        buildNumber?: string
+        marketingVersion?: string
+        bundleId?: string
+      })
+    | CheckpointFailed
+    | CheckpointSkipped
+  // Phase 5 (TF-04 D-01): testflight_upload checkpoint — stores ASC buildId + terminal processing state
+  testflight_upload:
+    | (CheckpointBase & {
+        buildId?: string
+        processingState?: 'PROCESSING' | 'VALID' | 'INVALID' | 'FAILED'
+        groupId?: string
+        testersAdded?: number
+        /** Phase 5 (D-17): soft-fail warnings surfaced in the report */
+        warnings?: string[]
+      })
+    | CheckpointFailed
+    | CheckpointSkipped
   report: CheckpointBase | CheckpointFailed | CheckpointSkipped
   /** provision is a PhaseId but NOT in PHASE_ORDER (Pitfall 1). Branch present for type completeness. */
   provision: CheckpointBase | CheckpointFailed | CheckpointSkipped
@@ -112,6 +159,25 @@ export interface ProgressEvent {
   detail?: unknown
   timestamp: number
   tokensUsed?: number
+  /**
+   * Phase 7 (OBS-01 D-14 — revision B-05): input tokens for this phase (live cost).
+   *
+   * MUST be a per-call delta (not cumulative). Consumers (e.g. PipelineView) accumulate
+   * these values across events. If this event has status 'completed', omit this field
+   * unless the completion itself consumed tokens (e.g. a summary LLM call at phase end).
+   */
+  tokensInput?: number
+  /**
+   * Phase 7 (OBS-01 D-14 — revision B-05): output tokens for this phase (live cost).
+   *
+   * MUST be a per-call delta (not cumulative). Consumers (e.g. PipelineView) accumulate
+   * these values across events. If this event has status 'completed', omit this field
+   * unless the completion itself consumed tokens (e.g. a summary LLM call at phase end).
+   */
+  tokensOutput?: number
+  /** Phase 7 (OBS-01 D-14 — revision B-05): USD cost for this phase, or omitted
+   *  when model unknown (UI renders em-dash). */
+  costUsd?: number
 }
 
 // ── Agent ──

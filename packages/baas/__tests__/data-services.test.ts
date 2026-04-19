@@ -81,11 +81,11 @@ describe('generateDataServices', () => {
     expect(file.content).toContain('SupabaseTodoRepository()')
   })
 
-  // Test 8: DataService content contains loadAll(), create(), delete() methods
-  it('DataService content contains loadAll(), create(), delete() methods', () => {
+  // Test 8: DataService uses realtime streaming (loadAll removed in Phase 4 FIRE-03; startListening replaces it)
+  it('DataService uses startListening for realtime updates and has create(), delete() methods', () => {
     const files = generateDataServices(testSchema, 'firebase')
     const file = files.find((f) => f.path === 'Sources/Services/TodoDataService.swift')!
-    expect(file.content).toContain('func loadAll()')
+    expect(file.content).toContain('startListening')
     expect(file.content).toContain('func create(')
     expect(file.content).toContain('func delete(')
   })

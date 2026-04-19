@@ -16,7 +16,7 @@ pre-commit:
 
     format-staged:
       glob: '*.{ts,tsx,js,json,md,yml,yaml}'
-      run: pnpm exec prettier --write {staged_files} && git add {staged_files}
+      run: pnpm exec prettier --write {staged_files} && git add -f {staged_files}
 
     vitest-related:
       glob: '*.{ts,tsx}'

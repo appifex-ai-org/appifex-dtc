@@ -1,1 +1,2 @@
-/Users/rayliu/dev/appifex/packages/appifex-dtc/cli/dist/entry.js
+#!/usr/bin/env node
+import('../cli/dist/entry.js')

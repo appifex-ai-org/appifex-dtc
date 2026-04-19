@@ -1,4 +1,9 @@
 import type { DesignSpec, DesignTokens, Platform, TypographyToken } from '@appifex/core'
+// Phase 7 (DESIGN-03): sanitizeLayerName imported for use at raw-name → id boundaries.
+// This extractor generates screen IDs via LLM (generateSpecFromPrompt) so direct name→id
+// conversion is delegated; sanitization is enforced upstream in StitchAdapter.spec
+// and would apply here if deterministic name→id sites are added in future.
+import { sanitizeLayerName as _sanitizeLayerName } from '@appifex/design'
 import { generateSpecFromPrompt, type CreateMessageFn } from './generate-spec.js'
 
 /**

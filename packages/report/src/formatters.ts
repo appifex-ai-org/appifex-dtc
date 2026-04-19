@@ -1,5 +1,16 @@
 import type { PipelineReport } from './report.js'
 
+// Phase 7 (OBS-02 D-15): remediation hints per failure class
+const REMEDIATION_HINTS: Record<string, string> = {
+  maestro: 'Check device/simulator state and Maestro logs under .dtc-debug/maestro/.',
+  unit: 'Run the failing test locally via `pnpm vitest run <path>` for interactive debugging.',
+  'security-lint': 'Review generated security.rules for cross-user reads; see 04-CONTEXT FIRE-05.',
+  semgrep: 'Review semgrep findings in .dtc-debug/semgrep/. Hard-fail cannot be bypassed.',
+  parity:
+    'A design adapter produced IR that does not match the Pencil-authoritative fixture. Re-run fixture-gen.ts if the reference design changed.',
+  baas: 'Check ~/.dtc/config.json firebase.projectId + serviceAccountKeyPath. Run `dtc doctor --deep`.',
+}
+
 export function formatMarkdown(report: PipelineReport): string {
   const lines: string[] = []
 
@@ -31,13 +42,15 @@ export function formatMarkdown(report: PipelineReport): string {
     lines.push(`| Stop Reason | ${report.agent.stopReason} |`)
     if (report.agent.costUsd != null) lines.push(`| Cost | $${report.agent.costUsd.toFixed(4)} |`)
     if (report.agent.sessionId) lines.push(`| Session ID | \`${report.agent.sessionId}\` |`)
-    lines.push(`| Files Generated | ${report.agent.filesGenerated.length} |`)
+    // Phase 7 (WR-03): guard against missing filesGenerated (e.g. deserialized from older checkpoint)
+    const filesGenerated = report.agent.filesGenerated ?? []
+    lines.push(`| Files Generated | ${filesGenerated.length} |`)
     lines.push('')
 
-    if (report.agent.filesGenerated.length > 0) {
+    if (filesGenerated.length > 0) {
       lines.push('### Generated Files')
       lines.push('')
-      for (const f of report.agent.filesGenerated) {
+      for (const f of filesGenerated) {
         lines.push(`- \`${f}\``)
       }
       lines.push('')
@@ -76,6 +89,25 @@ export function formatMarkdown(report: PipelineReport): string {
     }
     lines.push('')
 
+    // Phase 7 (OBS-02 D-15): emit remediation hints for failing tests even when no fixResult
+    const hasUiFail = pr.uiTests.passed < pr.uiTests.total
+    const hasUnitFail = pr.unitTests.passed < pr.unitTests.total
+    const hasSecFail = pr.securityTests && pr.securityTests.passed < pr.securityTests.total
+    if (!pr.fixResult && (hasUiFail || hasUnitFail || hasSecFail)) {
+      if (hasUiFail) {
+        lines.push(`**Remediation:** ${REMEDIATION_HINTS['maestro']}`)
+        lines.push('')
+      }
+      if (hasUnitFail) {
+        lines.push(`**Remediation:** ${REMEDIATION_HINTS['unit']}`)
+        lines.push('')
+      }
+      if (hasSecFail) {
+        lines.push(`**Remediation:** ${REMEDIATION_HINTS['security-lint']}`)
+        lines.push('')
+      }
+    }
+
     if (pr.fixResult) {
       lines.push(
         `**Fix:** ${pr.fixResult.status} (${pr.fixResult.attempts.length} attempt${pr.fixResult.attempts.length !== 1 ? 's' : ''}, ${pr.fixResult.totalTokensUsed.toLocaleString()} tokens)`,
@@ -105,14 +137,25 @@ export function formatMarkdown(report: PipelineReport): string {
         lines.push('#### Unresolved Failures')
         lines.push('')
         for (const f of pr.fixResult.unresolvedFailures) {
+          let failureClass: string | undefined
           if ('flowName' in f) {
             lines.push(`- **UI:** ${f.flowName}: ${f.error ?? 'failed'}`)
+            failureClass = 'maestro'
           } else if ('suiteName' in f) {
             lines.push(`- **${f.suiteName}:** ${f.testName}: ${f.error}`)
+            failureClass = 'unit'
           } else if ('failingPlatform' in f) {
             lines.push(`- **Parity:** ${f.failingPlatform}: ${f.remediation}`)
+            failureClass = 'parity'
           } else {
             lines.push(`- **BaaS:** ${f.file} (${f.type}): ${f.remediation}`)
+            failureClass = 'baas'
+          }
+          // Phase 7 (OBS-02 D-15): remediation hint for this failure class
+          const hint = failureClass ? REMEDIATION_HINTS[failureClass] : undefined
+          if (hint) {
+            lines.push('')
+            lines.push(`  **Remediation:** ${hint}`)
           }
         }
         lines.push('')
@@ -131,6 +174,36 @@ export function formatMarkdown(report: PipelineReport): string {
       lines.push(`| ${phase} | ${tokens!.toLocaleString()} |`)
     }
     lines.push('')
+  }
+
+  // Phase 7 (OBS-01 D-15): Cost Estimate section
+  const hasCost =
+    report.costUsdPerPhase != null || report.costUsdTotal != null || report.pricingAsOf != null
+  if (hasCost) {
+    lines.push('## Cost Estimate')
+    lines.push('')
+    if (report.model) lines.push(`**Model:** ${report.model}`)
+    if (report.pricingAsOf) lines.push(`**Prices as of:** ${report.pricingAsOf}`)
+    lines.push('')
+    if (report.costUsdPerPhase) {
+      lines.push('| Phase | Tokens (in/out) | USD |')
+      lines.push('|-------|-----------------|-----|')
+      const breakdown = report.tokenUsageBreakdown ?? {}
+      const costs = report.costUsdPerPhase
+      for (const phase of Object.keys(costs)) {
+        const bd = breakdown[phase as keyof typeof breakdown] ?? { input: 0, output: 0 }
+        const c = costs[phase as keyof typeof costs]
+        const usd = c == null ? '—' : `$${c.toFixed(2)}`
+        lines.push(
+          `| ${phase} | ${bd.input.toLocaleString()} / ${bd.output.toLocaleString()} | ${usd} |`,
+        )
+      }
+      lines.push('')
+    }
+    if (report.costUsdTotal != null) {
+      lines.push(`**Total:** $${report.costUsdTotal.toFixed(2)}`)
+      lines.push('')
+    }
   }
 
   return lines.join('\n')

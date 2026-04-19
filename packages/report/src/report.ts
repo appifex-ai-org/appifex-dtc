@@ -22,6 +22,16 @@ export interface BuildReportInput {
   totalDuration: number
   /** Agent-specific info (only for agent-based runs) */
   agent?: AgentReportInfo
+  /** Phase 7 (OBS-01 D-14 D-15): per-phase input/output token split. */
+  tokenUsageBreakdown?: Partial<Record<PhaseId, { input: number; output: number }>>
+  /** Phase 7 (OBS-01 D-15): per-phase USD cost, null when model not in pricing table. */
+  costUsdPerPhase?: Partial<Record<PhaseId, number | null>>
+  /** Phase 7 (OBS-01 D-15): run-total USD, null if any phase would be null. */
+  costUsdTotal?: number | null
+  /** Phase 7 (OBS-01 D-15): model identifier used for cost attribution. */
+  model?: string
+  /** Phase 7 (OBS-01 D-15): pricing table as-of date (honesty contract). */
+  pricingAsOf?: string
 }
 
 export interface ReportSummary {
@@ -50,6 +60,16 @@ export interface PipelineReport {
   platformReports: PlatformReport[]
   tokenUsage: Partial<Record<string, number>>
   agent?: AgentReportInfo
+  /** Phase 7 (OBS-01 D-15): per-phase input/output token split. */
+  tokenUsageBreakdown?: Partial<Record<PhaseId, { input: number; output: number }>>
+  /** Phase 7 (OBS-01 D-15): per-phase USD cost, null when model not in pricing table. */
+  costUsdPerPhase?: Partial<Record<PhaseId, number | null>>
+  /** Phase 7 (OBS-01 D-15): run-total USD, null if any phase would be null. */
+  costUsdTotal?: number | null
+  /** Phase 7 (OBS-01 D-15): model identifier used for cost attribution. */
+  model?: string
+  /** Phase 7 (OBS-01 D-15): pricing table as-of date (honesty contract). */
+  pricingAsOf?: string
 }
 
 export function buildReport(input: BuildReportInput): PipelineReport {
@@ -99,5 +119,10 @@ export function buildReport(input: BuildReportInput): PipelineReport {
     platformReports,
     tokenUsage: input.tokenUsage,
     agent: input.agent,
+    tokenUsageBreakdown: input.tokenUsageBreakdown,
+    costUsdPerPhase: input.costUsdPerPhase,
+    costUsdTotal: input.costUsdTotal,
+    model: input.model,
+    pricingAsOf: input.pricingAsOf,
   }
 }

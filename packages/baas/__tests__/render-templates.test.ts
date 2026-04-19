@@ -83,6 +83,29 @@ describe('renderBaasTemplates', () => {
     expect(rules.content).toContain('request.auth.uid == resource.data.ownerId')
   })
 
+  // Phase 4 Plan 06 (FIRE-05): rendered firestore.rules MUST contain deny-all default
+  // Required so the baas_schema lint gate + firebase_provision lint gate (Plans 03/04) pass on real generated output
+  it('Firebase security rules contain catch-all deny-all default block', () => {
+    const files = renderBaasTemplates(testSchema, 'firebase', ['swift'])
+    const rules = files.find((f) => f.path === 'firestore.rules')!
+    // Substring must appear verbatim — Plan 03's DENY_ALL_PATTERN regex requires this exact shape
+    expect(rules.content).toContain('match /{document=**}')
+    expect(rules.content).toContain('allow read, write: if false')
+  })
+
+  // Phase 4 Plan 06 (FIRE-05): rendered rules must satisfy the security lint with all D-12 patterns
+  // This assertion is meaningful because 04-06 depends_on 04-03 — Plan 03's DENY_ALL_PATTERN +
+  // cross-user-read patterns have already shipped by the time this test runs, so `{ passed: true }`
+  // actually exercises those checks (not a vacuous-pass on an unhardened lint).
+  it('Firebase security rules pass lintSecurityRules including deny-all default check', async () => {
+    const { lintSecurityRules } = await import('../src/security-lint.js')
+    const files = renderBaasTemplates(testSchema, 'firebase', ['swift'])
+    const rules = files.find((f) => f.path === 'firestore.rules')!
+    const result = lintSecurityRules(rules.content)
+    expect(result.passed).toBe(true)
+    expect(result.violations).toHaveLength(0)
+  })
+
   // Test 8
   it('Supabase RLS contains ENABLE ROW LEVEL SECURITY and auth.uid() check', () => {
     const files = renderBaasTemplates(testSchema, 'supabase', ['swift'])
@@ -97,7 +120,7 @@ describe('renderBaasTemplates', () => {
     const repoFile = files.find((f) => f.path.endsWith('TodoRepository.swift'))!
     expect(repoFile.content).toContain('func create')
     expect(repoFile.content).toContain('func getById')
-    expect(repoFile.content).toContain('func list')
+    expect(repoFile.content).toContain('func startListening')
     expect(repoFile.content).toContain('func update')
     expect(repoFile.content).toContain('func delete')
   })

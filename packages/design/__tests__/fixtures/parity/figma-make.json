@@ -1,0 +1,8 @@
+{
+  "codeContent": "<div class=\"screen\" data-name=\"HomeScreen\">HomeScreen</div>\n<div class=\"screen\" data-name=\"SettingsScreen\">SettingsScreen</div>\n<div class=\"screen\" data-name=\"Home Screen\">Home Screen</div>\n<div class=\"screen\" data-name=\"Settings\">Settings</div>\n<div class=\"screen\" data-name=\"🎉 Party\">🎉 Party</div>",
+  "metadata": {
+    "author": "fixture-gen",
+    "source": "derived from reference.pen (Phase 7 DESIGN-04 D-03)"
+  },
+  "screenNames": ["HomeScreen", "SettingsScreen", "Home Screen", "Settings", "🎉 Party"]
+}

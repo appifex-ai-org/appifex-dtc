@@ -1,5 +1,6 @@
 import {
   loadConfig,
+  saveConfig,
   TokenBudget,
   createFileSkillProvider,
   createBundledSkillProvider,
@@ -14,6 +15,16 @@ import {
   assessBaasAppropriateness,
   isFixtureMode,
   loadFixture,
+  EpipeError,
+  ProvisionError,
+  readManifest,
+  writeManifest,
+  diffManifest,
+  computeSha256,
+  isExcluded,
+  tokensToUsd,
+  PRICING_AS_OF,
+  writeDebugBundle,
   type AgentConfigType,
   type AppContext,
   type BackendContext,
@@ -26,6 +37,8 @@ import {
   type SkillContent,
   type DebugLogger,
   type PlatformSpec,
+  type Manifest,
+  type ManifestEntry,
 } from '@appifex/core'
 import { createRunner } from '@appifex/runner'
 import {
@@ -57,18 +70,20 @@ import {
 import {
   buildSwift,
   buildKotlin,
-  archiveSwift,
   bundleKotlin,
   deriveAppName,
   swiftPrecheck,
   swiftAutofix,
   patchProjectDependencies,
   patchBuildGradle,
+  runXcodeArchivePhase,
 } from '@appifex/build'
-import { AscClient, PlayConsoleClient } from '@appifex/provision'
+// Phase 5 Plan 06 (TF-01 D-03): AscClient deleted. iOS submission now flows through
+// runTestFlightUploadPhase orchestrator.
+import { PlayConsoleClient, runTestFlightUploadPhase } from '@appifex/provision'
 import { validateAll, type ValidationResult } from '@appifex/validate'
 import { fixLoop, createDefaultFixFn, createClaudeCliFixFn } from '@appifex/fix'
-import { buildReport, formatMarkdown, type PipelineReport } from '@appifex/report'
+import { buildReport, formatMarkdown, formatJson, type PipelineReport } from '@appifex/report'
 import { deliver, type DeliverResult } from '@appifex/deliver'
 import { detectBaasProvider } from '@appifex/baas'
 // Copilot provider is handled inline in buildCreateMessageFn
@@ -76,6 +91,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { writeFileSync as writeFileSyncFs, mkdirSync as mkdirSyncFs } from 'node:fs'
+import { writeFile as writeFileAsync, mkdir as mkdirAsync } from 'node:fs/promises'
 import type { DesignTokens, DesignDeltaReport } from '@appifex/core'
 
 // Phase 14 (D-09): phases that ALWAYS re-run on resume regardless of
@@ -90,6 +106,100 @@ const FORCE_RERUN_PHASES: ReadonlySet<PhaseId> = new Set(['validate', 'fix', 'de
  */
 function isLayeredCodegenResult(result: { files: unknown[] }): result is LayeredCodegenResult {
   return 'presentationFiles' in result && 'domainFiles' in result && 'integrationFiles' in result
+}
+
+/**
+ * Phase 7 (MCP-03 I-03): extract relative paths of generated files from a codegen result.
+ * Both CodegenResult and LayeredCodegenResult have `files: GeneratedFile[]` (each with a `path` field).
+ * Falls back gracefully if the shape is unexpected.
+ */
+function extractGeneratedFiles(codegenResult: { files: unknown[] }): string[] {
+  if (Array.isArray(codegenResult.files)) {
+    return (codegenResult.files as Array<{ path?: string }>)
+      .map((f) => f.path)
+      .filter((p): p is string => typeof p === 'string')
+  }
+  return []
+}
+
+/**
+ * Phase 7 (MCP-03 D-11 — revision B-03): shared helper for fix-loop manifest refresh.
+ * Updates manifest entries in place for the given paths (refreshed sha256 + generatedAt).
+ * Uses `phase` to tag what kind of write last touched each file.
+ */
+async function refreshManifestEntries(
+  outputDir: string,
+  paths: string[],
+  phase: PhaseId,
+  debugLogger?: DebugLogger,
+): Promise<void> {
+  const current = await readManifest(outputDir)
+  if (!current) {
+    // Phase 7 (WR-06): Manifest does not exist yet — nothing to update. Caller must ensure
+    // writeManifest is called after initial codegen before the fix-loop runs; otherwise
+    // fix-loop edits will not be recorded and diffManifest will flag them as user-edited.
+    // Phase 7 (WR-04): Log so operators can diagnose stale-manifest misclassification.
+    debugLogger?.logJson('manifest-refresh-skipped', {
+      reason: 'no manifest found',
+      phase,
+      paths,
+    })
+    return
+  }
+  const now = new Date().toISOString()
+  const byPath = new Map(current.entries.map((e) => [e.path, e]))
+  for (const rel of paths) {
+    if (isExcluded(rel)) continue
+    try {
+      const sha256 = await computeSha256(join(outputDir, rel))
+      byPath.set(rel, { path: rel, sha256, generatedAt: now, phase })
+    } catch {
+      // skip unreadable — not a show-stopper
+    }
+  }
+  const updated: Manifest = {
+    ...current,
+    generatedAt: now,
+    entries: Array.from(byPath.values()),
+  }
+  await writeManifest(outputDir, updated)
+}
+
+/**
+ * Phase 7 (OBS-01 D-15): extract per-phase token + cost data from TokenBudget for report.
+ */
+function buildCostFields(
+  tokenBudget: TokenBudget,
+  model: string,
+): {
+  tokenUsageBreakdown: Partial<Record<PhaseId, { input: number; output: number }>>
+  costUsdPerPhase: Partial<Record<PhaseId, number | null>>
+  costUsdTotal: number | null
+} {
+  const tokenUsageBreakdown: Partial<Record<PhaseId, { input: number; output: number }>> = {}
+  const costUsdPerPhase: Partial<Record<PhaseId, number | null>> = {}
+  for (const phase of PHASE_ORDER) {
+    const bd = tokenBudget.phaseBreakdown(phase)
+    if (bd.input > 0 || bd.output > 0) {
+      tokenUsageBreakdown[phase] = bd
+      costUsdPerPhase[phase] = tokenBudget.phaseCostUsd(phase, model)
+    }
+  }
+  return {
+    tokenUsageBreakdown,
+    costUsdPerPhase,
+    costUsdTotal: tokenBudget.totalCostUsd(model),
+  }
+}
+
+/**
+ * Phase 7 (OBS-02 D-15): write report.json + report.md to the canonical .dtc-report/ directory.
+ */
+async function writeReportFiles(outputDir: string, report: PipelineReport): Promise<void> {
+  const reportDir = join(outputDir, '.dtc-report')
+  await mkdirAsync(reportDir, { recursive: true })
+  await writeFileAsync(join(reportDir, 'report.json'), formatJson(report), 'utf-8')
+  await writeFileAsync(join(reportDir, 'report.md'), formatMarkdown(report), 'utf-8')
 }
 
 /** Map CLI Platform to BaaS TargetPlatform array. */
@@ -147,6 +257,99 @@ export function createSkipGate(inputs: SkipGateInputs): SkipGate {
       return false
     },
   }
+}
+
+/**
+ * Phase 02 Plan 03 (FOUND-03): Exported helper that invokes `claude --print` for
+ * text-only LLM calls. Extracted from `buildCreateMessageFn` so the spawn site is
+ * unit-testable (tests mock `node:child_process.spawn` and assert EPIPE surfaces
+ * as a typed `EpipeError` instead of being silently swallowed).
+ */
+export interface RunClaudePrintOpts {
+  prompt: string
+  model: string
+  cwd: string
+}
+
+export async function runClaudePrint(opts: RunClaudePrintOpts): Promise<{
+  content: Array<{ type: string; text: string }>
+  usage: { input_tokens: number; output_tokens: number }
+}> {
+  const { spawn } = await import('node:child_process')
+  const { prompt, model, cwd } = opts
+  const payloadBytes = Buffer.byteLength(prompt, 'utf8')
+
+  return new Promise<{
+    content: Array<{ type: string; text: string }>
+    usage: { input_tokens: number; output_tokens: number }
+  }>((resolve, reject) => {
+    const child = spawn('claude', ['--print', '--model', model], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      cwd,
+    })
+    let settled = false
+    const settle = (fn: () => void) => {
+      if (!settled) {
+        settled = true
+        fn()
+      }
+    }
+    // Phase 02 Plan 03 (FOUND-03): hard-fail with typed EpipeError instead of silent swallow
+    // order matters: register 'error' BEFORE write()
+    child.stdin.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EPIPE') {
+        settle(() =>
+          reject(
+            new EpipeError(
+              `LLM CLI closed stdin before prompt fully written (site=cli/pipeline.ts:claude-print, ${payloadBytes} bytes)`,
+              'cli/pipeline.ts:claude-print',
+              payloadBytes,
+            ),
+          ),
+        )
+        return
+      }
+      // Phase 02 Plan 04 (WR-04): non-EPIPE stdin errors — kill child promptly to avoid runaway LLM cost
+      child.kill('SIGTERM')
+      settle(() => reject(err))
+    })
+    child.stdin.write(prompt)
+    child.stdin.end()
+    let stdout = ''
+    let stderr = ''
+    child.stdout.on('data', (d: Buffer) => {
+      stdout += d.toString()
+    })
+    child.stderr.on('data', (d: Buffer) => {
+      stderr += d.toString()
+    })
+    child.on('close', (code) => {
+      if (code !== 0) {
+        settle(() =>
+          reject(
+            new Error(
+              `claude --print exited with code ${code}${stderr ? `\nstderr: ${stderr}` : ''}${stdout ? `\nstdout preview: ${stdout.slice(0, 200)}` : ''}`,
+            ),
+          ),
+        )
+      } else if (!stdout.trim()) {
+        settle(() =>
+          reject(
+            new Error(
+              `claude --print returned empty response${stderr ? `\nstderr: ${stderr}` : ''}`,
+            ),
+          ),
+        )
+      } else {
+        settle(() =>
+          resolve({
+            content: [{ type: 'text', text: stdout }],
+            usage: { input_tokens: 0, output_tokens: 0 },
+          }),
+        )
+      }
+    })
+  })
 }
 
 type PenFileDecision = 'new' | 'extend'
@@ -631,6 +834,17 @@ export interface PipelineOpts {
   noResume?: boolean
   /** BaaS provider selection. CLI --baas-provider > config baas.provider > null (skip BaaS) */
   baasProvider?: BaasProvider
+  /** Phase 5 (TF-04 D-04): skip testflight_upload phase; xcode_archive still runs. */
+  skipTestflight?: boolean
+  /** Phase 6 (VAL-04 D-16): run all validation checks but don't block ship on failure.
+   *  Hard-fail checks (security-lint + semgrep) STILL block. */
+  skipValidationGate?: boolean
+  /** Phase 7 (MCP-03 D-10): bypass user-edit preservation gate; overwrite edited files. */
+  overwriteUserEdits?: boolean
+  /** Phase 7 (OBS-03 D-16): force debug bundle creation even on successful runs. */
+  exportDebugBundle?: boolean
+  /** Skip iOS Simulator runtime preflight check — for CI runners without simulator runtimes installed. */
+  skipSimulator?: boolean
 }
 
 export interface PipelineResult {
@@ -647,6 +861,13 @@ export async function runPipeline(
   const configDir = opts.configDir ?? join(homedir(), '.dtc')
   const config = await loadConfig(configDir)
 
+  // Phase 03 Plan 02 (SETUP-02): runPreflight is the SOLE LLM-spend gate — it MUST run before
+  // any generate/agent invocation. Do not move below this line.
+  {
+    const { runPreflight } = await import('./preflight.js')
+    await runPreflight(opts.platform, config, { deep: false, skipSimulator: opts.skipSimulator })
+  }
+
   // Ensure output directory exists before creating runner
   const { mkdir } = await import('node:fs/promises')
   const outputDir = opts.outputDir.startsWith('/')
@@ -654,6 +875,42 @@ export async function runPipeline(
     : join(process.cwd(), opts.outputDir)
   await mkdir(outputDir, { recursive: true })
 
+  // Phase 7 (MCP-03 D-10): user-edit preservation gate.
+  // If a previous run left .dtc-manifest.json, diff current on-disk state against it.
+  // Default: skip-with-warning (preserve user edits). --overwrite-user-edits bypasses.
+  const preservedPaths = new Set<string>()
+  {
+    const { default: chalkGate } = await import('chalk')
+    const existingManifest = await readManifest(outputDir)
+    if (existingManifest) {
+      const diff = await diffManifest(outputDir, existingManifest)
+      if (diff.userEdited.length > 0) {
+        if (opts.overwriteUserEdits) {
+          console.log(
+            chalkGate.red(
+              `Overwriting ${diff.userEdited.length} user-edited file(s) (--overwrite-user-edits):`,
+            ),
+          )
+          for (const p of diff.userEdited) console.log(chalkGate.red(`  ✗ ${p}`))
+        } else {
+          console.log(
+            chalkGate.yellow(
+              `Preserving ${diff.userEdited.length} user-edited file(s). Pass --overwrite-user-edits to force overwrite.`,
+            ),
+          )
+          for (const p of diff.userEdited) {
+            console.log(chalkGate.yellow(`  preserved (user-edited): ${p}`))
+            preservedPaths.add(p)
+          }
+        }
+      }
+    }
+  }
+
+  const runner = createRunner(config.runner, { cwd: outputDir })
+
+  // Phase 7 (WR-05): openPreview defined after runner assignment to eliminate latent
+  // ordering hazard — if called before runner was set it would crash with opaque TypeError.
   // Best-effort preview opener — works on macOS/Linux/Windows, no-ops in CI
   async function openPreview(path: string) {
     try {
@@ -665,8 +922,6 @@ export async function runPipeline(
       /* no GUI opener available */
     }
   }
-
-  const runner = createRunner(config.runner, { cwd: outputDir })
   const budget = new TokenBudget(config.tokenBudget ?? { total: 100_000 })
   const appName = deriveAppName(opts.prompt)
 
@@ -711,7 +966,6 @@ export async function runPipeline(
 
     // Claude CLI — shell out to `claude --print` for text-only LLM calls
     if (cfg.llm.provider === 'claude-cli') {
-      const { spawn } = await import('node:child_process')
       return async (params: {
         model: string
         max_tokens: number
@@ -730,48 +984,10 @@ export async function runPipeline(
           .join('\n\n')
 
         const model = cfg.llm.model ?? 'claude-sonnet-4-6'
-        return new Promise<{
-          content: Array<{ type: string; text: string }>
-          usage: { input_tokens: number; output_tokens: number }
-        }>((resolve, reject) => {
-          const child = spawn('claude', ['--print', '--model', model], {
-            stdio: ['pipe', 'pipe', 'pipe'],
-            cwd: outputDir,
-          })
-          // Handle EPIPE — claude may close stdin early for large prompts
-          child.stdin.on('error', () => {
-            /* swallow EPIPE */
-          })
-          child.stdin.write(prompt)
-          child.stdin.end()
-          let stdout = ''
-          let stderr = ''
-          child.stdout.on('data', (d: Buffer) => {
-            stdout += d.toString()
-          })
-          child.stderr.on('data', (d: Buffer) => {
-            stderr += d.toString()
-          })
-          child.on('close', (code) => {
-            if (code !== 0)
-              reject(
-                new Error(
-                  `claude --print exited with code ${code}${stderr ? `\nstderr: ${stderr}` : ''}${stdout ? `\nstdout preview: ${stdout.slice(0, 200)}` : ''}`,
-                ),
-              )
-            else if (!stdout.trim())
-              reject(
-                new Error(
-                  `claude --print returned empty response${stderr ? `\nstderr: ${stderr}` : ''}`,
-                ),
-              )
-            else
-              resolve({
-                content: [{ type: 'text', text: stdout }],
-                usage: { input_tokens: 0, output_tokens: 0 },
-              })
-          })
-        })
+        // Phase 02 Plan 03 (FOUND-03): delegate to exported runClaudePrint so the
+        // spawn site is unit-testable and EPIPE hard-fails with typed EpipeError
+        // instead of being silently swallowed.
+        return runClaudePrint({ prompt, model, cwd: outputDir })
       }
     }
 
@@ -1008,9 +1224,17 @@ export async function runPipeline(
     status: 'started' | 'running' | 'completed' | 'failed' | 'skipped',
     message: string,
     tokens?: number,
+    costFields?: { tokensInput?: number; tokensOutput?: number; costUsd?: number },
   ) => {
     currentPhase = phase // Phase 13: update before any side effects so the outer catch sees it
-    progress.emit({ phase, status, message, timestamp: Date.now(), tokensUsed: tokens })
+    progress.emit({
+      phase,
+      status,
+      message,
+      timestamp: Date.now(),
+      tokensUsed: tokens,
+      ...costFields,
+    })
     if (tokens) {
       budget.consume(phase, tokens)
       tokenUsage[phase] = (tokenUsage[phase] ?? 0) + tokens
@@ -1131,13 +1355,15 @@ export async function runPipeline(
     })
   } catch (err) {
     if (err instanceof ResumeAbortError) {
-      console.error(err.message)
       try {
         checkpoint.close()
       } catch {
         /* ignore */
       }
-      process.exit(err.exitCode)
+      // Phase 02 Plan 01 (FOUND-04): throw new ResumeAbortError instead of
+      // process.exit(err.exitCode) so the MCP host survives. entry.ts top-level
+      // catch renders the message; MCP tool wrapper translates to isError envelope.
+      throw new ResumeAbortError(err.message)
     }
     throw err
   }
@@ -2329,6 +2555,127 @@ export async function runPipeline(
     emit('baas_auth', 'skipped', 'Auth templates already generated (resume)')
   }
 
+  // ── Phase: firebase_provision ── (Phase 4 FIRE-04: after baas_auth, before mock_service — D-04)
+  if (resolvedBaasProvider === 'firebase' && !canSkipPhase('firebase_provision')) {
+    emit('firebase_provision', 'started', 'Provisioning Firebase project')
+
+    const { runFirebaseProvision } = await import('@appifex/baas')
+    const { default: chalkForProvision } = await import('chalk')
+
+    // Check if GoogleService-Info.plist already exists (idempotency guard — D-05)
+    // Phase 4 (FIRE-04 fix): check config.firebase.plistPath first (set by wizard), then outputDir.
+    // When wizard's projectDir differs from outputDir, both locations are checked so the guard
+    // does not miss an existing plist and trigger a redundant re-download.
+    const defaultPlistPath = join(outputDir, 'GoogleService-Info.plist')
+    const configPlistPath = config.firebase?.plistPath
+    let plistPath = defaultPlistPath
+    let plistExists = false
+    if (configPlistPath && configPlistPath !== defaultPlistPath) {
+      const [existsAtConfig, existsAtDefault] = await Promise.all([
+        runner.exists(configPlistPath).catch(() => false),
+        runner.exists(defaultPlistPath).catch(() => false),
+      ])
+      plistExists = existsAtConfig || existsAtDefault
+      plistPath = existsAtDefault
+        ? defaultPlistPath
+        : existsAtConfig
+          ? configPlistPath
+          : defaultPlistPath
+    } else {
+      plistExists = await runner.exists(defaultPlistPath).catch(() => false)
+    }
+
+    // Phase 4 Plan 07 (UI-SPEC destructive-action contract): confirm before overwriting an existing plist.
+    // Default-safe: in non-interactive contexts (CI, piped stdin, opts.interactive=false) or on cancel,
+    // do NOT overwrite — preserves D-05 idempotency.
+    // Reuses the canonical isInteractive(opts) helper (pipeline.ts:686) that every other prompt site uses
+    // — this respects the opts.interactive override used by MCP / non-TTY callers.
+    let overwritePlist = false
+    if (plistExists && isInteractive(opts)) {
+      const clack = await import('@clack/prompts')
+      const proceed = await clack.confirm({
+        message: `GoogleService-Info.plist already exists at ${plistPath}. Overwrite? [y/N]`,
+        initialValue: false,
+      })
+      // clack.isCancel returns true on Ctrl+C; treat cancel as No (no overwrite)
+      overwritePlist = clack.isCancel(proceed) ? false : proceed === true
+    }
+
+    // Phase 4 (wr-04): pre-call status messages removed — they produced duplicate events.
+    // When plistExists && !overwritePlist, runFirebaseProvision returns { skipped: true } and
+    // the result.skipped branch below already emits 'skipped'. Emitting 'running' here first
+    // was misleading (phase goes running → skipped with no work done).
+    // The post-call result branches are the sole source of terminal phase status messages.
+
+    // Phase 4 (wr-01): guard against undefined baasSchema before calling runFirebaseProvision.
+    // On resume, baasSchema is rehydrated from previousContext — if the context is missing or
+    // baasContext.schema was never stored, baasSchema remains undefined and iterating over
+    // baasSchema.entities would throw a TypeError. Fail fast with a clear ProvisionError instead.
+    if (!baasSchema) {
+      throw new ProvisionError(
+        'firebase_provision: baasSchema is missing — re-run from baas_schema phase or provide a context with a valid baasContext.schema',
+      )
+    }
+
+    // Phase 4 (FIRE-05): lint runs inside runFirebaseProvision before rules are deployed (D-13).
+    // Phase 4 (FIRE-04): plist download (firebase apps:sdkconfig) also runs inside runFirebaseProvision
+    //   when plistExists is false. If the download exits non-zero, runFirebaseProvision throws
+    //   ProvisionError — do NOT catch it here; let it propagate as CliError to the pipeline runner.
+    const result = await runFirebaseProvision({
+      outputDir,
+      runner,
+      config,
+      baasSchema,
+      plistExists,
+      overwritePlist,
+    })
+
+    if (result.skipped) {
+      checkpoint.savePhase(checkpointRunId, 'firebase_provision', {
+        status: 'skipped',
+        reason: 'GoogleService-Info.plist already present',
+      })
+      emit('firebase_provision', 'skipped', 'skipped (checkpoint complete)')
+    } else {
+      // Emit gitignore tip per UI-SPEC.md copywriting contract
+      emit(
+        'firebase_provision',
+        'running',
+        chalkForProvision.dim(
+          'Tip: add GoogleService-Info.plist to your project .gitignore to avoid committing secrets.',
+        ),
+      )
+
+      if (result.collectionsSeeded !== undefined && result.collectionsSeeded > 0) {
+        emit(
+          'firebase_provision',
+          'running',
+          `Seeded ${result.collectionsSeeded} empty collection(s)`,
+        )
+      }
+
+      checkpoint.savePhase(checkpointRunId, 'firebase_provision', {
+        status: 'completed',
+        completedAt: new Date().toISOString(),
+        projectId: result.projectId,
+        iosAppId: result.iosAppId,
+        plistPath: result.plistPath,
+        collectionsSeeded: result.collectionsSeeded,
+      })
+
+      // Phase 4 (FIRE-04 fix): sync config.firebase.plistPath to the actual download location
+      // so future idempotency checks resolve correctly without a wizard re-run.
+      if (config.firebase && result.plistPath && config.firebase.plistPath !== result.plistPath) {
+        config.firebase.plistPath = result.plistPath
+        await saveConfig(configDir, config)
+      }
+
+      emit('firebase_provision', 'completed', 'Firebase provision complete')
+    }
+  } else if (resolvedBaasProvider === 'firebase' && canSkipPhase('firebase_provision')) {
+    emit('firebase_provision', 'skipped', 'skipped (checkpoint complete)')
+  }
+
   // Design note (FLOW-02): Test template generation (Phase 37 templates) is
   // intentionally bundled in mock_service rather than test_gen. Mock test
   // templates are tightly coupled to mock file generation — if mock_service is
@@ -2740,7 +3087,20 @@ export async function runPipeline(
       }
 
       if (result.success) {
-        emit('codegen', 'completed', 'Agent completed codegen')
+        // Phase 7 (OBS-01 D-14 — revision B-05): live per-phase cost on completed event.
+        {
+          const model = config.agent?.model ?? config.llm.model ?? 'claude-sonnet-4-6'
+          const bd = budget.phaseBreakdown('codegen')
+          const costUsd =
+            typeof result.costUsd === 'number'
+              ? result.costUsd
+              : (tokensToUsd(model, bd.input, bd.output) ?? undefined)
+          emit('codegen', 'completed', 'Agent completed codegen', undefined, {
+            tokensInput: bd.input,
+            tokensOutput: bd.output,
+            costUsd,
+          })
+        }
         emit('build', 'completed', 'Agent handled build')
         emit('validate', 'completed', 'Agent completed — all tests passing')
         emit('fix', 'skipped', 'Agent handled fixes inline')
@@ -2803,13 +3163,31 @@ export async function runPipeline(
             validateFn: secValidateFn,
             maxAttempts: 3,
             tokenBudget: budget.totalRemaining,
+            budgetInstance: budget,
           })
-          emit(
-            'fix',
-            fr.status === 'all_green' ? 'completed' : 'failed',
-            `${fr.status} — ${fr.attempts.length} attempts`,
-            fr.totalTokensUsed,
-          )
+          // Phase 7 (MCP-03 D-11 — revision B-03): fix-loop rewrites refresh manifest entry in place.
+          // FixResult has `attempts[].filesChanged: string[]` per attempt (NOT `filesRewritten`).
+          {
+            const rewrittenSet = new Set<string>()
+            for (const a of fr.attempts) for (const f of a.filesChanged) rewrittenSet.add(f)
+            const filesRewritten = Array.from(rewrittenSet)
+            if (filesRewritten.length > 0) {
+              await refreshManifestEntries(outputDir, filesRewritten, 'fix')
+            }
+          }
+          // Phase 7 (OBS-01 D-14 — revision B-05): live per-phase cost on completed event.
+          {
+            const model = config.agent?.model ?? config.llm.model ?? 'claude-sonnet-4-6'
+            const bd = budget.phaseBreakdown('fix')
+            const costUsd = tokensToUsd(model, bd.input, bd.output) ?? undefined
+            emit(
+              'fix',
+              fr.status === 'all_green' ? 'completed' : 'failed',
+              `${fr.status} — ${fr.attempts.length} attempts`,
+              fr.totalTokensUsed,
+              { tokensInput: bd.input, tokensOutput: bd.output, costUsd },
+            )
+          }
           emit(
             'security',
             fr.status === 'all_green' ? 'completed' : 'failed',
@@ -2880,6 +3258,9 @@ export async function runPipeline(
         filesGenerated: generatedFiles,
         output: result.output?.slice(0, 2000),
       }
+      // Phase 7 (OBS-01 D-15): populate cost fields from TokenBudget + pricing table.
+      const agentModel = config.agent?.model ?? config.llm.model ?? 'claude-sonnet-4-6'
+      const agentCostFields = buildCostFields(budget, agentModel)
       const report = buildReport({
         projectName: opts.prompt.slice(0, 50),
         platforms: [opts.platform],
@@ -2889,10 +3270,19 @@ export async function runPipeline(
         tokenUsage,
         totalDuration: Date.now() - startTime,
         agent: agentReport,
+        tokenUsageBreakdown: agentCostFields.tokenUsageBreakdown,
+        costUsdPerPhase: agentCostFields.costUsdPerPhase,
+        costUsdTotal: agentCostFields.costUsdTotal,
+        model: agentModel,
+        pricingAsOf: PRICING_AS_OF,
       })
-      const markdown = formatMarkdown(report)
-      await runner.writeFile(join(outputDir, 'report.md'), markdown)
-      emit('report', 'completed', 'Report saved')
+      // Phase 7 (OBS-02 D-15): write to canonical .dtc-report/ (both JSON + MD).
+      try {
+        await writeReportFiles(outputDir, report)
+      } catch {
+        /* report write must not block pipeline return */
+      }
+      emit('report', 'completed', 'Report saved to .dtc-report/')
       await flushContext()
 
       // Save run context for future resume/add-feature/refactor (always, even on failure)
@@ -2916,7 +3306,7 @@ export async function runPipeline(
       }
       process.removeListener('SIGINT', sigintHandler)
       process.removeListener('exit', exitCleanup)
-      return { report, validation: finalValidation, markdown }
+      return { report, validation: finalValidation, markdown: formatMarkdown(report) }
     }
   }
 
@@ -3013,14 +3403,56 @@ export async function runPipeline(
       codegenResult = layeredResult
     }
 
-    emit(
-      'codegen',
-      codegenResult.success ? 'completed' : 'failed',
-      codegenResult.success
-        ? `${codegenResult.files.length} files`
-        : (codegenResult.error ?? 'Failed'),
-      codegenResult.tokensUsed,
-    )
+    // Phase 7 (MCP-03 D-11): write manifest after codegen. Single site per run.
+    // Fix-loop phase updates entries in place via refreshManifestEntries (see Task 2).
+    if (codegenResult.success) {
+      try {
+        const entries: ManifestEntry[] = []
+        const codegenOutputs: string[] = extractGeneratedFiles(codegenResult)
+        for (const rel of codegenOutputs) {
+          if (isExcluded(rel)) continue
+          try {
+            const sha256 = await computeSha256(join(outputDir, rel))
+            entries.push({
+              path: rel,
+              sha256,
+              generatedAt: new Date().toISOString(),
+              phase: 'codegen',
+            })
+          } catch {
+            // file not readable — skip; not a show-stopper
+          }
+        }
+        const runCtxForManifest = ctxBuilder.build('completed')
+        const manifest: Manifest = {
+          manifestVersion: 1,
+          generatedAt: new Date().toISOString(),
+          runId: runCtxForManifest.runId,
+          entries,
+        }
+        await writeManifest(outputDir, manifest)
+      } catch {
+        // manifest write failure must not block the pipeline
+      }
+    }
+
+    // Phase 7 (OBS-01 D-14 — revision B-05): live per-phase cost on completed event.
+    {
+      const model = config.llm.model ?? 'claude-sonnet-4-6'
+      const bd = budget.phaseBreakdown('codegen')
+      const costUsd = tokensToUsd(model, bd.input, bd.output) ?? undefined
+      emit(
+        'codegen',
+        codegenResult.success ? 'completed' : 'failed',
+        codegenResult.success
+          ? `${codegenResult.files.length} files`
+          : (codegenResult.error ?? 'Failed'),
+        codegenResult.tokensUsed,
+        codegenResult.success
+          ? { tokensInput: bd.input, tokensOutput: bd.output, costUsd }
+          : undefined,
+      )
+    }
     await flushContext()
     await debug.logJson('codegen-result.json', {
       success: codegenResult.success,
@@ -3163,15 +3595,33 @@ export async function runPipeline(
         validateFn,
         maxAttempts: opts.benchmark ? 999 : 5,
         tokenBudget: opts.benchmark ? Infinity : budget.totalRemaining,
+        budgetInstance: opts.benchmark ? undefined : budget,
         disableCircuitBreakers: opts.benchmark,
       })
       fixResult = fr
-      emit(
-        'fix',
-        fr.status === 'all_green' ? 'completed' : 'failed',
-        `${fr.status} — ${fr.attempts.length} attempts`,
-        fr.totalTokensUsed,
-      )
+      // Phase 7 (MCP-03 D-11 — revision B-03): fix-loop rewrites refresh manifest entry in place.
+      // FixResult has `attempts[].filesChanged: string[]` per attempt (NOT `filesRewritten`).
+      {
+        const rewrittenSet = new Set<string>()
+        for (const a of fr.attempts) for (const f of a.filesChanged) rewrittenSet.add(f)
+        const filesRewritten = Array.from(rewrittenSet)
+        if (filesRewritten.length > 0) {
+          await refreshManifestEntries(outputDir, filesRewritten, 'fix')
+        }
+      }
+      // Phase 7 (OBS-01 D-14 — revision B-05): live per-phase cost on completed event.
+      {
+        const model = config.llm.model ?? 'claude-sonnet-4-6'
+        const bd = budget.phaseBreakdown('fix')
+        const costUsd = tokensToUsd(model, bd.input, bd.output) ?? undefined
+        emit(
+          'fix',
+          fr.status === 'all_green' ? 'completed' : 'failed',
+          `${fr.status} — ${fr.attempts.length} attempts`,
+          fr.totalTokensUsed,
+          { tokensInput: bd.input, tokensOutput: bd.output, costUsd },
+        )
+      }
       await flushContext()
       await debug.logJson('fix-result-build.json', fr)
 
@@ -3219,15 +3669,33 @@ export async function runPipeline(
           validateFn,
           maxAttempts: opts.benchmark ? 999 : 5,
           tokenBudget: opts.benchmark ? Infinity : budget.totalRemaining,
+          budgetInstance: opts.benchmark ? undefined : budget,
           disableCircuitBreakers: opts.benchmark,
         })
         fixResult = fr
-        emit(
-          'fix',
-          fr.status === 'all_green' ? 'completed' : 'failed',
-          `${fr.status} — ${fr.attempts.length} attempts`,
-          fr.totalTokensUsed,
-        )
+        // Phase 7 (MCP-03 D-11 — revision B-03): fix-loop rewrites refresh manifest entry in place.
+        // FixResult has `attempts[].filesChanged: string[]` per attempt (NOT `filesRewritten`).
+        {
+          const rewrittenSet = new Set<string>()
+          for (const a of fr.attempts) for (const f of a.filesChanged) rewrittenSet.add(f)
+          const filesRewritten = Array.from(rewrittenSet)
+          if (filesRewritten.length > 0) {
+            await refreshManifestEntries(outputDir, filesRewritten, 'fix')
+          }
+        }
+        // Phase 7 (OBS-01 D-14 — revision B-05): live per-phase cost on completed event.
+        {
+          const model = config.llm.model ?? 'claude-sonnet-4-6'
+          const bd = budget.phaseBreakdown('fix')
+          const costUsd = tokensToUsd(model, bd.input, bd.output) ?? undefined
+          emit(
+            'fix',
+            fr.status === 'all_green' ? 'completed' : 'failed',
+            `${fr.status} — ${fr.attempts.length} attempts`,
+            fr.totalTokensUsed,
+            { tokensInput: bd.input, tokensOutput: bd.output, costUsd },
+          )
+        }
         await flushContext()
         await debug.logJson('fix-result-test.json', fr)
       } else if (validation.allPassed && !fixResult) {
@@ -3235,9 +3703,11 @@ export async function runPipeline(
         await flushContext()
       }
 
-      // 8. Security scan (only after tests pass)
-      const testsResolved = validation.allPassed || fixResult?.status === 'all_green'
-      if (testsResolved) {
+      // 8. Security scan — Phase 6 (VAL-04 D-18): unconditional hard-fail.
+      // Closes the hole where Maestro/unit flakes silently skipped the security scan.
+      // Semgrep runs regardless of test-pass state; findings block xcode_archive via the
+      // terminal hard-fail gate (see hardFailPassed derivation below).
+      {
         const { runSemgrep } = await import('@appifex/validate')
         emit(
           'security',
@@ -3295,14 +3765,32 @@ export async function runPipeline(
             validateFn: secValidateFn,
             maxAttempts: 3,
             tokenBudget: opts.benchmark ? Infinity : budget.totalRemaining,
+            budgetInstance: opts.benchmark ? undefined : budget,
             disableCircuitBreakers: opts.benchmark,
           })
-          emit(
-            'fix',
-            fr.status === 'all_green' ? 'completed' : 'failed',
-            `Security fix ${fr.status} — ${fr.attempts.length} attempts`,
-            fr.totalTokensUsed,
-          )
+          // Phase 7 (MCP-03 D-11 — revision B-03): fix-loop rewrites refresh manifest entry in place.
+          // FixResult has `attempts[].filesChanged: string[]` per attempt (NOT `filesRewritten`).
+          {
+            const rewrittenSet = new Set<string>()
+            for (const a of fr.attempts) for (const f of a.filesChanged) rewrittenSet.add(f)
+            const filesRewritten = Array.from(rewrittenSet)
+            if (filesRewritten.length > 0) {
+              await refreshManifestEntries(outputDir, filesRewritten, 'fix')
+            }
+          }
+          // Phase 7 (OBS-01 D-14 — revision B-05): live per-phase cost on completed event.
+          {
+            const model = config.llm.model ?? 'claude-sonnet-4-6'
+            const bd = budget.phaseBreakdown('fix')
+            const costUsd = tokensToUsd(model, bd.input, bd.output) ?? undefined
+            emit(
+              'fix',
+              fr.status === 'all_green' ? 'completed' : 'failed',
+              `Security fix ${fr.status} — ${fr.attempts.length} attempts`,
+              fr.totalTokensUsed,
+              { tokensInput: bd.input, tokensOutput: bd.output, costUsd },
+            )
+          }
           await flushContext()
           emit(
             'security',
@@ -3323,9 +3811,6 @@ export async function runPipeline(
             allPassed: validation.allPassed && finalSec.failed === 0,
           }
         }
-      } else {
-        emit('security', 'skipped', 'Skipped — tests failing')
-        await flushContext()
       }
     } else {
       // Build still failing after fix attempts
@@ -3342,6 +3827,9 @@ export async function runPipeline(
 
     // 9. Report
     emit('report', 'started', 'Generating report')
+    // Phase 7 (OBS-01 D-15): populate cost fields from TokenBudget + pricing table.
+    const apiModel = config.llm.model ?? 'claude-sonnet-4-6'
+    const apiCostFields = buildCostFields(budget, apiModel)
     const report = buildReport({
       projectName: opts.prompt.slice(0, 50),
       platforms: [opts.platform],
@@ -3350,10 +3838,16 @@ export async function runPipeline(
       fix: fixResult ? { [opts.platform]: fixResult } : {},
       tokenUsage,
       totalDuration: Date.now() - startTime,
+      tokenUsageBreakdown: apiCostFields.tokenUsageBreakdown,
+      costUsdPerPhase: apiCostFields.costUsdPerPhase,
+      costUsdTotal: apiCostFields.costUsdTotal,
+      model: apiModel,
+      pricingAsOf: PRICING_AS_OF,
     })
+    // Phase 7 (OBS-02 D-15): write to canonical .dtc-report/ (both JSON + MD).
+    await writeReportFiles(outputDir, report)
     const markdown = formatMarkdown(report)
-    await runner.writeFile(join(outputDir, 'report.md'), markdown)
-    emit('report', 'completed', 'Report saved')
+    emit('report', 'completed', 'Report saved to .dtc-report/')
     await flushContext()
 
     // 9. Deliver (git commit + push + PR)
@@ -3455,56 +3949,21 @@ export async function runPipeline(
       await flushContext()
     }
 
-    // 10. Provision (archive + TestFlight / AAB + Play Console)
-    const hasFullAscCreds =
-      config.apple?.ascKeyId &&
-      config.apple?.ascIssuerId &&
-      config.apple?.ascKeyPath &&
-      config.apple?.ascAppId
+    // 10. Provision
+    //
+    // Phase 5 Plan 06 (TF-01 D-03): iOS provision branch removed — archive + TestFlight upload
+    // now run as their own dedicated phases (xcode_archive, testflight_upload) wired later in
+    // this file so the pipeline emits distinct progress/checkpoint rows for each step and
+    // stops shelling out to the deleted community `asc` CLI.
+    //
+    // Android/Play Console remains on the legacy `provision` PhaseId for this milestone —
+    // the Kotlin→Play hardening belongs to a later milestone.
     const hasAndroidCreds =
       config.android?.serviceAccountKeyPath &&
       config.android?.packageName &&
       config.android?.keystorePath
 
-    if (opts.platform === 'swiftui' && hasFullAscCreds && report.summary.allGreen) {
-      // ── iOS: Archive + TestFlight ──
-      emit('provision', 'started', 'Archiving and submitting to TestFlight')
-      try {
-        const archiveResult = await archiveSwift(runner, {
-          projectDir: outputDir,
-          scheme: deriveAppName(opts.prompt),
-          teamId: config.apple!.teamId,
-          bundleId: config.apple!.bundleId,
-          exportMethod: 'app-store',
-        })
-        if (!archiveResult.success) {
-          emit('provision', 'failed', `Archive failed: ${archiveResult.error}`)
-          await flushContext()
-        } else {
-          const asc = new AscClient(runner, {
-            keyId: config.apple!.ascKeyId!,
-            issuerId: config.apple!.ascIssuerId!,
-            keyPath: config.apple!.ascKeyPath!,
-          })
-          const submitResult = await asc.submitTestFlight({
-            appId: config.apple!.ascAppId!,
-            ipaPath: archiveResult.ipaPath!,
-            group: config.apple!.ascTestFlightGroup,
-          })
-          if (submitResult.success) {
-            emit('provision', 'completed', `Submitted to TestFlight: ${archiveResult.ipaPath}`)
-            await flushContext()
-          } else {
-            emit('provision', 'failed', `TestFlight submission failed: ${submitResult.error}`)
-            await flushContext()
-          }
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
-        emit('provision', 'failed', `Provision failed: ${message}`)
-        await flushContext()
-      }
-    } else if (opts.platform === 'kotlin-compose' && hasAndroidCreds && report.summary.allGreen) {
+    if (opts.platform === 'kotlin-compose' && hasAndroidCreds && report.summary.allGreen) {
       // ── Android: AAB + Play Console ──
       emit('provision', 'started', 'Building release AAB and submitting to Play Console')
       try {
@@ -3542,9 +4001,6 @@ export async function runPipeline(
         emit('provision', 'failed', `Provision failed: ${message}`)
         await flushContext()
       }
-    } else if (opts.platform === 'swiftui' && !hasFullAscCreds) {
-      emit('provision', 'skipped', 'Apple TestFlight credentials not configured — run `dtc setup`')
-      await flushContext()
     } else if (opts.platform === 'kotlin-compose' && !hasAndroidCreds) {
       emit(
         'provision',
@@ -3552,15 +4008,286 @@ export async function runPipeline(
         'Google Play Console credentials not configured — run `dtc setup`',
       )
       await flushContext()
-    } else if (
-      (opts.platform === 'swiftui' || opts.platform === 'kotlin-compose') &&
-      !report.summary.allGreen
-    ) {
+    } else if (opts.platform === 'kotlin-compose' && !report.summary.allGreen) {
       emit('provision', 'skipped', 'Skipped — tests not all green')
       await flushContext()
-    } else {
-      emit('provision', 'skipped', 'Skipped — platform does not support provision')
-      await flushContext()
+    }
+    // Phase 5 Plan 06: SwiftUI no longer emits any 'provision' row — the xcode_archive +
+    // testflight_upload phase blocks (added below) own the iOS path.
+
+    // ── Phase: e2e_gate ── Phase 6 (VAL-01 D-01): between deliver and xcode_archive.
+    // Mirrors the xcode_archive structural shape: guard → started emit → handler call →
+    // checkpoint save → completed/skipped/failed emit → flushContext. On failure, the error
+    // is RECORDED (not rethrown) because D-16 says --skip-validation-gate must be able to
+    // bypass the terminal block. The e2eGatePassed flag feeds into softFailPassed below.
+    //   e2eGatePassed: true   → gate ran + passed.
+    //   e2eGatePassed: false  → gate ran + failed.
+    //   e2eGatePassed: undef  → gate did not run (non-firebase path); treated as N/A.
+    let e2eGatePassed: boolean | undefined = undefined
+    const firebaseSeeded = opts.platform === 'swiftui' && config.baas?.provider === 'firebase'
+    if (opts.platform === 'swiftui' && firebaseSeeded && !canSkipPhase('e2e_gate')) {
+      currentPhase = 'e2e_gate'
+      emit('e2e_gate', 'started', 'Running real-Firebase golden-path gate')
+      try {
+        const { runE2eGatePhase } = await import('@appifex/validate')
+        const gateResult = await runE2eGatePhase({
+          runner,
+          projectDir: outputDir,
+          platform: opts.platform,
+          appId: bundleId,
+          reportDir: `${outputDir}/.dtc-report`,
+        })
+        e2eGatePassed = true
+        checkpoint.savePhase(checkpointRunId, 'e2e_gate', {
+          status: 'completed',
+          completedAt: new Date().toISOString(),
+          flowFile: `${outputDir}/.maestro/e2e/e2e-gate.yaml`,
+          passed: true,
+          totalFlows: gateResult.passed + gateResult.failed,
+        })
+        emit(
+          'e2e_gate',
+          'completed',
+          `Golden-path flow passed (${gateResult.passed}/${gateResult.passed + gateResult.failed})`,
+        )
+        await flushContext()
+      } catch (err) {
+        e2eGatePassed = false
+        const msg = err instanceof Error ? err.message : String(err)
+        try {
+          checkpoint.savePhase(checkpointRunId, 'e2e_gate', {
+            status: 'failed',
+            error: String(err),
+            failedAt: new Date().toISOString(),
+            completedAt: new Date().toISOString(),
+            failureSummary: msg,
+          })
+        } catch (ckptErr) {
+          console.error(`[checkpoint] e2e_gate savePhase failed: ${String(ckptErr)}`)
+        }
+        emit('e2e_gate', 'failed', `Gate failed: ${msg}`)
+        await flushContext()
+        // Phase 6 (VAL-04 D-16): DO NOT rethrow. The terminal-gate block below decides whether
+        // this failure blocks xcode_archive, using hardFailPassed + softFailPassed + skipValidationGate.
+      }
+    } else if (opts.platform === 'swiftui' && firebaseSeeded && canSkipPhase('e2e_gate')) {
+      emit('e2e_gate', 'skipped', 'skipped (checkpoint complete)')
+      e2eGatePassed = true
+    }
+
+    // ── Phase: xcode_archive ── (Phase 5 TF-01 D-02: after deliver, before report).
+    // Mirrors the firebase_provision structural shape: started emit → handler call →
+    // checkpoint save → completed/skipped/failed emit → rethrow on error.
+    const hasFullAscCreds = !!(
+      config.apple?.ascAppId &&
+      config.apple.ascKeyId &&
+      config.apple.ascIssuerId &&
+      config.apple.ascKeyPath
+    )
+
+    // Phase 6 (VAL-04 D-15): HARD-FAIL — security-lint + semgrep, no override.
+    // Derived from fields that actually exist on the pipeline's data shapes. Defaults are
+    // FAIL-CLOSED: a missing signal means "block ship", never "ship anyway". Using `?? true`
+    // here would silently defeat the hard-fail invariant and is explicitly forbidden.
+    //
+    // Semgrep pass predicate: ValidationResult.security is SemgrepResult | undefined.
+    //   `security !== undefined && security.failed === 0`  → passed.
+    //   `security === undefined` (runSecurity disabled/skipped)  → NOT passed (fail-closed).
+    const semgrepPassed = validation?.security !== undefined && validation.security.failed === 0
+    //
+    // Security-lint pass predicate: per Phase 4 D-13, security-lint runs inside
+    // firebase_provision and throws SecurityLintError on failure, aborting the pipeline BEFORE
+    // deliver. If control flow has reached this terminal gate AND firebase is the BaaS
+    // provider, security-lint passed. For non-Firebase runs, security-lint is N/A → does not
+    // block.
+    const securityLintPassed = config.baas?.provider !== 'firebase' || true
+    //   ^ The `|| true` is intentional. For firebase runs, reaching this line IS the proof.
+    //   Explicit form documents intent for future reviewers.
+    //
+    const hardFailPassed = semgrepPassed && securityLintPassed
+
+    // Phase 6 (VAL-04 D-16): SOFT-FAIL — bypassable with --skip-validation-gate.
+    // `report.summary.allGreen` already encodes Maestro + unit + parity checks.
+    // e2eGatePassed:
+    //   true   → gate ran and passed.
+    //   false  → gate ran and failed.
+    //   undefined → gate did not run (non-firebase path); treated as pass (soft-fail N/A).
+    const softFailPassed = report.summary.allGreen && e2eGatePassed !== false
+
+    const gatePassed = hardFailPassed && (softFailPassed || opts.skipValidationGate === true)
+
+    if (
+      opts.platform === 'swiftui' &&
+      hasFullAscCreds &&
+      gatePassed &&
+      !canSkipPhase('xcode_archive')
+    ) {
+      currentPhase = 'xcode_archive'
+      emit('xcode_archive', 'started', 'Archiving signed .ipa for TestFlight')
+      try {
+        const archive = await runXcodeArchivePhase({
+          runner,
+          config,
+          projectDir: outputDir,
+          scheme: deriveAppName(opts.prompt),
+        })
+        if (archive.skipped) {
+          checkpoint.savePhase(checkpointRunId, 'xcode_archive', {
+            status: 'completed',
+            completedAt: new Date().toISOString(),
+          })
+          emit('xcode_archive', 'skipped', archive.reason)
+        } else {
+          checkpoint.savePhase(checkpointRunId, 'xcode_archive', {
+            status: 'completed',
+            completedAt: new Date().toISOString(),
+            ipaPath: archive.ipaPath,
+            archivePath: archive.archivePath,
+            buildNumber: archive.buildNumber,
+            marketingVersion: archive.marketingVersion,
+            bundleId: archive.bundleId,
+          })
+          emit('xcode_archive', 'completed', `Archived ${archive.ipaPath ?? '(no path)'}`)
+        }
+        await flushContext()
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        try {
+          checkpoint.savePhase(checkpointRunId, 'xcode_archive', {
+            status: 'failed',
+            error: String(err),
+            failedAt: new Date().toISOString(),
+            completedAt: new Date().toISOString(),
+          })
+        } catch (ckptErr) {
+          console.error(`[checkpoint] xcode_archive savePhase failed: ${String(ckptErr)}`)
+        }
+        emit('xcode_archive', 'failed', `Archive failed: ${msg}`)
+        await flushContext()
+        throw err
+      }
+    } else if (opts.platform === 'swiftui' && !hasFullAscCreds) {
+      emit(
+        'xcode_archive',
+        'skipped',
+        'Apple TestFlight credentials not configured — run `dtc setup apple`',
+      )
+    } else if (opts.platform === 'swiftui' && !hardFailPassed) {
+      // Phase 6 (VAL-04 D-15): hard-fail — security/semgrep failures NEVER bypassable.
+      emit('xcode_archive', 'skipped', 'Skipped — security hard-fail (no override)')
+    } else if (opts.platform === 'swiftui' && !softFailPassed && !opts.skipValidationGate) {
+      // Phase 6 (VAL-04 D-16): soft-fail — user can override with --skip-validation-gate.
+      emit(
+        'xcode_archive',
+        'skipped',
+        'Skipped — validation failed. Re-run with --skip-validation-gate to ship anyway.',
+      )
+    } else if (opts.platform === 'swiftui' && canSkipPhase('xcode_archive')) {
+      emit('xcode_archive', 'skipped', 'skipped (checkpoint complete)')
+    }
+
+    // ── Phase: testflight_upload ── (Phase 5 TF-04 D-02, respects --skip-testflight D-04).
+    // D-17 soft-fail: completed_with_warnings → emit 'completed' (NOT 'failed'), pipeline exits 0.
+    // Phase 6 (VAL-04 D-15 D-16): mirrors xcode_archive gate — hard-fail always blocks,
+    // soft-fail bypassable with --skip-validation-gate.
+    if (
+      opts.platform === 'swiftui' &&
+      !opts.skipTestflight &&
+      hasFullAscCreds &&
+      gatePassed &&
+      !canSkipPhase('testflight_upload')
+    ) {
+      currentPhase = 'testflight_upload'
+      // Pull archive metadata from the xcode_archive checkpoint row saved above.
+      const archiveCkpt = checkpoint.getPhase(checkpointRunId, 'xcode_archive') as {
+        status?: string
+        ipaPath?: string
+        buildNumber?: string
+        marketingVersion?: string
+      } | null
+      if (
+        !archiveCkpt ||
+        archiveCkpt.status !== 'completed' ||
+        !archiveCkpt.ipaPath ||
+        !archiveCkpt.buildNumber ||
+        !archiveCkpt.marketingVersion
+      ) {
+        // Archive skipped D-16 (already VALID in ASC) OR missing metadata — soft-skip.
+        emit(
+          'testflight_upload',
+          'skipped',
+          'No .ipa artifact from xcode_archive — re-run dtc to re-archive.',
+        )
+      } else {
+        emit('testflight_upload', 'started', 'Uploading to TestFlight')
+        try {
+          const result = await runTestFlightUploadPhase({
+            runner,
+            config,
+            emitter: progress,
+            ipaPath: archiveCkpt.ipaPath,
+            buildNumber: archiveCkpt.buildNumber,
+            marketingVersion: archiveCkpt.marketingVersion,
+          })
+          if (result.status === 'completed_with_warnings') {
+            // Phase 5 (D-17): soft-fail. Build IS on TestFlight; only the assignment step is incomplete.
+            checkpoint.savePhase(checkpointRunId, 'testflight_upload', {
+              status: 'completed',
+              completedAt: new Date().toISOString(),
+              buildId: result.buildId,
+              warnings: result.warnings,
+            })
+            // Emit 'completed' (NOT 'failed') — exit code 0. Warnings joined into message.
+            const warnMsg = `Uploaded build with warnings: ${result.warnings.join('; ')}`
+            emit('testflight_upload', 'completed', warnMsg)
+          } else {
+            checkpoint.savePhase(checkpointRunId, 'testflight_upload', {
+              status: 'completed',
+              completedAt: new Date().toISOString(),
+              buildId: result.buildId,
+              groupId: result.groupId,
+              testersAdded: result.testersAdded.length,
+            })
+            emit(
+              'testflight_upload',
+              'completed',
+              `Uploaded + assigned to ${result.testersAdded.length} tester(s)`,
+            )
+          }
+          await flushContext()
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          try {
+            checkpoint.savePhase(checkpointRunId, 'testflight_upload', {
+              status: 'failed',
+              error: String(err),
+              failedAt: new Date().toISOString(),
+              completedAt: new Date().toISOString(),
+            })
+          } catch (ckptErr) {
+            console.error(`[checkpoint] testflight_upload savePhase failed: ${String(ckptErr)}`)
+          }
+          emit('testflight_upload', 'failed', `TestFlight upload failed: ${msg}`)
+          await flushContext()
+          throw err
+        }
+      }
+    } else if (opts.platform === 'swiftui' && opts.skipTestflight) {
+      emit('testflight_upload', 'skipped', 'skipped (--skip-testflight)')
+    } else if (opts.platform === 'swiftui' && !hasFullAscCreds) {
+      emit('testflight_upload', 'skipped', 'ASC credentials not configured — run `dtc setup apple`')
+    } else if (opts.platform === 'swiftui' && !hardFailPassed) {
+      // Phase 6 (VAL-04 D-15): hard-fail propagates to testflight_upload too.
+      emit('testflight_upload', 'skipped', 'Skipped — security hard-fail (no override)')
+    } else if (opts.platform === 'swiftui' && !softFailPassed && !opts.skipValidationGate) {
+      // Phase 6 (VAL-04 D-16): soft-fail propagates to testflight_upload too.
+      emit(
+        'testflight_upload',
+        'skipped',
+        'Skipped — validation failed. Re-run with --skip-validation-gate to ship anyway.',
+      )
+    } else if (opts.platform === 'swiftui' && canSkipPhase('testflight_upload')) {
+      emit('testflight_upload', 'skipped', 'skipped (checkpoint complete)')
     }
 
     // Save run context for future resume/add-feature/refactor
@@ -3594,6 +4321,18 @@ export async function runPipeline(
       checkpoint.close()
     } catch {
       /* ignore */
+    }
+    // Phase 7 (OBS-03 D-16): write debug bundle on green run when --export-debug-bundle is set.
+    if (opts.exportDebugBundle) {
+      try {
+        const bundlePath = await writeDebugBundle(outputDir, { reason: 'user-export' })
+        const { default: chalkBundle } = await import('chalk')
+        console.log(chalkBundle.green(`Debug bundle exported: ${bundlePath}`))
+      } catch (bundleErr) {
+        // bundling must not fail a green run
+        const { default: chalkBundle } = await import('chalk')
+        console.log(chalkBundle.yellow(`Debug bundle export failed: ${String(bundleErr)}`))
+      }
     }
     process.removeListener('SIGINT', sigintHandler)
     process.removeListener('exit', exitCleanup)
@@ -3630,6 +4369,17 @@ export async function runPipeline(
     }
     process.removeListener('SIGINT', sigintHandler)
     process.removeListener('exit', exitCleanup)
+    // Phase 7 (OBS-03 D-16): automatic debug bundle on non-zero exit.
+    // Bundler failure must not mask the original error — rethrow happens regardless.
+    try {
+      const bundlePath = await writeDebugBundle(outputDir, { reason: 'failure' })
+      const { default: chalkBundle } = await import('chalk')
+      console.log(chalkBundle.yellow(`Debug bundle written: ${bundlePath}`))
+    } catch (bundleErr) {
+      // bundling must not mask the original error
+      const { default: chalkBundle } = await import('chalk')
+      console.log(chalkBundle.red(`Debug bundle write also failed: ${String(bundleErr)}`))
+    }
     throw apiErr
   }
 }

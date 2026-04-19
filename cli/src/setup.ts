@@ -43,6 +43,15 @@ export interface SetupAnswers {
   deliverUserEmail?: string
   baasProvider?: 'firebase' | 'supabase'
   baasSkipTemplate?: boolean
+  // Phase 03 Plan 03 (SETUP-01, D-07): Apple Sign In OAuth config (mirrors OAuthConfig from @appifex/core)
+  oauth?: {
+    apple?: {
+      servicesId: string
+      teamId: string
+      keyId: string
+      p8Path: string
+    }
+  }
 }
 
 export async function runSetup(configDir: string, answers: SetupAnswers): Promise<void> {
@@ -109,6 +118,11 @@ export async function runSetup(configDir: string, answers: SetupAnswers): Promis
 
   if (answers.baasProvider) {
     config.baas = { provider: answers.baasProvider }
+  }
+
+  // Phase 03 Plan 03 (SETUP-01, D-07): passthrough oauth config from answers
+  if (answers.oauth?.apple) {
+    config.oauth = { apple: answers.oauth.apple }
   }
 
   if (answers.deliverEnabled) {

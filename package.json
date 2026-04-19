@@ -17,7 +17,7 @@
     "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test",
     "clean": "pnpm -r run clean",
     "setup": "node scripts/build-and-link.mjs",
-    "prepare": "lefthook install",
+    "prepare": "test -d .git && lefthook install --force || true",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "pnpm build && changeset publish"
