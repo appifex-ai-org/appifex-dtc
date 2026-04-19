@@ -19,6 +19,11 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Build workspace packages so eslint-import-resolver-typescript can
+      # resolve @appifex/* imports via each package's dist/index.js main
+      # entry. Without this, lint emits ~150 spurious import-x/no-unresolved
+      # warnings (harmless but noisy, hides real import issues).
+      - run: pnpm build
       - run: pnpm lint
       - run: pnpm format:check
 
