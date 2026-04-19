@@ -6,11 +6,11 @@
 
 ### Open-Source Release Readiness
 
-- [ ] **REPO-01**: Repo hygiene landed — `LICENSE` (MIT), `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, and GitHub issue/PR templates under `.github/`
+- [x] **REPO-01**: Repo hygiene landed — `LICENSE` (MIT), `README.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, and GitHub issue/PR templates under `.github/`
 - [x] **REPO-02**: Secret scanning clean — `gitleaks` runs in pre-commit (via husky/lefthook) and in CI; historical repo scanned, any findings remediated
 - [x] **REPO-03**: Conventional Commits + Changesets — `@changesets/cli` configured, commitlint enforces Conventional Commits, every PR requires a changeset entry
-- [ ] **REPO-04**: Public documentation — README with install + quickstart; `docs/` with getting-started, CLI reference, and contributing guide (no hosted docs site in v1)
-- [ ] **NPM-01**: Workspace packages rebranded under `@appifex/*` scope; `package.json` publish metadata (`publishConfig.access=public`, repository, homepage, keywords, license) set for every published package
+- [x] **REPO-04**: Public documentation — README with install + quickstart; `docs/` with getting-started, CLI reference, and contributing guide (no hosted docs site in v1)
+- [x] **NPM-01**: Workspace packages rebranded under `@appifex/*` scope; `package.json` publish metadata (`publishConfig.access=public`, repository, homepage, keywords, license) set for every published package
 - [x] **NPM-02**: GitHub Actions release workflow publishes to npm via `changesets/action` on merge to `main` (provenance enabled, `NPM_TOKEN` from secrets)
 - [x] **FLOW-01**: git-flow branching live — `main` (protected, production), `develop` (protected, integration), `feature/*`, `release/*`, `hotfix/*`; branch protection rules enforce PR + checks + review before merge to `main` and `develop`
 - [x] **GATE-01**: Required CI check — lint (ESLint + Prettier) + typecheck (`tsc --noEmit`) + `vitest run` — must pass before merge
@@ -101,11 +101,11 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| REPO-01 | Phase 1 | Pending |
+| REPO-01 | Phase 1 | Complete |
 | REPO-02 | Phase 1 | Complete |
 | REPO-03 | Phase 1 | Complete |
-| REPO-04 | Phase 1 | Pending |
-| NPM-01 | Phase 1 | Pending |
+| REPO-04 | Phase 1 | Complete |
+| NPM-01 | Phase 1 | Complete |
 | NPM-02 | Phase 1 | Complete |
 | FLOW-01 | Phase 1 → Phase 10 (gap closure) | Verified |
 | GATE-01 | Phase 1 | Complete |

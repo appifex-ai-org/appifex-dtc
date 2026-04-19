@@ -1,27 +1,27 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.0
-milestone_name: milestone
-status: in_progress
-stopped_at: Phase 10 executing — Wave 1 in progress (10-01, 10-02 — human checkpoint plans)
-last_updated: "2026-04-19T15:30:00.000Z"
-last_activity: 2026-04-19 -- Phase 10 execution started (3 plans, 2 waves: 10-01 + 10-02 parallel wave 1, 10-03 wave 2)
+milestone_name: MVP — Design to TestFlight in one command
+status: complete
+stopped_at: v1.0 milestone closed 2026-04-19
+last_updated: "2026-04-19T00:00:00.000Z"
+last_activity: 2026-04-19 -- v1.0 milestone closed (10/10 phases, 61/61 plans complete)
 progress:
   total_phases: 10
-  completed_phases: 7
-  total_plans: 58
-  completed_plans: 52
-  percent: 72
+  completed_phases: 10
+  total_plans: 61
+  completed_plans: 61
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-14)
+See: .planning/PROJECT.md (updated 2026-04-19)
 
 **Core value:** Design to TestFlight in one command — SwiftUI + Firebase, zero manual Xcode or Firebase console steps.
-**Current focus:** Milestone v1.0 complete — all 7 phases done
+**Current focus:** v1.0 shipped — planning next milestone
 
 ## Current Position
 
@@ -87,6 +87,23 @@ None.
 
 - Phase 5 start: verify `xcrun altool --upload-package` on current Xcode version (Xcode 26 has open issue #29739) before committing
 - Phase 6: Firebase emulator daemon lifecycle in CI has known cold-start + port-conflict issues — validate against actual runner environment
+
+## Deferred Items
+
+Items acknowledged and deferred at milestone close on 2026-04-19:
+
+| Category | Item | Status |
+|----------|------|--------|
+| quick_task | fix-fire-04-plist-path-mismatch | missing (audit tool false positive — commit 8ba33c8 on main, SUMMARY.md present) |
+| uat_gap | Phase 08: 08-HUMAN-UAT.md | partial — 1 pending: live dtc setup firebase run (requires real Google account) |
+| verification_gap | Phase 03: 03-VERIFICATION.md | human_needed — live Firebase project creation run |
+| verification_gap | Phase 04: 04-VERIFICATION.md | human_needed — live Firebase provision run |
+| verification_gap | Phase 05: 05-VERIFICATION.md | human_needed — live TestFlight upload (requires Apple Developer account) |
+| verification_gap | Phase 06: 06-VERIFICATION.md | human_needed — real Firebase simulator Maestro golden-path |
+| verification_gap | Phase 08: 08-VERIFICATION.md | human_needed — inherited from Phase 03 SETUP-04 |
+| verification_gap | Phase 09: 09-VERIFICATION.md | human_needed — inherited from Phase 04/07 live runs |
+
+Known deferred items at close: 8 (see above)
 
 ## Session Continuity
 
