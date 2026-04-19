@@ -5,7 +5,7 @@
  * DesignSpec) — NOT the adapter layer (which emits DesignToolResult with screenshot paths).
  * The extractors live in @appifex/spec.
  *
- * Architecture note: `extractSpecFromFigmaMake` and `extractSpecFromStitch` are
+ * Architecture note: `extractSpecFromFigmaMake` and `extractSpecFromHtmlDesign` are
  * LLM-based extractors that require a `createMessage` callback. They cannot produce
  * deterministic output without an LLM mock. The parity harness therefore:
  *   1. Uses real deterministic extractors (pen + mcp) for hard structural parity.
@@ -25,7 +25,7 @@ import { fileURLToPath } from 'node:url'
 import { extractSpecFromPen } from '../src/pen-extractor.js'
 import { extractSpecFromMcp } from '../src/mcp-extractor.js'
 import { extractSpecFromFigmaMake } from '../src/figma-make-extractor.js'
-import { extractSpecFromStitch } from '../src/stitch-extractor.js'
+import { extractSpecFromHtmlDesign } from '../src/html-design-extractor.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const FIXTURES = join(HERE, '..', '..', 'design', '__tests__', 'fixtures', 'parity')
@@ -166,13 +166,13 @@ describe('Extractor parity (DESIGN-04)', () => {
     expect(createMessage).toHaveBeenCalledTimes(1)
   })
 
-  it('extractSpecFromStitch returns valid DesignSpec structure when LLM is mocked', async () => {
+  it('extractSpecFromHtmlDesign returns valid DesignSpec structure when LLM is mocked', async () => {
     // Use the canonical pen spec as the canned LLM response
     const penJson = await readFile(join(FIXTURES, 'reference.pen'), 'utf-8')
     const canonicalSpec = extractSpecFromPen(penJson)
 
     const createMessage = mockLlm(canonicalSpec as unknown as Record<string, unknown>)
-    const result = await extractSpecFromStitch({
+    const result = await extractSpecFromHtmlDesign({
       htmlContents: [
         {
           name: 'HomeScreen.html',

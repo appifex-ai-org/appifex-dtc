@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { EventEmitter } from 'node:events'
-import { Writable } from 'node:stream'
+import type { Writable } from 'node:stream'
 import { EpipeError, CliError } from '@appifex/core'
 
 // Phase 02 Plan 03 (FOUND-03): EPIPE at `claude --print` spawn site in cli/src/pipeline.ts
@@ -15,7 +15,8 @@ vi.mock('node:child_process', () => {
 const { spawn } = await import('node:child_process')
 // runClaudePrint is the exported helper extracted from buildCreateMessageFn so the
 // spawn site is unit-testable. This import will fail until Task 2 adds the export.
-const pipelineModule: { runClaudePrint?: Function } = await import('../src/pipeline.js')
+const pipelineModule: { runClaudePrint?: (...args: unknown[]) => unknown } =
+  await import('../src/pipeline.js')
 
 function makeFakeChildEmittingEpipeOnStdin() {
   const child = new EventEmitter() as EventEmitter & {
@@ -31,9 +32,7 @@ function makeFakeChildEmittingEpipeOnStdin() {
     emit: stdinEmitter.emit.bind(stdinEmitter),
     write: (_chunk: any) => {
       setImmediate(() => {
-        const err: NodeJS.ErrnoException = new Error(
-          'write EPIPE',
-        ) as NodeJS.ErrnoException
+        const err: NodeJS.ErrnoException = new Error('write EPIPE') as NodeJS.ErrnoException
         err.code = 'EPIPE'
         stdinEmitter.emit('error', err)
         setImmediate(() => {
@@ -60,9 +59,7 @@ describe('runClaudePrint (cli/pipeline.ts) — EPIPE handling', () => {
     // If runClaudePrint is not exported yet, fail early with a clear message.
     expect(typeof pipelineModule.runClaudePrint).toBe('function')
 
-    vi.mocked(spawn).mockImplementation(
-      (() => makeFakeChildEmittingEpipeOnStdin()) as any,
-    )
+    vi.mocked(spawn).mockImplementation((() => makeFakeChildEmittingEpipeOnStdin()) as any)
 
     const prompt = 'x'.repeat(100_000)
     const expectedBytes = Buffer.byteLength(prompt, 'utf8')
