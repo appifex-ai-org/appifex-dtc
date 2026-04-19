@@ -44,8 +44,9 @@ export async function setupWizard(configDir?: string): Promise<void> {
 
   if (provider === 'copilot') {
     if (DTC_GITHUB_CLIENT_ID === 'Iv1.dtc_placeholder') {
+      // Phase 03 (DX-03): point users to the setup doc.
       p.cancel(
-        'Copilot auth requires a real GitHub App client ID. Set DTC_GITHUB_CLIENT_ID env var.',
+        'Copilot auth requires a real GitHub App client ID. Set DTC_GITHUB_CLIENT_ID env var — see docs/copilot-auth.md for step-by-step setup.',
       )
       process.exit(1)
     }
