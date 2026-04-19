@@ -92,6 +92,33 @@ function isLayeredCodegenResult(result: { files: unknown[] }): result is Layered
   return 'presentationFiles' in result && 'domainFiles' in result && 'integrationFiles' in result
 }
 
+/**
+ * Phase 02 (SEC-01): redact every secret field in DtcConfig before writing
+ * it to .dtc-debug/config.json. Placeholders (`'***'`) replace live values
+ * only when the original is defined; absent optional fields stay absent so
+ * the debug dump does not misrepresent config shape.
+ *
+ * Redacted fields: `llm.apiKey`, `llm.githubToken`, `design.apiKey`,
+ * `design.figmaToken`. All other fields pass through unchanged. Returns a
+ * new object — the input `config` is not mutated.
+ */
+export function redactConfigForDebug(config: DtcConfig): DtcConfig {
+  const redacted: DtcConfig = {
+    ...config,
+    llm: {
+      ...config.llm,
+      apiKey: '***',
+      ...(config.llm.githubToken !== undefined ? { githubToken: '***' } : {}),
+    },
+    design: {
+      ...config.design,
+      ...(config.design.apiKey !== undefined ? { apiKey: '***' } : {}),
+      ...(config.design.figmaToken !== undefined ? { figmaToken: '***' } : {}),
+    },
+  }
+  return redacted
+}
+
 /** Map CLI Platform to BaaS TargetPlatform array. */
 function platformToTarget(
   platform: Platform | undefined,
@@ -679,7 +706,8 @@ export async function runPipeline(
 
   // Debug logger
   const debug = createDebugLogger(outputDir, opts.verbose ?? false)
-  await debug.logJson('config.json', { ...config, llm: { ...config.llm, apiKey: '***' } })
+  // Phase 02 (SEC-01): redact all four secret fields, not just llm.apiKey.
+  await debug.logJson('config.json', redactConfigForDebug(config))
   await debug.log('skills-spec.md', skills.specPrompt)
   await debug.log('skills-codegen.md', skills.codegenPrompt)
   await debug.log('skills-fix.md', skills.fixPrompt)
