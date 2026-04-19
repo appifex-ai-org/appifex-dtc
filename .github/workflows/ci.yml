@@ -110,7 +110,7 @@ jobs:
   # check name ("changeset-check") to required_status_checks.contexts.
   changeset-check:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'changeset-release/')
     steps:
       - uses: actions/checkout@v4
         with:
