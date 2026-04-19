@@ -1,7 +1,7 @@
 ---
 '@appifex/cli': patch
-'@appifex/core': patch
-'@appifex/analysis': patch
+'@appifex/core': minor
+'@appifex/analysis': minor
 '@appifex/design': patch
 '@appifex/runner': patch
 '@appifex/build': patch

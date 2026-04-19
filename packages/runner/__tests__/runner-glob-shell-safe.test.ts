@@ -73,6 +73,17 @@ describe('assertSafeGlobPattern (shared helper)', () => {
     it('throws on embedded newline (multi-command)', () => {
       expect(() => assertSafeGlobPattern('src/*.ts\nrm -rf /')).toThrow(/Unsafe glob pattern/)
     })
+
+    it('throws on embedded space (shell arg-splitting disclosure)', () => {
+      // Prevents `foo.ts /etc/passwd` from passing the allowlist and causing
+      // `ls -1` to list a second path. Arg splitting, not command injection,
+      // but still unintended filesystem disclosure.
+      expect(() => assertSafeGlobPattern('foo.ts /etc/passwd')).toThrow(/Unsafe glob pattern/)
+    })
+
+    it('throws on embedded tab', () => {
+      expect(() => assertSafeGlobPattern('foo.ts\t/etc/passwd')).toThrow(/Unsafe glob pattern/)
+    })
   })
 })
 
