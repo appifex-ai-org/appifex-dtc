@@ -52,7 +52,6 @@ beforeEach(() => {
 
 describe('runTestFlightUploadPhase happy path', () => {
   it('uploads, polls, creates group, reconciles testers, returns completed', async () => {
-     
     vi.mocked(uploadIpa).mockResolvedValue({ success: true, toolVersion: '4.11' } as any)
     vi.mocked(findBuildByVersion).mockResolvedValue({
       id: 'b1',
@@ -63,7 +62,6 @@ describe('runTestFlightUploadPhase happy path', () => {
         uploadedDate: '',
         expired: false,
       },
-       
     } as any)
     vi.mocked(pollUntilProcessed).mockResolvedValue('VALID')
     vi.mocked(findOrCreateInternalGroup).mockResolvedValue({
@@ -74,7 +72,6 @@ describe('runTestFlightUploadPhase happy path', () => {
         isInternalGroup: true,
         hasAccessToAllBuilds: true,
       },
-       
     } as any)
     vi.mocked(reconcileTesters).mockResolvedValue({
       added: ['alice@example.com'],
@@ -85,16 +82,16 @@ describe('runTestFlightUploadPhase happy path', () => {
       ipaPath: '/tmp/App.ipa',
       buildNumber: '47',
       marketingVersion: '1.0.3',
-       
+
       config: { apple: APPLE } as any,
-       
+
       emitter: EMITTER as any,
-       
+
       runner: {} as any,
     })
 
     expect(result.status).toBe('completed')
-     
+
     expect((result as any).buildId).toBe('b1')
     expect(uploadIpa).toHaveBeenCalledOnce()
     expect(findOrCreateInternalGroup).toHaveBeenCalledWith(expect.anything(), '123', 'internal')
@@ -105,12 +102,12 @@ describe('runTestFlightUploadPhase happy path', () => {
 describe('D-09 retry on duplicate version', () => {
   it('re-queries ASC max, bumps +1, re-uploads once on ITMS-90478', async () => {
     vi.mocked(uploadIpa)
-       
+
       .mockResolvedValueOnce({
         success: false,
         errors: [{ message: 'ERROR ITMS-90478', itmsCode: 'ITMS-90478' }],
       } as any)
-       
+
       .mockResolvedValueOnce({ success: true, toolVersion: '4.11' } as any)
     vi.mocked(computeNextBuildNumber).mockResolvedValue('48')
     vi.mocked(findBuildByVersion).mockResolvedValue({
@@ -122,10 +119,9 @@ describe('D-09 retry on duplicate version', () => {
         uploadedDate: '',
         expired: false,
       },
-       
     } as any)
     vi.mocked(pollUntilProcessed).mockResolvedValue('VALID')
-     
+
     vi.mocked(findOrCreateInternalGroup).mockResolvedValue({ id: 'g1' } as any)
     vi.mocked(reconcileTesters).mockResolvedValue({ added: [], warnings: [] })
 
@@ -133,11 +129,11 @@ describe('D-09 retry on duplicate version', () => {
       ipaPath: '/tmp/App.ipa',
       buildNumber: '47',
       marketingVersion: '1.0.3',
-       
+
       config: { apple: APPLE } as any,
-       
+
       emitter: EMITTER as any,
-       
+
       runner: {} as any,
     })
 
@@ -147,13 +143,10 @@ describe('D-09 retry on duplicate version', () => {
   })
 
   it('hard-fails (TestFlightError) on second duplicate (D-09 retry-once budget exhausted)', async () => {
-    vi.mocked(uploadIpa).mockResolvedValue(
-       
-      {
-        success: false,
-        errors: [{ message: 'ERROR ITMS-90478', itmsCode: 'ITMS-90478' }],
-      } as any,
-    )
+    vi.mocked(uploadIpa).mockResolvedValue({
+      success: false,
+      errors: [{ message: 'ERROR ITMS-90478', itmsCode: 'ITMS-90478' }],
+    } as any)
     vi.mocked(computeNextBuildNumber).mockResolvedValue('48')
 
     await expect(
@@ -161,11 +154,11 @@ describe('D-09 retry on duplicate version', () => {
         ipaPath: '/tmp/App.ipa',
         buildNumber: '47',
         marketingVersion: '1.0.3',
-         
+
         config: { apple: APPLE } as any,
-         
+
         emitter: EMITTER as any,
-         
+
         runner: {} as any,
       }),
     ).rejects.toThrow() // TestFlightError or similar
@@ -174,15 +167,13 @@ describe('D-09 retry on duplicate version', () => {
 
 describe('D-15 polling outcomes', () => {
   it('succeeds on VALID', async () => {
-     
     vi.mocked(uploadIpa).mockResolvedValue({ success: true } as any)
     vi.mocked(findBuildByVersion).mockResolvedValue({
       id: 'b1',
       attributes: { version: '47', processingState: 'PROCESSING' },
-       
     } as any)
     vi.mocked(pollUntilProcessed).mockResolvedValue('VALID')
-     
+
     vi.mocked(findOrCreateInternalGroup).mockResolvedValue({ id: 'g1' } as any)
     vi.mocked(reconcileTesters).mockResolvedValue({ added: [], warnings: [] })
 
@@ -190,23 +181,21 @@ describe('D-15 polling outcomes', () => {
       ipaPath: '/tmp/App.ipa',
       buildNumber: '47',
       marketingVersion: '1.0.3',
-       
+
       config: { apple: APPLE } as any,
-       
+
       emitter: EMITTER as any,
-       
+
       runner: {} as any,
     })
     expect(result.status).toBe('completed')
   })
 
   it('45-min TIMEOUT soft-fails (D-15 + D-17): completed_with_warnings, exit 0', async () => {
-     
     vi.mocked(uploadIpa).mockResolvedValue({ success: true } as any)
     vi.mocked(findBuildByVersion).mockResolvedValue({
       id: 'b1',
       attributes: { version: '47', processingState: 'PROCESSING' },
-       
     } as any)
     vi.mocked(pollUntilProcessed).mockResolvedValue('TIMEOUT')
 
@@ -214,25 +203,23 @@ describe('D-15 polling outcomes', () => {
       ipaPath: '/tmp/App.ipa',
       buildNumber: '47',
       marketingVersion: '1.0.3',
-       
+
       config: { apple: APPLE } as any,
-       
+
       emitter: EMITTER as any,
-       
+
       runner: {} as any,
     })
     expect(result.status).toBe('completed_with_warnings')
-     
+
     expect((result as any).warnings.join(' ')).toMatch(/processing.*check ASC|ASC/i)
   })
 
   it('FAILED processing state hard-fails', async () => {
-     
     vi.mocked(uploadIpa).mockResolvedValue({ success: true } as any)
     vi.mocked(findBuildByVersion).mockResolvedValue({
       id: 'b1',
       attributes: { version: '47', processingState: 'PROCESSING' },
-       
     } as any)
     vi.mocked(pollUntilProcessed).mockResolvedValue('FAILED')
 
@@ -241,11 +228,11 @@ describe('D-15 polling outcomes', () => {
         ipaPath: '/tmp/App.ipa',
         buildNumber: '47',
         marketingVersion: '1.0.3',
-         
+
         config: { apple: APPLE } as any,
-         
+
         emitter: EMITTER as any,
-         
+
         runner: {} as any,
       }),
     ).rejects.toThrow()
@@ -254,15 +241,13 @@ describe('D-15 polling outcomes', () => {
 
 describe('D-17 soft-fail on assignment failure', () => {
   it('tester-reconciliation error → completed_with_warnings, exit 0', async () => {
-     
     vi.mocked(uploadIpa).mockResolvedValue({ success: true } as any)
     vi.mocked(findBuildByVersion).mockResolvedValue({
       id: 'b1',
       attributes: { version: '47', processingState: 'PROCESSING' },
-       
     } as any)
     vi.mocked(pollUntilProcessed).mockResolvedValue('VALID')
-     
+
     vi.mocked(findOrCreateInternalGroup).mockResolvedValue({ id: 'g1' } as any)
     vi.mocked(reconcileTesters).mockRejectedValue(new Error('tester reconciliation failed'))
 
@@ -270,25 +255,23 @@ describe('D-17 soft-fail on assignment failure', () => {
       ipaPath: '/tmp/App.ipa',
       buildNumber: '47',
       marketingVersion: '1.0.3',
-       
+
       config: { apple: APPLE } as any,
-       
+
       emitter: EMITTER as any,
-       
+
       runner: {} as any,
     })
     expect(result.status).toBe('completed_with_warnings')
-     
+
     expect((result as any).warnings.join(' ')).toMatch(/group assignment|tester|assignment failed/i)
   })
 
   it('group creation error → completed_with_warnings, exit 0', async () => {
-     
     vi.mocked(uploadIpa).mockResolvedValue({ success: true } as any)
     vi.mocked(findBuildByVersion).mockResolvedValue({
       id: 'b1',
       attributes: { version: '47', processingState: 'PROCESSING' },
-       
     } as any)
     vi.mocked(pollUntilProcessed).mockResolvedValue('VALID')
     vi.mocked(findOrCreateInternalGroup).mockRejectedValue(new Error('group create failed'))
@@ -297,11 +280,11 @@ describe('D-17 soft-fail on assignment failure', () => {
       ipaPath: '/tmp/App.ipa',
       buildNumber: '47',
       marketingVersion: '1.0.3',
-       
+
       config: { apple: APPLE } as any,
-       
+
       emitter: EMITTER as any,
-       
+
       runner: {} as any,
     })
     expect(result.status).toBe('completed_with_warnings')
@@ -310,15 +293,13 @@ describe('D-17 soft-fail on assignment failure', () => {
 
 describe('D-19 default group name', () => {
   it("falls back to 'dtc-internal' when apple.ascTestFlightGroup is absent", async () => {
-     
     vi.mocked(uploadIpa).mockResolvedValue({ success: true } as any)
     vi.mocked(findBuildByVersion).mockResolvedValue({
       id: 'b1',
       attributes: { version: '47', processingState: 'PROCESSING' },
-       
     } as any)
     vi.mocked(pollUntilProcessed).mockResolvedValue('VALID')
-     
+
     vi.mocked(findOrCreateInternalGroup).mockResolvedValue({ id: 'g1' } as any)
     vi.mocked(reconcileTesters).mockResolvedValue({ added: [], warnings: [] })
 
@@ -327,11 +308,11 @@ describe('D-19 default group name', () => {
       ipaPath: '/tmp/App.ipa',
       buildNumber: '47',
       marketingVersion: '1.0.3',
-       
+
       config: configNoGroup as any,
-       
+
       emitter: EMITTER as any,
-       
+
       runner: {} as any,
     })
 
