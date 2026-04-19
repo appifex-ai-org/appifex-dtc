@@ -74,6 +74,21 @@ function checkXcodegen(): PrereqCheck {
   }
 }
 
+// Phase 02 (DX-01): unzip is invoked unconditionally by design adapters
+// (packages/design/src/design-zip.ts:46) — surface a clean preflight failure
+// instead of an opaque execSync error mid-run.
+function checkUnzip(): PrereqCheck {
+  const has = which('unzip')
+  return {
+    name: 'unzip',
+    description: 'Extracts Stitch / Figma / Claude design .zip exports',
+    severity: 'critical',
+    status: has ? 'pass' : 'fail',
+    message: has ? 'installed' : 'unzip not found',
+    installHint: 'brew install unzip  # or: apt install unzip',
+  }
+}
+
 function checkSimulatorRuntime(): PrereqCheck {
   try {
     const raw = execCapture('xcrun simctl list runtimes -j')
@@ -447,6 +462,8 @@ function buildChecks(
     checks.push(checkAndroidDevice())
   }
 
+  // Phase 02 (DX-01): unzip is needed regardless of target platform.
+  checks.push(checkUnzip())
   checks.push(checkLlmAccess(config))
 
   if (!criticalOnly) {
