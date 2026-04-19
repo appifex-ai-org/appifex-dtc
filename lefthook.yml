@@ -6,9 +6,9 @@ pre-commit:
     gitleaks:
       # Protect = scan staged content without full history walk
       run: gitleaks protect --staged --redact --verbose
-      # Skip cleanly if binary not installed locally (CI still runs it)
+      # Skip cleanly if binary not installed (exits 0 = skip, exits 1 = run)
       skip:
-        - run: 'command -v gitleaks >/dev/null 2>&1 || exit 1'
+        - run: 'command -v gitleaks >/dev/null 2>&1 && exit 1 || exit 0'
 
     lint-staged:
       glob: '*.{ts,tsx,js,mjs,cjs}'

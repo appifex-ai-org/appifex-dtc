@@ -76,6 +76,7 @@ jobs:
           createGithubReleases: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LEFTHOOK: '0'
 
   # Publish to npm. Gated on an explicit `v*` tag push so we never publish
   # accidentally. Create a tag from main after the Version Packages PR merges:
