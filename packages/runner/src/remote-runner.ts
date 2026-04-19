@@ -1,4 +1,6 @@
 import type { Runner, ExecResult, ExecOpts, RunnerCapabilities } from '@appifex/core'
+// Phase 04 (SEC-02, T-04-07): allowlist-validate glob patterns before shell interpolation.
+import { assertSafeGlobPattern } from './shell-safe.js'
 
 type FetchFn = typeof globalThis.fetch
 
@@ -92,7 +94,13 @@ export class RemoteRunner implements Runner {
   }
 
   async glob(pattern: string): Promise<string[]> {
-    const result = await this.exec('sh', ['-c', `ls -1 ${pattern} 2>/dev/null`])
+    // Phase 04 (SEC-02, T-04-07): reject shell-meta in caller patterns before
+    // interpolation. The shell is still genuinely needed — glob wildcards
+    // (`*`, `?`, `{a,b}`) must reach bash for expansion — so `shell-quote`
+    // would break the call. `assertSafeGlobPattern` allowlists glob-safe
+    // characters and throws on command-injection metacharacters.
+    const safe = assertSafeGlobPattern(pattern)
+    const result = await this.exec('sh', ['-c', `ls -1 ${safe} 2>/dev/null`])
     if (result.exitCode !== 0) return []
     return result.stdout.trim().split('\n').filter(Boolean)
   }
