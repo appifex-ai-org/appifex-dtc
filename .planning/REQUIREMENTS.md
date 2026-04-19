@@ -12,10 +12,10 @@
 - [ ] **REPO-04**: Public documentation — README with install + quickstart; `docs/` with getting-started, CLI reference, and contributing guide (no hosted docs site in v1)
 - [ ] **NPM-01**: Workspace packages rebranded under `@appifex/*` scope; `package.json` publish metadata (`publishConfig.access=public`, repository, homepage, keywords, license) set for every published package
 - [x] **NPM-02**: GitHub Actions release workflow publishes to npm via `changesets/action` on merge to `main` (provenance enabled, `NPM_TOKEN` from secrets)
-- [ ] **FLOW-01**: git-flow branching live — `main` (protected, production), `develop` (protected, integration), `feature/*`, `release/*`, `hotfix/*`; branch protection rules enforce PR + checks + review before merge to `main` and `develop`
+- [x] **FLOW-01**: git-flow branching live — `main` (protected, production), `develop` (protected, integration), `feature/*`, `release/*`, `hotfix/*`; branch protection rules enforce PR + checks + review before merge to `main` and `develop`
 - [x] **GATE-01**: Required CI check — lint (ESLint + Prettier) + typecheck (`tsc --noEmit`) + `vitest run` — must pass before merge
 - [x] **GATE-02**: Required CI check — `dtc` pipeline E2E smoke (fixture design → simulator build) — must pass before merge to `develop`/`main`
-- [ ] **GATE-03**: `CODEOWNERS` in place; branch protection requires ≥1 approving review from a repo admin/code owner before merge
+- [x] **GATE-03**: `CODEOWNERS` in place; branch protection requires ≥1 approving review from a repo admin/code owner before merge
 - [x] **GATE-04**: PR check — every PR must include a changeset entry (enforced by `changesets/action` PR check); PRs without one fail the gate
 
 ### Foundation Hardening
@@ -107,11 +107,11 @@
 | REPO-04 | Phase 1 | Pending |
 | NPM-01 | Phase 1 | Pending |
 | NPM-02 | Phase 1 | Complete |
-| FLOW-01 | Phase 1 → Phase 10 (gap closure) | Pending |
+| FLOW-01 | Phase 1 → Phase 10 (gap closure) | Verified |
 | GATE-01 | Phase 1 | Complete |
-| GATE-02 | Phase 1 | Complete (human confirmation pending — Phase 10) |
-| GATE-03 | Phase 1 → Phase 10 (gap closure) | Pending |
-| GATE-04 | Phase 1 | Complete (human confirmation pending — Phase 10) |
+| GATE-02 | Phase 1 → Phase 10 (gap closure) | Verified |
+| GATE-03 | Phase 1 → Phase 10 (gap closure) | Verified |
+| GATE-04 | Phase 1 → Phase 10 (gap closure) | Verified |
 | FOUND-01 | Phase 2 → Phase 8 (gap closure) | Verified |
 | FOUND-02 | Phase 2 → Phase 8 (gap closure) | Verified |
 | FOUND-03 | Phase 2 → Phase 8 (gap closure) | Verified |
@@ -145,4 +145,4 @@
 | OBS-03 | Phase 7 → Phase 9 (gap closure) | Verified |
 
 ---
-*Last updated: 2026-04-14 after roadmap revision — Phase 1 (Open-Source Release Readiness) inserted; existing phases shifted +1; 11 new REQ-IDs added (REPO-01..04, NPM-01..02, FLOW-01, GATE-01..04); total 42 REQ-IDs*
+*Last updated: 2026-04-19 after Phase 10 (Live Branch Protection Confirmation) — FLOW-01, GATE-02, GATE-03, GATE-04 marked Verified following live branch protection execution and scratch-PR gate confirmation*
