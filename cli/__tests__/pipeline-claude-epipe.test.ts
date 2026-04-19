@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { logClaudeStdinError } from '../src/pipeline.js'
+import { logClaudeStdinError } from '../src/debug-helpers.js'
 
 describe('logClaudeStdinError (Phase 02 OBS-01)', () => {
   it('writes claude-epipe.json with message and code when debug is enabled', async () => {

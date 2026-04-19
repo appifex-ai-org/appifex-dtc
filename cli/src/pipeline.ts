@@ -24,7 +24,6 @@ import {
   type Platform,
   type RunMode,
   type SkillContent,
-  type DebugLogger,
   type PlatformSpec,
 } from '@appifex/core'
 import { createRunner } from '@appifex/runner'
@@ -71,7 +70,17 @@ import { fixLoop, createDefaultFixFn, createClaudeCliFixFn } from '@appifex/fix'
 import { buildReport, formatMarkdown, type PipelineReport } from '@appifex/report'
 import { deliver, type DeliverResult } from '@appifex/deliver'
 import { detectBaasProvider } from '@appifex/baas'
-// Copilot provider is handled inline in buildCreateMessageFn
+// Phase 04 (DX-07): per-provider message-function factories — dispatch in buildCreateMessageFn.
+// Note: logClaudeStdinError is imported by cli/src/providers/claude-cli-message.ts
+// (the EPIPE handler lives inside the claude-cli factory body, which was extracted
+// wholesale from the inline branch formerly here). Pipeline.ts does not need a
+// direct import — it has no remaining call site.
+import { createClaudeCliMessageFn } from './providers/claude-cli-message.js'
+import { createCopilotMessageFn } from './providers/copilot-message.js'
+import { createGoogleMessageFn } from './providers/google-message.js'
+import { createOpenAiMessageFn } from './providers/openai-message.js'
+import { createAnthropicMessageFn } from './providers/anthropic-message.js'
+import type { CreateMessageFn } from './providers/message-types.js'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
@@ -117,24 +126,6 @@ export function redactConfigForDebug(config: DtcConfig): DtcConfig {
     },
   }
   return redacted
-}
-
-/**
- * Phase 02 (OBS-01): surface `claude --print` stdin errors (EPIPE when claude
- * closes stdin early on large prompts) via `DebugLogger` instead of silently
- * swallowing. The writer is fire-and-forget by design — the stdin 'error'
- * listener is sync and must not block the stream — so the EPIPE handler
- * wraps this call in `void`.
- *
- * Exported as a named helper so it can be unit-tested in isolation without
- * spawning the real `claude` binary.
- */
-export async function logClaudeStdinError(debug: DebugLogger, err: unknown): Promise<void> {
-  await debug.logJson('claude-epipe.json', {
-    message: err instanceof Error ? err.message : String(err),
-    code: (err as NodeJS.ErrnoException | undefined)?.code,
-    at: 'child.stdin',
-  })
 }
 
 /** Map CLI Platform to BaaS TargetPlatform array. */
@@ -730,8 +721,10 @@ export async function runPipeline(
   await debug.log('skills-codegen.md', skills.codegenPrompt)
   await debug.log('skills-fix.md', skills.fixPrompt)
 
-  // Helper: build an LLM message function from config
-  async function buildCreateMessageFn(cfg: DtcConfig) {
+  // Helper: build an LLM message function from config.
+  // Phase 04 (DX-07): provider-specific construction moved to
+  // cli/src/providers/*-message.ts — this function is now a thin dispatch.
+  async function buildCreateMessageFn(cfg: DtcConfig): Promise<CreateMessageFn> {
     // Phase 1 Plan 01-10 (GATE-02): fixture-replay short-circuit.
     // When DTC_LLM_MODE=fixture, ignore provider config and return a cassette-backed
     // createMessage. Key is routed by the prompt shape:
@@ -739,11 +732,7 @@ export async function runPipeline(
     //   - includes "Fix the following errors" or "===FIX:" → fix
     //   - otherwise → codegen
     if (isFixtureMode()) {
-      return async (params: {
-        model: string
-        max_tokens: number
-        messages: Array<{ role: string; content: any }>
-      }) => {
+      return async (params) => {
         const flat = params.messages
           .map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)))
           .join('\n')
@@ -755,249 +744,21 @@ export async function runPipeline(
       }
     }
 
-    // Claude CLI — shell out to `claude --print` for text-only LLM calls
+    // Phase 04 (DX-07): per-provider branches extracted to cli/src/providers/*-message.ts.
     if (cfg.llm.provider === 'claude-cli') {
-      const { spawn } = await import('node:child_process')
-      return async (params: {
-        model: string
-        max_tokens: number
-        messages: Array<{ role: string; content: any }>
-      }) => {
-        const prompt = params.messages
-          .map((m) => {
-            if (typeof m.content === 'string') return m.content
-            if (Array.isArray(m.content))
-              return m.content
-                .filter((p: any) => p.type === 'text')
-                .map((p: any) => p.text)
-                .join('\n')
-            return String(m.content)
-          })
-          .join('\n\n')
-
-        const model = cfg.llm.model ?? 'claude-sonnet-4-6'
-        return new Promise<{
-          content: Array<{ type: string; text: string }>
-          usage: { input_tokens: number; output_tokens: number }
-        }>((resolve, reject) => {
-          const child = spawn('claude', ['--print', '--model', model], {
-            stdio: ['pipe', 'pipe', 'pipe'],
-            cwd: outputDir,
-          })
-          // Phase 02 (OBS-01): surface EPIPE instead of swallowing it silently.
-          // Handler is sync — must not block the stream, so fire-and-forget.
-          child.stdin.on('error', (err) => {
-            void logClaudeStdinError(debug, err)
-          })
-          child.stdin.write(prompt)
-          child.stdin.end()
-          let stdout = ''
-          let stderr = ''
-          child.stdout.on('data', (d: Buffer) => {
-            stdout += d.toString()
-          })
-          child.stderr.on('data', (d: Buffer) => {
-            stderr += d.toString()
-          })
-          child.on('close', (code) => {
-            if (code !== 0)
-              reject(
-                new Error(
-                  `claude --print exited with code ${code}${stderr ? `\nstderr: ${stderr}` : ''}${stdout ? `\nstdout preview: ${stdout.slice(0, 200)}` : ''}`,
-                ),
-              )
-            else if (!stdout.trim())
-              reject(
-                new Error(
-                  `claude --print returned empty response${stderr ? `\nstderr: ${stderr}` : ''}`,
-                ),
-              )
-            else
-              resolve({
-                content: [{ type: 'text', text: stdout }],
-                usage: { input_tokens: 0, output_tokens: 0 },
-              })
-          })
-        })
-      }
+      return createClaudeCliMessageFn(cfg, { debug, outputDir })
     }
-
     if (cfg.llm.provider === 'copilot' && cfg.llm.githubToken) {
-      // Use Copilot SDK — create a fresh session per call to avoid reusing a disconnected session
-      const { CopilotClient } = await import('@github/copilot-sdk')
-      return async (params: {
-        model: string
-        max_tokens: number
-        messages: Array<{ role: string; content: any }>
-      }) => {
-        // Serialize all messages into a single prompt so Copilot sees full context
-        const prompt = params.messages
-          .map((m) => {
-            if (typeof m.content === 'string') return m.content
-            if (Array.isArray(m.content))
-              return m.content
-                .filter((p: any) => p.type === 'text')
-                .map((p: any) => p.text)
-                .join('\n')
-            return String(m.content)
-          })
-          .join('\n\n')
-
-        const client = new CopilotClient({
-          githubToken: cfg.llm.githubToken,
-          useLoggedInUser: false,
-        }) as any
-        await client.start()
-        try {
-          const session = await client.createSession({
-            model: cfg.llm.model ?? 'claude-sonnet-4-6',
-            onPermissionRequest: () => ({ allow: true }),
-          })
-          const resp = await session.sendAndWait({ prompt })
-          const text = resp?.data?.content ?? ''
-          await session.disconnect()
-          return { content: [{ type: 'text', text }], usage: { input_tokens: 0, output_tokens: 0 } }
-        } finally {
-          await client.stop()
-        }
-      }
+      return createCopilotMessageFn(cfg)
     }
-    // Google Gemini via native API (supports vision natively)
     if (cfg.llm.provider === 'google') {
-      return async (params: {
-        model: string
-        max_tokens: number
-        messages: Array<{ role: string; content: any }>
-      }) => {
-        const model = cfg.llm.model ?? 'gemini-3.1-pro-preview'
-
-        // Convert OpenAI message format to Gemini native format
-        const parts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }> =
-          []
-        for (const msg of params.messages) {
-          if (typeof msg.content === 'string') {
-            parts.push({ text: msg.content })
-          } else if (Array.isArray(msg.content)) {
-            for (const part of msg.content) {
-              if (part.type === 'text') {
-                parts.push({ text: part.text })
-              } else if (part.type === 'image_url' && part.image_url?.url?.startsWith('data:')) {
-                // data:image/png;base64,... → inline_data
-                const dataMatch = part.image_url.url.match(/^data:(.+?);base64,(.+)$/)
-                if (dataMatch) {
-                  parts.push({ inline_data: { mime_type: dataMatch[1], data: dataMatch[2] } })
-                }
-              }
-            }
-          }
-        }
-
-        const resp = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cfg.llm.apiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts }],
-              generationConfig: { maxOutputTokens: params.max_tokens },
-            }),
-          },
-        )
-        if (!resp.ok) {
-          const err = await resp.text()
-          // Sanitize API key from error message to prevent credential leakage in logs
-          const safeErr = cfg.llm.apiKey ? err.replace(cfg.llm.apiKey, '***') : err
-          throw new Error(`Gemini API error ${resp.status}: ${safeErr}`)
-        }
-        const data = (await resp.json()) as {
-          candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
-          usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number }
-        }
-        const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? ''
-        const inputTokens = data.usageMetadata?.promptTokenCount ?? 0
-        const outputTokens = data.usageMetadata?.candidatesTokenCount ?? 0
-        return {
-          content: [{ type: 'text', text }],
-          usage: { input_tokens: inputTokens, output_tokens: outputTokens },
-        }
-      }
+      return createGoogleMessageFn(cfg)
     }
-
-    // OpenAI
     if (cfg.llm.provider === 'openai') {
-      const baseUrl = 'https://api.openai.com/v1'
-      return async (params: {
-        model: string
-        max_tokens: number
-        messages: Array<{ role: string; content: any }>
-      }) => {
-        const model = cfg.llm.model ?? 'gpt-4.1'
-        const resp = await fetch(`${baseUrl}/chat/completions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${cfg.llm.apiKey}`,
-          },
-          body: JSON.stringify({ model, max_tokens: params.max_tokens, messages: params.messages }),
-        })
-        if (!resp.ok) {
-          const err = await resp.text()
-          const safeErr = cfg.llm.apiKey ? err.replace(cfg.llm.apiKey, '***') : err
-          throw new Error(`OpenAI API error ${resp.status}: ${safeErr}`)
-        }
-        const data = (await resp.json()) as {
-          choices: Array<{ message: { content: string } }>
-          usage?: { prompt_tokens?: number; completion_tokens?: number }
-        }
-        const text = data.choices?.[0]?.message?.content ?? ''
-        return {
-          content: [{ type: 'text', text }],
-          usage: {
-            input_tokens: data.usage?.prompt_tokens ?? 0,
-            output_tokens: data.usage?.completion_tokens ?? 0,
-          },
-        }
-      }
+      return createOpenAiMessageFn(cfg)
     }
-
-    // Default: Anthropic SDK (convert image_url to Anthropic image format)
-    const Anthropic = (await import('@anthropic-ai/sdk')).default
-    const client = new Anthropic({ apiKey: cfg.llm.apiKey })
-    return async (params: {
-      model: string
-      max_tokens: number
-      messages: Array<{ role: string; content: any }>
-    }) => {
-      // Convert OpenAI image_url format to Anthropic image format
-      const messages = params.messages.map((msg) => {
-        if (Array.isArray(msg.content)) {
-          const content = msg.content.map((part: any) => {
-            if (part.type === 'image_url' && part.image_url?.url?.startsWith('data:')) {
-              const dataMatch = part.image_url.url.match(/^data:(.+?);base64,(.+)$/)
-              if (dataMatch) {
-                return {
-                  type: 'image',
-                  source: { type: 'base64', media_type: dataMatch[1], data: dataMatch[2] },
-                }
-              }
-            }
-            return part
-          })
-          return { ...msg, content }
-        }
-        return msg
-      })
-      // Use streaming to avoid timeout on long-running requests
-      const stream = client.messages.stream({ ...params, messages } as any)
-      const finalMessage = await stream.finalMessage()
-      return {
-        content: finalMessage.content.map((c: any) => ({
-          type: c.type,
-          text: c.type === 'text' ? c.text : '',
-        })),
-        usage: finalMessage.usage,
-      }
-    }
+    // Default: Anthropic SDK
+    return createAnthropicMessageFn(cfg)
   }
   // Cache the LLM message function — config doesn't change between phases
   let _cachedCreateMessage: Awaited<ReturnType<typeof buildCreateMessageFn>> | undefined
