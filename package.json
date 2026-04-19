@@ -5,7 +5,7 @@
   "description": "Composable toolkit for UI/UX-driven mobile app development",
   "license": "MIT",
   "scripts": {
-    "build": "pnpm --filter @appifex/core run build && pnpm --filter @appifex/runner run build && pnpm --filter '!@appifex/core' --filter '!@appifex/runner' --filter '!@appifex/cli' --filter '!@appifex/mcp-server' -r run build && pnpm --filter @appifex/cli run build && pnpm --filter @appifex/mcp-server run build",
+    "build": "pnpm --filter @appifex/core run build && pnpm --filter @appifex/runner run build && pnpm --filter '!@appifex/core' --filter '!@appifex/runner' --filter '!@appifex/cli' --filter '!@appifex/mcp-server' -r run build && pnpm --filter @appifex/mcp-server run build && pnpm --filter @appifex/cli run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:related": "vitest related --run",
@@ -17,12 +17,13 @@
     "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test",
     "clean": "pnpm -r run clean",
     "setup": "node scripts/build-and-link.mjs",
-    "prepare": "lefthook install",
+    "prepare": "test -d .git && lefthook install --force || true",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "pnpm build && changeset publish"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^0.6.0",
     "@changesets/cli": "^2.30.0",
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0",

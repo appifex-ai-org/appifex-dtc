@@ -1,6 +1,6 @@
 {
   "name": "@appifex/core",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Shared types, progress, token budget, checkpoint, and config for the DTC toolkit",
   "license": "MIT",
   "type": "module",
@@ -21,22 +21,33 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "better-sqlite3": "^11.0.0"
+    "archiver": "^7.0.1",
+    "better-sqlite3": "^11.0.0",
+    "jose": "^6.2.2"
   },
   "devDependencies": {
+    "@types/archiver": "^7.0.0",
     "@types/better-sqlite3": "^7.6.0"
   },
   "author": "Appifex",
-  "homepage": "https://github.com/appifex/appifex-dtc#readme",
+  "homepage": "https://github.com/appifex-ai-org/appifex-dtc#readme",
   "bugs": {
-    "url": "https://github.com/appifex/appifex-dtc/issues"
+    "url": "https://github.com/appifex-ai-org/appifex-dtc/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/appifex/appifex-dtc.git",
+    "url": "git+https://github.com/appifex-ai-org/appifex-dtc.git",
     "directory": "packages/core"
   },
   "publishConfig": {
-    "access": "public"
-  }
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "appifex",
+    "dtc",
+    "core",
+    "types",
+    "checkpoint"
+  ]
 }

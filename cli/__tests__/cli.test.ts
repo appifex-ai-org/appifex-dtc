@@ -205,3 +205,38 @@ describe('COMMANDS', () => {
     )
   })
 })
+
+// Phase 03 Plan 03 (SETUP-01, D-10): setup command surface tests
+describe('parseArgs setup command', () => {
+  it('Test 4: parseArgs(["setup"]) returns { command: "setup", section: undefined, full: false }', () => {
+    const result = parseArgs(['setup'])
+    expect(result.command).toBe('setup')
+    expect((result as ParsedArgs & { section?: string }).section).toBeUndefined()
+    expect((result as ParsedArgs & { full?: boolean }).full).toBe(false)
+  })
+
+  it('Test 5: parseArgs(["setup", "firebase"]) returns { command: "setup", section: "firebase", full: false }', () => {
+    const result = parseArgs(['setup', 'firebase'])
+    expect(result.command).toBe('setup')
+    expect((result as ParsedArgs & { section?: string }).section).toBe('firebase')
+    expect((result as ParsedArgs & { full?: boolean }).full).toBe(false)
+  })
+
+  it('Test 6: parseArgs(["setup", "--full"]) returns { command: "setup", section: undefined, full: true }', () => {
+    const result = parseArgs(['setup', '--full'])
+    expect(result.command).toBe('setup')
+    expect((result as ParsedArgs & { section?: string }).section).toBeUndefined()
+    expect((result as ParsedArgs & { full?: boolean }).full).toBe(true)
+  })
+
+  it('Test 7: parseArgs(["setup", "llm", "--full"]) returns { command: "setup", section: "llm", full: true }', () => {
+    const result = parseArgs(['setup', 'llm', '--full'])
+    expect(result.command).toBe('setup')
+    expect((result as ParsedArgs & { section?: string }).section).toBe('llm')
+    expect((result as ParsedArgs & { full?: boolean }).full).toBe(true)
+  })
+
+  it('Test 8: parseArgs(["setup", "nope"]) throws for unknown section', () => {
+    expect(() => parseArgs(['setup', 'nope'])).toThrow('Unknown section: "nope"')
+  })
+})

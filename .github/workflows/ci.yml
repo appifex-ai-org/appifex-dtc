@@ -33,6 +33,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm build
       - run: pnpm typecheck
 
   test:
@@ -46,6 +47,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm build
       - run: pnpm test
 
   commitlint:
@@ -63,14 +65,22 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec commitlint --from=${{ github.event.pull_request.base.sha }} --to=${{ github.event.pull_request.head.sha }}
 
+  # We invoke the open-source gitleaks CLI directly rather than gitleaks/gitleaks-action@v2.
+  # The gated Action requires a paid GITLEAKS_LICENSE for organization accounts
+  # (see https://github.com/gitleaks/gitleaks-action#-announcement); the binary itself is MIT.
   gitleaks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install gitleaks
+        run: |
+          curl -fsSL -o /tmp/gitleaks.tgz https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz
+          tar -xzf /tmp/gitleaks.tgz -C /tmp gitleaks
+          sudo mv /tmp/gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+      - name: Scan full history
+        run: gitleaks detect --source . --config .gitleaks.toml --redact --log-opts="--all"
 
   # Phase 1 Plan 08 (NPM-01): verify every workspace package publishes cleanly to npm.
   # Catches tarball-shape regressions (missing dist/, bad files allowlist, invalid exports)
@@ -90,3 +100,42 @@ jobs:
       - run: pnpm build
       - name: Verify every workspace package publishes cleanly
         run: pnpm publish --dry-run -r --no-git-checks
+
+  # Phase 1 Plan 01-11 (GATE-04): every PR must include a changeset entry.
+  # Docs-only PRs satisfy this with an empty changeset file created via
+  # `pnpm exec changeset --empty` (see .github/PULL_REQUEST_TEMPLATE.md).
+  # The changesets/action in release.yml only runs on push:main for Version
+  # Packages PR mode, so this check is what actually enforces the gate on
+  # incoming PRs. Once merged, setup-branch-protection.sh adds this job's
+  # check name ("changeset-check") to required_status_checks.contexts.
+  changeset-check:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'changeset-release/')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify PR includes a changeset entry
+        run: |
+          set -euo pipefail
+          BASE_REF="${{ github.base_ref }}"
+          # checkout@v4 above already pulled full history (fetch-depth: 0),
+          # but the base ref isn't fetched as a remote-tracking branch yet —
+          # do that without --depth (--depth=0 is invalid for git-fetch).
+          git fetch --no-tags origin "$BASE_REF"
+          ADDED=$(git diff --name-only --diff-filter=A "origin/${BASE_REF}...HEAD" -- '.changeset/*.md' \
+            | grep -vE '^\.changeset/(README\.md|config\.json)$' || true)
+          if [[ -z "$ADDED" ]]; then
+            echo "::error::No changeset entry found in this PR."
+            echo ""
+            echo "Every PR must include a changeset entry describing its change."
+            echo "Run: pnpm exec changeset"
+            echo ""
+            echo "For docs-only / release-irrelevant PRs, record an empty changeset:"
+            echo "  pnpm exec changeset --empty"
+            echo ""
+            echo "Both create a file under .changeset/ — commit it and push."
+            exit 1
+          fi
+          echo "Changeset entries in this PR:"
+          echo "$ADDED"

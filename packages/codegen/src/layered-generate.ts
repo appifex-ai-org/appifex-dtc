@@ -1,3 +1,4 @@
+import { isFixtureMode, loadFixture } from '@appifex/core'
 import type { CodegenInput, CodegenResult, GeneratedFile } from './types.js'
 import type { CreateMessageFn } from './default-generate.js'
 import { buildLayeredPrompt } from './layered-prompt.js'
@@ -79,6 +80,8 @@ export function createLayeredGenerateFn(
   const createMessage: CreateMessageFn =
     opts.createMessage ??
     (async (params) => {
+      // Phase 1 Plan 01-10 (GATE-02): fixture-replay short-circuit.
+      if (isFixtureMode()) return loadFixture('codegen')
       const Anthropic = (await import('@anthropic-ai/sdk')).default
       const client = new Anthropic({ apiKey: opts.apiKey })
       const stream = client.messages.stream(params as Parameters<typeof client.messages.stream>[0])

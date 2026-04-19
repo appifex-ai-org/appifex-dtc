@@ -52,6 +52,7 @@ export const PHASE_ORDER: PhaseId[] = [
   'baas_recommend',
   'baas_schema',
   'baas_auth',
+  'firebase_provision', // Phase 4 (FIRE-04): D-04
   'mock_service',
   'test_gen',
   'codegen',
@@ -61,6 +62,9 @@ export const PHASE_ORDER: PhaseId[] = [
   'security',
   'fix',
   'deliver',
+  'e2e_gate', // Phase 6 (VAL-01 D-01): real-Firebase e2e gate before TestFlight
+  'xcode_archive', // Phase 5 (TF-01 D-02)
+  'testflight_upload', // Phase 5 (TF-01 D-02)
   'report',
 ]
 

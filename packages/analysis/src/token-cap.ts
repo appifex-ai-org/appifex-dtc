@@ -1,6 +1,7 @@
 import type { AppContext } from './types.js'
 
-const CHARS_PER_TOKEN = 4
+// Phase 02 Plan 02 (FOUND-02): Swift averages ~3 chars/token, not 4
+const CHARS_PER_TOKEN = 3
 const APP_CONTEXT_TOKEN_CAP = 8_000
 
 export function buildAppContextSummary(ctx: AppContext): string {

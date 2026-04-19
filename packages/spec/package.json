@@ -1,6 +1,6 @@
 {
   "name": "@appifex/spec",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "license": "MIT",
   "type": "module",
   "exports": {
@@ -19,19 +19,29 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@appifex/core": "workspace:*"
+    "@appifex/core": "workspace:*",
+    "@appifex/design": "workspace:*"
   },
   "author": "Appifex",
-  "homepage": "https://github.com/appifex/appifex-dtc#readme",
+  "homepage": "https://github.com/appifex-ai-org/appifex-dtc#readme",
   "bugs": {
-    "url": "https://github.com/appifex/appifex-dtc/issues"
+    "url": "https://github.com/appifex-ai-org/appifex-dtc/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/appifex/appifex-dtc.git",
+    "url": "git+https://github.com/appifex-ai-org/appifex-dtc.git",
     "directory": "packages/spec"
   },
   "publishConfig": {
-    "access": "public"
-  }
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "appifex",
+    "dtc",
+    "spec",
+    "platform-spec",
+    "design-tokens"
+  ],
+  "description": "Platform-neutral PlatformSpec + DesignTokens IR and translators for the appifex-dtc pipeline"
 }

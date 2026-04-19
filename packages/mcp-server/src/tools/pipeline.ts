@@ -1,10 +1,26 @@
 import { ProgressEmitter, type RunMode, type AgentConfigType, type Platform } from '@appifex/core'
-import type { PipelineOpts, PipelineResult } from '@appifex/cli'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { isPromptVague } from './refine.js'
 
-type RunPipelineFn = (opts: PipelineOpts, progress: ProgressEmitter) => Promise<PipelineResult>
+// Structural shapes — avoid a circular type import from @appifex/cli, which would
+// make mcp-server unbuildable before cli is built (and vice versa). Only the fields
+// mcp-server actually reads are modeled here; if @appifex/cli adds new fields, this
+// type is a safe lower bound.
+type PipelineResultShape = {
+  report: {
+    summary: {
+      allGreen?: boolean
+      [k: string]: unknown
+    }
+  }
+  markdown?: string
+  deliver?: unknown
+}
+type RunPipelineFn = (
+  opts: Record<string, unknown>,
+  progress: ProgressEmitter,
+) => Promise<PipelineResultShape>
 
 export async function handleRunPipeline(
   args: {
@@ -42,9 +58,11 @@ export async function handleRunPipeline(
         isError: true,
       }
     }
+    // Indirect the specifier to prevent TS from statically resolving @appifex/cli,
+    // which would require cli to be built before mcp-server (a build-order cycle).
+    const cliPkg = '@appifex/cli'
     const runPipeline: RunPipelineFn =
-      runPipelineOverride ??
-      ((await import('@appifex/cli')).runPipeline as unknown as RunPipelineFn)
+      runPipelineOverride ?? ((await import(cliPkg)).runPipeline as unknown as RunPipelineFn)
 
     const progress = new ProgressEmitter()
     const events: string[] = []

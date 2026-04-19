@@ -1,4 +1,5 @@
-import type { FixResult, FixAttempt, FixRecommendation, CircuitBreakReason } from '@appifex/core'
+import type { FixResult, FixAttempt, FixRecommendation, CircuitBreakReason , TokenBudget} from '@appifex/core'
+import { BudgetExhaustedError, FIX_LOOP_MIN_RESERVE_RATIO } from '@appifex/core'
 import type { ValidationResult } from '@appifex/validate'
 
 interface BuildResult {
@@ -18,6 +19,8 @@ export interface FixLoopOpts {
   validateFn: () => Promise<ValidationResult>
   maxAttempts: number
   tokenBudget: number
+  /** Phase 02 Plan 02 (FOUND-02): real TokenBudget tracker for entry guard. */
+  budgetInstance?: TokenBudget
   timeoutMs?: number
   /** Disable all circuit breakers (benchmark mode) */
   disableCircuitBreakers?: boolean
@@ -60,6 +63,18 @@ export async function fixLoop(
   initialFailure: ValidationResult,
   opts: FixLoopOpts,
 ): Promise<FixResult> {
+  // Phase 02 Plan 02 (FOUND-02): reject if insufficient budget to converge.
+  // Fires BEFORE any call to fixFn / buildFn / validateFn so no LLM tokens are
+  // spent on a run that cannot finish.
+  if (opts.budgetInstance && !opts.budgetInstance.canEnterFixLoop()) {
+    throw new BudgetExhaustedError(
+      `Fix loop cannot start: remaining budget (${opts.budgetInstance.totalRemaining}) is below required ${FIX_LOOP_MIN_RESERVE_RATIO * 100}% of total (${opts.budgetInstance.total}).`,
+      opts.budgetInstance.total,
+      opts.budgetInstance.totalRemaining,
+      FIX_LOOP_MIN_RESERVE_RATIO,
+    )
+  }
+
   const attempts: FixAttempt[] = []
   let totalTokensUsed = 0
   let lastValidation = initialFailure

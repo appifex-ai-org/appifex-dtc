@@ -1,4 +1,9 @@
 import type { DesignSpec, Platform } from '@appifex/core'
+// Phase 7 (DESIGN-02): sanitizeLayerName imported for use at raw-name → id boundaries.
+// This extractor generates screen IDs via LLM (generateSpecFromPrompt) so direct name→id
+// conversion is delegated; sanitization is enforced upstream in FigmaRestClient.getDesignContext
+// and would apply here if deterministic name→id sites are added in future.
+import { sanitizeLayerName as _sanitizeLayerName } from '@appifex/design'
 import { generateSpecFromPrompt, type CreateMessageFn } from './generate-spec.js'
 
 // Tailwind CSS color palette — maps color class names to hex values

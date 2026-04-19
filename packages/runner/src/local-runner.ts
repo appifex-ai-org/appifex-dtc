@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process'
 import { readFile, writeFile, access, mkdir } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { dirname, isAbsolute, join } from 'node:path'
 import { glob as globFn } from 'node:fs/promises'
 import type { Runner, ExecResult, ExecOpts, RunnerCapabilities } from '@appifex/core'
 import { execSync } from 'node:child_process'
@@ -109,9 +109,13 @@ export class LocalRunner implements Runner {
   }
 
   async glob(pattern: string): Promise<string[]> {
+    // When pattern is absolute, fs.glob ignores cwd and returns absolute matches
+    // already — re-prepending defaultCwd would create a doubled path like
+    // /Users/runner/.../out/Users/runner/.../out/__tests__/X.swift.
+    const absolute = isAbsolute(pattern)
     const results: string[] = []
     for await (const entry of globFn(pattern, { cwd: this.defaultCwd })) {
-      results.push(join(this.defaultCwd, entry))
+      results.push(absolute || isAbsolute(entry) ? entry : join(this.defaultCwd, entry))
     }
     return results.sort()
   }

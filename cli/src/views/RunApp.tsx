@@ -23,14 +23,6 @@ const TIPS = [
   'The report is saved as report.md in your output directory',
 ]
 
-let totalTokens = 0
-let pipelineStart = 0
-const phaseTimers = new Map<string, number>()
-let spinnerInterval: ReturnType<typeof setInterval> | undefined
-let currentPhase: string | null = null
-let currentMessage: string | null = null
-let stepStart: number | null = null
-
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`
   if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`
@@ -39,133 +31,137 @@ function formatDuration(ms: number): string {
   return `${mins}m${secs}s`
 }
 
-/** Print a completed step line with timestamp */
-function printStep(phase: string, message: string, elapsed: number) {
-  const label = phase.charAt(0).toUpperCase() + phase.slice(1).replace('_', ' ')
-  const padded = label.padEnd(12)
-  const timeStr = chalk.dim(` (${formatDuration(elapsed)})`)
-  console.log(`  ${chalk.dim('·')} ${chalk.bold(padded)}${chalk.dim(` ${message}`)}${timeStr}`)
-}
+export async function renderRunApp(opts: PipelineOpts) {
+  // Phase 7 (CR-02): all mutable state is local to this invocation so that the MCP server
+  // can call renderRunApp multiple times per session without cross-run state pollution.
+  let totalTokens = 0
+  const pipelineStart = Date.now()
+  const phaseTimers = new Map<string, number>()
+  let spinnerInterval: ReturnType<typeof setInterval> | undefined
+  let currentPhase: string | null = null
+  let currentMessage: string | null = null
+  let stepStart: number | null = null
 
-function logEvent(event: ProgressEvent) {
-  if (event.tokensUsed) {
-    totalTokens += event.tokensUsed
+  /** Print a completed step line with timestamp */
+  function printStep(phase: string, message: string, elapsed: number) {
+    const label = phase.charAt(0).toUpperCase() + phase.slice(1).replace('_', ' ')
+    const padded = label.padEnd(12)
+    const timeStr = chalk.dim(` (${formatDuration(elapsed)})`)
+    console.log(`  ${chalk.dim('·')} ${chalk.bold(padded)}${chalk.dim(` ${message}`)}${timeStr}`)
   }
 
-  // Phase timing
-  if (event.status === 'started') {
-    phaseTimers.set(event.phase, Date.now())
+  function startSpinner(padded: string) {
+    const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+    let frameIdx = 0
+    let tipIdx = Math.floor(Math.random() * TIPS.length)
+    let showTip = false
+    const phaseStart = Date.now()
+    const cols = process.stdout.columns || 80
+
+    const tipTimer = setTimeout(() => {
+      showTip = true
+    }, 5_000)
+    const tipRotate = setInterval(() => {
+      tipIdx++
+    }, 8_000)
+
+    spinnerInterval = setInterval(() => {
+      const elapsed = formatDuration(Date.now() - phaseStart)
+      const frame = chalk.cyan(frames[frameIdx % frames.length])
+      const msgPart = currentMessage ? chalk.dim(` ${currentMessage}`) : ''
+      const tip = showTip ? chalk.dim(` · ${TIPS[tipIdx % TIPS.length]}`) : ''
+      const line = `  ${frame} ${chalk.bold(padded)}${msgPart} ${chalk.dim(elapsed)}${tip}`
+      const visible = line.replace(/\x1b\[[0-9;]*m/g, '')
+      const truncated =
+        visible.length > cols ? line.slice(0, line.length - (visible.length - cols)) : line
+      process.stdout.write(`\r${truncated}\x1b[K`)
+      frameIdx++
+    }, 100)
+    ;(spinnerInterval as any).__cleanup = () => {
+      clearTimeout(tipTimer)
+      clearInterval(tipRotate)
+    }
   }
 
-  const icon = STATUS_ICONS[event.status] ?? chalk.dim('○')
-  const label = event.phase.charAt(0).toUpperCase() + event.phase.slice(1).replace('_', ' ')
-  const padded = label.padEnd(12)
-  const msg = event.message ? chalk.dim(` ${event.message}`) : ''
+  function stopSpinner() {
+    if (spinnerInterval) {
+      if ((spinnerInterval as any).__cleanup) (spinnerInterval as any).__cleanup()
+      clearInterval(spinnerInterval)
+      spinnerInterval = undefined
+      process.stdout.write('\r\x1b[K')
+    }
+  }
 
-  if (event.status === 'running') {
-    // For running events: print the previous step with its elapsed time, then start new spinner
-    const isNewStep = event.phase !== currentPhase || event.message !== currentMessage
+  function logEvent(event: ProgressEvent) {
+    if (event.tokensUsed) {
+      totalTokens += event.tokensUsed
+    }
 
-    if (isNewStep && currentPhase && currentMessage && stepStart) {
-      // Stop spinner and print completed step with elapsed time
+    // Phase timing
+    if (event.status === 'started') {
+      phaseTimers.set(event.phase, Date.now())
+    }
+
+    const icon = STATUS_ICONS[event.status] ?? chalk.dim('○')
+    const label = event.phase.charAt(0).toUpperCase() + event.phase.slice(1).replace('_', ' ')
+    const padded = label.padEnd(12)
+    const msg = event.message ? chalk.dim(` ${event.message}`) : ''
+
+    if (event.status === 'running') {
+      // For running events: print the previous step with its elapsed time, then start new spinner
+      const isNewStep = event.phase !== currentPhase || event.message !== currentMessage
+
+      if (isNewStep && currentPhase && currentMessage && stepStart) {
+        // Stop spinner and print completed step with elapsed time
+        stopSpinner()
+        printStep(currentPhase, currentMessage, Date.now() - stepStart)
+      } else {
+        stopSpinner()
+      }
+
+      currentPhase = event.phase
+      currentMessage = event.message ?? null
+      stepStart = Date.now()
+
+      startSpinner(padded)
+      return
+    }
+
+    // For started/completed/failed/skipped: stop spinner and print the previous running step
+    if (currentPhase && currentMessage && stepStart) {
       stopSpinner()
       printStep(currentPhase, currentMessage, Date.now() - stepStart)
+      currentPhase = null
+      currentMessage = null
+      stepStart = null
     } else {
       stopSpinner()
     }
 
-    currentPhase = event.phase
-    currentMessage = event.message ?? null
-    stepStart = Date.now()
-
-    startSpinner(padded)
-    return
-  }
-
-  // For started/completed/failed/skipped: stop spinner and print the previous running step
-  if (currentPhase && currentMessage && stepStart) {
-    stopSpinner()
-    printStep(currentPhase, currentMessage, Date.now() - stepStart)
-    currentPhase = null
-    currentMessage = null
-    stepStart = null
-  } else {
-    stopSpinner()
-  }
-
-  let timeStr = ''
-  let tokenStr = ''
-  if (event.status === 'completed' || event.status === 'failed') {
-    const start = phaseTimers.get(event.phase)
-    if (start) {
-      const elapsed = Date.now() - start
-      timeStr = formatDuration(elapsed)
+    let timeStr = ''
+    let tokenStr = ''
+    if (event.status === 'completed' || event.status === 'failed') {
+      const start = phaseTimers.get(event.phase)
+      if (start) {
+        const elapsed = Date.now() - start
+        timeStr = formatDuration(elapsed)
+      }
+      if (event.tokensUsed && event.tokensUsed > 0) {
+        tokenStr = `${event.tokensUsed.toLocaleString()} tokens`
+      }
     }
-    if (event.tokensUsed && event.tokensUsed > 0) {
-      tokenStr = `${event.tokensUsed.toLocaleString()} tokens`
+
+    const meta = [timeStr, tokenStr].filter(Boolean).join(', ')
+    const metaStr = meta ? chalk.dim(` (${meta})`) : ''
+
+    console.log(`  ${icon} ${chalk.bold(padded)}${msg}${metaStr}`)
+
+    if (event.status === 'started') {
+      startSpinner(padded)
     }
   }
 
-  const meta = [timeStr, tokenStr].filter(Boolean).join(', ')
-  const metaStr = meta ? chalk.dim(` (${meta})`) : ''
-
-  console.log(`  ${icon} ${chalk.bold(padded)}${msg}${metaStr}`)
-
-  if (event.status === 'started') {
-    startSpinner(padded)
-  }
-}
-
-function startSpinner(padded: string) {
-  const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
-  let frameIdx = 0
-  let tipIdx = Math.floor(Math.random() * TIPS.length)
-  let showTip = false
-  const phaseStart = Date.now()
-  const cols = process.stdout.columns || 80
-
-  const tipTimer = setTimeout(() => {
-    showTip = true
-  }, 5_000)
-  const tipRotate = setInterval(() => {
-    tipIdx++
-  }, 8_000)
-
-  spinnerInterval = setInterval(() => {
-    const elapsed = formatDuration(Date.now() - phaseStart)
-    const frame = chalk.cyan(frames[frameIdx % frames.length])
-    const msgPart = currentMessage ? chalk.dim(` ${currentMessage}`) : ''
-    const tip = showTip ? chalk.dim(` · ${TIPS[tipIdx % TIPS.length]}`) : ''
-    const line = `  ${frame} ${chalk.bold(padded)}${msgPart} ${chalk.dim(elapsed)}${tip}`
-    const visible = line.replace(/\x1b\[[0-9;]*m/g, '')
-    const truncated =
-      visible.length > cols ? line.slice(0, line.length - (visible.length - cols)) : line
-    process.stdout.write(`\r${truncated}\x1b[K`)
-    frameIdx++
-  }, 100)
-  ;(spinnerInterval as any).__cleanup = () => {
-    clearTimeout(tipTimer)
-    clearInterval(tipRotate)
-  }
-}
-
-function stopSpinner() {
-  if (spinnerInterval) {
-    if ((spinnerInterval as any).__cleanup) (spinnerInterval as any).__cleanup()
-    clearInterval(spinnerInterval)
-    spinnerInterval = undefined
-    process.stdout.write('\r\x1b[K')
-  }
-}
-
-export async function renderRunApp(opts: PipelineOpts) {
   const progress = new ProgressEmitter()
-  totalTokens = 0
-  pipelineStart = Date.now()
-  phaseTimers.clear()
-  currentPhase = null
-  currentMessage = null
-  stepStart = null
 
   console.log()
   console.log(`  ${chalk.bold(opts.prompt)}`)
@@ -174,6 +170,8 @@ export async function renderRunApp(opts: PipelineOpts) {
   progress.on(logEvent)
 
   try {
+    // Phase 7 (MCP-03 D-10 + OBS-03 D-16 — revision W-04): opts already contains
+    // overwriteUserEdits + exportDebugBundle threaded from ParsedArgs via entry.ts.
     const result = await runPipeline(opts, progress)
     stopSpinner()
 
