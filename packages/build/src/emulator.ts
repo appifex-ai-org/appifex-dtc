@@ -1,4 +1,6 @@
 import type { Runner } from '@appifex/core'
+// Phase 04 (SEC-02, T-04-08): shell-quote the AVD name before interpolation.
+import { quote } from 'shell-quote'
 
 export interface EmulatorInfo {
   name: string
@@ -47,10 +49,17 @@ export async function findOrBootEmulator(runner: Runner): Promise<string | null>
   const avd = await findBestEmulator(runner)
   if (!avd) return null
 
+  // Phase 04 (SEC-02, T-04-08): quote `avd` before shell interpolation. The
+  // background launch genuinely requires a shell (nohup + stdio redirection +
+  // `&`), so we keep `sh -c` but remove the caller-controlled interpolation
+  // hole. AVD names are plain identifiers (not globs), so `shell-quote` is the
+  // right tool — it single-quotes values containing shell metacharacters so a
+  // poisoned name like `$(whoami)` cannot escape the quoted argument.
+  const avdQuoted = quote([avd])
   // Launch emulator in the background via sh — runner.exec would kill it on timeout
   await runner.exec('sh', [
     '-c',
-    `nohup emulator -avd ${avd} -no-window -no-audio -no-boot-anim </dev/null >/dev/null 2>&1 &`,
+    `nohup emulator -avd ${avdQuoted} -no-window -no-audio -no-boot-anim </dev/null >/dev/null 2>&1 &`,
   ])
 
   // Wait for device to come online

@@ -194,6 +194,13 @@ importers:
       '@appifex/runner':
         specifier: workspace:*
         version: link:../runner
+      shell-quote:
+        specifier: ^1.8.3
+        version: 1.8.3
+    devDependencies:
+      '@types/shell-quote':
+        specifier: ^1.7.5
+        version: 1.7.5
 
   packages/codegen:
     dependencies:
