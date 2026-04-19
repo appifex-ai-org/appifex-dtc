@@ -1,6 +1,9 @@
 import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { execSync } from 'node:child_process'
+// Phase 04 (SEC-02, T-04-05): use execFileSync with array args — no shell
+// interpolation of caller-controlled `zipPath` / `extractDir`. Mitigates STRIDE
+// Tampering / EoP via the former template-string shell call.
+import { execFileSync } from 'node:child_process'
 
 /**
  * Artifacts extracted from a design-export zip.
@@ -43,7 +46,10 @@ export async function extractDesignZip(
   const extractDir = join(outputDir, '.design-import')
   mkdirSync(extractDir, { recursive: true })
 
-  execSync(`unzip -o -q "${zipPath}" -d "${extractDir}"`, { stdio: 'ignore' })
+  // Phase 04 (SEC-02, T-04-05): array args prevent shell interpolation of
+  // caller-controlled paths — a zipPath containing `; rm -rf /` would have
+  // been executed by the former template-string shell call.
+  execFileSync('unzip', ['-o', '-q', zipPath, '-d', extractDir], { stdio: 'ignore' })
 
   const htmlPaths: string[] = []
   const screenshotPaths: string[] = []

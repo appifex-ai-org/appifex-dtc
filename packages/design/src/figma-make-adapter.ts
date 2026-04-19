@@ -87,12 +87,17 @@ export class FigmaMakeAdapter implements DesignToolAdapter {
     return this.readDesign(this.fileUrl, figmaDir, opts.previewPath, base)
   }
 
-  /** Write binary data via runner — uses base64 shell decode for remote runner compat */
+  /** Write binary data via Node fs — no shell involved. */
   private async writeBinary(path: string, data: Buffer): Promise<void> {
-    // Encode as base64 and decode on the runner side so binary data
-    // travels correctly even over remote runner transports
-    const b64 = data.toString('base64')
-    await this.runner.exec('sh', ['-c', `echo '${b64}' | base64 -d > '${path}'`])
+    // Phase 04 (SEC-02, T-04-06): eliminate shell — Node fs handles binary writes
+    // directly. The former `sh -c echo '${b64}' | base64 -d > '${path}'` was
+    // vulnerable to single-quote injection in `path` (Figma-API-derived — untrusted)
+    // or in the base64 body. STRIDE Tampering / EoP mitigated by removing the shell
+    // entirely: content is the payload, not a command. The Figma Make adapter runs
+    // CLI-side (local host), so `node:fs/promises.writeFile` is the correct plumbing;
+    // remote-runner binary writes are out of scope (no transport carries binary today).
+    const { writeFile } = await import('node:fs/promises')
+    await writeFile(path, data)
   }
 
   private async readDesign(
@@ -126,9 +131,8 @@ export class FigmaMakeAdapter implements DesignToolAdapter {
       const htmlPath = join(outputDir, 'screen-0.html')
       await this.runner.writeFile(htmlPath, context.code)
 
-      // Write PNG as raw binary — runner.writeFile is string-only,
-      // so we use base64-encoded content via runner.writeFile for
-      // remote compatibility, falling back to fs for local
+      // Write PNG as raw binary via Node fs — see writeBinary() for the
+      // shell-free plumbing (Phase 04, SEC-02, T-04-06).
       const pngPath = join(outputDir, 'screen-0.png')
       await this.writeBinary(pngPath, screenshot)
 
