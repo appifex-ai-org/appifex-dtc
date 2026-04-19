@@ -1,5 +1,11 @@
 import type { Runner, BaasProvider } from '@appifex/core'
 import type { SwiftBuildOpts, BuildResult, BuildError } from './types.js'
+import {
+  readProjectYml,
+  writeProjectYml,
+  setInfoProperty,
+  findAppTargetName,
+} from './project-yml.js'
 
 /** Derive a PascalCase app name from a user prompt. e.g. "Todo app" → "TodoApp", "pet adoption" → "PetAdoption" */
 export function deriveAppName(prompt: string): string {
@@ -91,11 +97,16 @@ export async function patchProjectDependencies(
   Firebase:
     url: https://github.com/firebase/firebase-ios-sdk.git
     from: 11.0.0
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS.git
+    from: 9.1.0
 `
     targetDeps = `      - package: Firebase
         product: FirebaseFirestore
       - package: Firebase
-        product: FirebaseAuth`
+        product: FirebaseAuth
+      - package: GoogleSignIn
+        product: GoogleSignIn`
   } else {
     packagesBlock = `packages:
   Supabase:
@@ -118,6 +129,49 @@ export async function patchProjectDependencies(
   patched = patched.replace(/(\n {2}\w+Tests:)/m, `\n${depsBlock}\n$1`)
 
   await runner.writeFile(ymlPath, patched)
+
+  // Phase 4 (FIRE-02 D-03), refactored Phase 5 (TF-02 D-13): use shared project-yml helpers
+  // instead of inline js-yaml. The extracted module enforces the Info.plist vs. build-settings
+  // split at the API level (Pitfall 1 correction of D-10).
+  if (provider === 'firebase') {
+    const plistPath = `${projectDir}/GoogleService-Info.plist`
+    let plistContent: string
+    try {
+      plistContent = await runner.readFile(plistPath)
+    } catch {
+      // GoogleService-Info.plist not yet present (firebase_provision runs after build wiring)
+      // REVERSED_CLIENT_ID injection will be retried at provision time
+      return
+    }
+    const reversedClientIdMatch = plistContent.match(
+      /<key>REVERSED_CLIENT_ID<\/key>\s*<string>([^<]+)<\/string>/,
+    )
+    const reversedClientId = reversedClientIdMatch?.[1]
+    if (!reversedClientId) return
+
+    const projectYml = await readProjectYml(runner, ymlPath)
+    let appTargetName: string
+    try {
+      appTargetName = findAppTargetName(projectYml)
+    } catch {
+      return
+    }
+
+    const appTarget = projectYml.targets[appTargetName]
+    const infoProps = (appTarget.info?.properties ?? {}) as Record<string, unknown>
+    const existingSchemes = (infoProps['CFBundleURLTypes'] as unknown[]) ?? []
+    const schemeAlreadyPresent = JSON.stringify(existingSchemes).includes(reversedClientId)
+    if (!schemeAlreadyPresent) {
+      setInfoProperty(projectYml, appTargetName, 'CFBundleURLTypes', [
+        ...existingSchemes,
+        {
+          CFBundleURLSchemes: [reversedClientId],
+          CFBundleURLName: 'google-signin',
+        },
+      ])
+      await writeProjectYml(runner, ymlPath, projectYml)
+    }
+  }
 }
 
 async function detectSimulator(runner: Runner): Promise<string> {

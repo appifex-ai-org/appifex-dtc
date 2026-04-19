@@ -3,7 +3,28 @@ import chalk from 'chalk'
 import { parseArgs } from './cli.js'
 import { setupWizard } from './setup-wizard.js'
 import { renderRunApp } from './views/RunApp.js'
-import type { Platform } from '@appifex/core'
+import { CliError, type Platform } from '@appifex/core'
+
+/**
+ * Phase 02 Plan 01 (FOUND-04): top-level CliError translator.
+ * CLI-only — the MCP server does NOT call this; instead, its tool wrapper
+ * translates CliError to an `isError` envelope (see packages/mcp-server/src/server.ts).
+ */
+export function handleCliError(err: unknown): never {
+  if (err instanceof CliError) {
+    console.error(chalk.red(`${err.name}: ${err.message}`))
+    process.exit(err.exitCode ?? 1)
+  }
+  // Phase 02 Plan 04 (WR-02): preserve stack trace for non-CliError crashes so field debugging
+  // has file/line info instead of a single-line message.
+  if (err instanceof Error) {
+    console.error(chalk.red(err.message))
+    if (err.stack) console.error(chalk.dim(err.stack))
+  } else {
+    console.error(chalk.red(String(err)))
+  }
+  process.exit(1)
+}
 
 const VERSION = '0.1.0'
 
@@ -95,6 +116,12 @@ ${chalk.dim('OPTIONS')}
   --baas-provider <name>  BaaS provider: firebase, supabase (overrides config)
   --accept-drift          Non-interactive: accept design token drift without failing closed
   --no-resume             Force a fresh add-feature run even when a checkpoint DB exists
+  --skip-testflight       Skip testflight_upload phase (xcode_archive still runs for local .ipa)
+  --skip-validation-gate  Run validation gate checks but don't block ship on failure
+  --overwrite-user-edits  Overwrite files that have been edited since the last run
+                          (default: preserve user-edited files with a yellow warning)
+  --export-debug-bundle   Write .dtc-debug/bundle-<ts>.zip even on successful runs
+                          (bundle is always written on failure)
 
 ${chalk.dim('EXAMPLES')}
   dtc setup
@@ -127,13 +154,17 @@ async function main() {
       break
 
     case 'setup':
-      await setupWizard()
+      // Phase 03 Plan 03 (SETUP-01, D-10): pass section + full from parsed args
+      await setupWizard(undefined, {
+        only: args.section as import('./setup/index.js').SectionName | undefined,
+        full: args.full ?? false,
+      })
       break
 
     case 'doctor': {
-      const doctorPlatform = validatePlatform((args.flags.platform as string) ?? 'swiftui')
+      // Phase 03 Plan 05 (SETUP-03, D-12): pass --deep flag; platform flag retained for compat.
       const { runDoctor } = await import('./doctor.js')
-      await runDoctor(doctorPlatform)
+      await runDoctor({ deep: args.deep ?? false })
       break
     }
 
@@ -154,6 +185,20 @@ async function main() {
       const acceptDrift = args.flags['accept-drift'] === true
       const noResume = args.flags['no-resume'] === true
       const baasProviderFlag = args.flags['baas-provider'] as string | undefined
+      // Phase 5 Plan 06 (TF-04 D-04): --skip-testflight gates the testflight_upload phase only;
+      // xcode_archive still runs so the .ipa artifact exists on disk for manual inspection / retry.
+      const skipTestflight = args.flags['skip-testflight'] === true
+      // Phase 6 (VAL-04 D-16 D-17): --skip-validation-gate runs all checks but bypasses the terminal gate.
+      // Failures appear in the report but xcode_archive + testflight_upload proceed anyway.
+      // Hard-fail (security-lint + semgrep) is NOT bypassed.
+      const skipValidationGate = args.flags['skip-validation-gate'] === true
+      // --skip-simulator: omit iOS Simulator runtime from preflight — for CI runners (macos-14)
+      // that have Xcode but no simulator runtimes installed (e.g. when --skip-simulator is passed).
+      const skipSimulator = args.flags['skip-simulator'] === true
+      // Phase 7 (MCP-03 D-10): --overwrite-user-edits bypasses user-edit preservation gate.
+      const overwriteUserEdits = args.overwriteUserEdits
+      // Phase 7 (OBS-03 D-16): --export-debug-bundle forces bundle creation on success too.
+      const exportDebugBundle = args.exportDebugBundle
 
       if (!prompt && !resumeRaw && !designFile && !designIrPath) {
         console.error(
@@ -216,9 +261,15 @@ async function main() {
         const { join } = await import('node:path')
         try {
           const preflightConfig = await loadConfig(join(homedir(), '.dtc'))
-          runPreflight(platform, preflightConfig)
-        } catch {
-          runPreflight(platform)
+          await runPreflight(platform, preflightConfig, { skipSimulator })
+        } catch (err) {
+          // If loadConfig fails, fall back to default-config preflight
+          // Re-throw PreflightError so handleCliError can catch it cleanly
+          if ((err as NodeJS.ErrnoException).code !== undefined) {
+            await runPreflight(platform, undefined, { skipSimulator })
+          } else {
+            throw err
+          }
         }
       }
 
@@ -241,6 +292,11 @@ async function main() {
         acceptDrift,
         noResume,
         baasProvider: baasProviderFlag ? validateBaasProvider(baasProviderFlag) : undefined,
+        skipTestflight,
+        skipValidationGate,
+        skipSimulator,
+        overwriteUserEdits,
+        exportDebugBundle,
       })
       break
     }
@@ -615,9 +671,11 @@ async function main() {
     case 'provision': {
       if (args.subcommand === 'submit') {
         const { createRunner } = await import('@appifex/runner')
-        const { loadConfig } = await import('@appifex/core')
-        const { AscClient, PlayConsoleClient } = await import('@appifex/provision')
-        const { archiveSwift, bundleKotlin } = await import('@appifex/build')
+        const { loadConfig, ProgressEmitter } = await import('@appifex/core')
+        // Phase 5 Plan 06 (TF-01 D-03): AscClient removed — use runTestFlightUploadPhase
+        // + runXcodeArchivePhase orchestrators instead of the deleted subprocess shell-out.
+        const { PlayConsoleClient, runTestFlightUploadPhase } = await import('@appifex/provision')
+        const { bundleKotlin, runXcodeArchivePhase } = await import('@appifex/build')
         const { homedir } = await import('node:os')
         const { join } = await import('node:path')
         const { existsSync } = await import('node:fs')
@@ -719,6 +777,8 @@ async function main() {
           if (!result.success) process.exit(1)
         } else {
           // ── iOS: Archive + Submit to TestFlight ──
+          // Phase 5 Plan 06 (TF-01 D-03): route through runXcodeArchivePhase +
+          // runTestFlightUploadPhase orchestrators (ASC REST + altool).
           if (!config.apple) {
             console.error(chalk.red('Apple TestFlight not configured. Run `dtc setup` first.'))
             process.exit(1)
@@ -736,8 +796,9 @@ async function main() {
             process.exit(1)
           }
 
-          let ipaPath = ipaFlag
-          if (!ipaPath) {
+          // Fresh-upload path: let runXcodeArchivePhase compute version+buildNumber +
+          // guard D-16 idempotent skip; runTestFlightUploadPhase handles altool + D-17.
+          if (!ipaFlag) {
             if (!project) {
               console.error(
                 chalk.red(
@@ -747,45 +808,78 @@ async function main() {
               process.exit(1)
             }
             const runner = createRunner(config.runner, { cwd: project })
+            const emitter = new ProgressEmitter()
             console.log(chalk.dim('📦 Archiving project for distribution...'))
-            const archiveResult = await archiveSwift(runner, {
+            const archive = await runXcodeArchivePhase({
+              runner,
+              config,
               projectDir: project,
-              scheme: args.flags.scheme as string | undefined,
-              teamId: config.apple.teamId,
-              bundleId: config.apple.bundleId,
-              exportMethod:
-                (args.flags.method as 'app-store' | 'ad-hoc' | 'development') ?? 'app-store',
+              scheme: (args.flags.scheme as string | undefined) ?? 'App',
             })
-            if (!archiveResult.success) {
-              console.error(chalk.red(`✗ Archive failed: ${archiveResult.error}`))
+            if (archive.skipped) {
+              console.log(chalk.green(`✓ Archive skipped: ${archive.reason}`))
+              // D-16: the build is already VALID in ASC; nothing else to do.
+              break
+            }
+            if (!archive.ipaPath) {
+              console.error(chalk.red('✗ Archive reported success but produced no .ipa path'))
               process.exit(1)
             }
-            ipaPath = archiveResult.ipaPath!
             console.log(
-              chalk.green(
-                `✓ Archive succeeded: ${ipaPath} (${(archiveResult.duration / 1000).toFixed(1)}s)`,
-              ),
+              chalk.green(`✓ Archive succeeded: ${archive.ipaPath} (build ${archive.buildNumber})`),
             )
+            console.log(chalk.dim('🚀 Submitting to TestFlight...'))
+            const result = await runTestFlightUploadPhase({
+              runner,
+              config,
+              emitter,
+              ipaPath: archive.ipaPath,
+              buildNumber: archive.buildNumber,
+              marketingVersion: archive.marketingVersion,
+            })
+            if (result.status === 'completed_with_warnings') {
+              console.log(chalk.yellow(`✓ Uploaded with warnings:`))
+              for (const w of result.warnings) console.log(chalk.yellow(`  - ${w}`))
+            } else {
+              console.log(
+                chalk.green(
+                  `✓ Submitted to TestFlight (build ${result.buildId}, ${result.testersAdded.length} tester(s) assigned)`,
+                ),
+              )
+            }
+          } else {
+            // Pre-built --ipa path: user supplied IPA directly; no archive phase.
+            // Version metadata must come from flags since we cannot read it from the IPA here.
+            const runner = createRunner(config.runner)
+            const emitter = new ProgressEmitter()
+            const buildNumber =
+              (args.flags['build-number'] as string | undefined) ??
+              (args.flags.buildNumber as string | undefined) ??
+              '1'
+            const marketingVersion =
+              (args.flags['marketing-version'] as string | undefined) ??
+              (args.flags.marketingVersion as string | undefined) ??
+              '1.0.0'
+            console.log(chalk.dim('🚀 Submitting to TestFlight...'))
+            const result = await runTestFlightUploadPhase({
+              runner,
+              config,
+              emitter,
+              ipaPath: ipaFlag,
+              buildNumber,
+              marketingVersion,
+            })
+            if (result.status === 'completed_with_warnings') {
+              console.log(chalk.yellow(`✓ Uploaded with warnings:`))
+              for (const w of result.warnings) console.log(chalk.yellow(`  - ${w}`))
+            } else {
+              console.log(
+                chalk.green(
+                  `✓ Submitted to TestFlight (build ${result.buildId}, ${result.testersAdded.length} tester(s) assigned)`,
+                ),
+              )
+            }
           }
-
-          const runner = createRunner(config.runner)
-          const asc = new AscClient(runner, {
-            keyId: config.apple.ascKeyId,
-            issuerId: config.apple.ascIssuerId,
-            keyPath: config.apple.ascKeyPath,
-          })
-          console.log(chalk.dim('🚀 Submitting to TestFlight...'))
-          const result = await asc.submitTestFlight({
-            appId: config.apple.ascAppId,
-            ipaPath,
-            group: config.apple.ascTestFlightGroup,
-          })
-          console.log(
-            result.success
-              ? chalk.green('✓ Submitted to TestFlight')
-              : chalk.red(`✗ ${result.error}`),
-          )
-          if (!result.success) process.exit(1)
         }
       } else {
         console.error(
@@ -879,7 +973,5 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error(chalk.red(err.message))
-  process.exit(1)
-})
+// Phase 02 Plan 01 (FOUND-04): top-level catch translates CliError → exit code
+main().catch(handleCliError)

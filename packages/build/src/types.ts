@@ -51,6 +51,12 @@ export interface ArchiveOpts {
   bundleId: string
   /** Export method: app-store for TestFlight/App Store, ad-hoc for direct install */
   exportMethod?: 'app-store' | 'ad-hoc' | 'development'
+  // Phase 5 (TF-03 D-07): marketing version (CFBundleShortVersionString), e.g. "1.0.3".
+  // Sourced by runXcodeArchivePhase (Plan 04) from the generated app's package.json "version" field.
+  marketingVersion: string
+  // Phase 5 (TF-03 D-06): build number (CFBundleVersion / CURRENT_PROJECT_VERSION), e.g. "47".
+  // Sourced by runXcodeArchivePhase (Plan 04) from ASC REST max + 1 via computeNextBuildNumber.
+  buildNumber: string
 }
 
 export interface ArchiveResult {
@@ -62,4 +68,8 @@ export interface ArchiveResult {
   error?: string
   duration: number
   commands?: string[]
+  // Phase 5 (TF-03): echoed back so Plan 04 can populate the xcode_archive checkpoint row
+  // and Plan 05 can pass matching values to altool --upload-package.
+  marketingVersion: string
+  buildNumber: string
 }

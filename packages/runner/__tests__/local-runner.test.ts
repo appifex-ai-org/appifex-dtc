@@ -113,8 +113,8 @@ describe('LocalRunner', () => {
   })
 
   describe('capabilities', () => {
-    it('reports platform as darwin on macOS', () => {
-      expect(runner.capabilities.platform).toBe('darwin')
+    it('reports host platform', () => {
+      expect(runner.capabilities.platform).toBe(process.platform)
     })
 
     it('detects node is available', () => {

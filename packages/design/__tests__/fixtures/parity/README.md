@@ -1,0 +1,1 @@
+Wave 0 placeholder. Binary fixtures (reference.pen + derived stitch.zip, figma-rest.json, figma-make.json) and fixture-gen.ts come in Plan 04. Do not add fixture-gen.ts matching `*.test.ts` glob — see 07-RESEARCH.md Pitfall 6 (fixture-gen.ts must not be a test file or it will try to connect to the Pencil MCP server on every test run).

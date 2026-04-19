@@ -1,14 +1,28 @@
 # Phase 1 Plan 05 (NPM-01, REL-01): Release pipeline for @appifex/* packages.
-# On merge to main, the Changesets action either opens a Version Packages PR
-# (aggregating outstanding .changeset/*.md bumps) or, if such a PR just merged,
-# publishes every @appifex/* package to npm under --access public using
-# NPM_TOKEN. Releases are also tagged + a GitHub Release is drafted.
+#
+# Two-mode workflow:
+#
+#   1. push to main → `version` job
+#      Runs changesets/action with version-only behaviour. When there are
+#      pending .changeset/*.md files, it opens/updates a "Version Packages"
+#      PR that bumps package.json versions + generates CHANGELOG.md. It does
+#      NOT publish — publishing is gated to tag pushes (see below).
+#
+#   2. push of a `v*` tag → `publish` job
+#      Runs `pnpm release` (build + changeset publish) to publish every
+#      currently-updated @appifex/* package to npm under --access public
+#      using NPM_TOKEN. Create a tag with:
+#          git tag v1.0.0 && git push origin v1.0.0
+#      This is the explicit, intentional gate — publishes never happen on
+#      an accidental push to main.
 name: release
 
 on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
 
 concurrency:
   group: release-${{ github.ref }}
@@ -20,8 +34,11 @@ permissions:
   id-token: write
 
 jobs:
-  release:
-    name: Version or Publish
+  # Open / update Version Packages PR when changesets land on main.
+  # Never publishes — publish is a separate tag-gated job below.
+  version:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    name: Version Packages
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -34,6 +51,52 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
+          version: 9
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          HUSKY: '0'
+          LEFTHOOK: '0'
+
+      - name: Create / update Version Packages PR
+        uses: changesets/action@v1
+        with:
+          version: pnpm version-packages
+          commit: 'chore(release): version packages'
+          title: 'chore(release): version packages'
+          # Intentionally omitting `publish:` so this job NEVER publishes.
+          createGithubReleases: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LEFTHOOK: '0'
+
+  # Publish to npm. Gated on an explicit `v*` tag push so we never publish
+  # accidentally. Create a tag from main after the Version Packages PR merges:
+  #     git tag v1.0.0 && git push origin v1.0.0
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
           run_install: false
 
       - name: Setup Node
@@ -52,18 +115,17 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Create Release PR or Publish
-        id: changesets
-        uses: changesets/action@v1
-        with:
-          # When there are unreleased changesets, opens / updates "Version Packages" PR.
-          # When that PR just merged (changesets consumed), runs `pnpm release` to publish.
-          version: pnpm version-packages
-          publish: pnpm release
-          commit: 'chore(release): version packages'
-          title: 'chore(release): version packages'
-          createGithubReleases: true
+      - name: Publish
+        run: pnpm release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # Phase 1 Plan 05 (NPM-02): trigger --provenance in npm publish via OIDC
+          NPM_CONFIG_PROVENANCE: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

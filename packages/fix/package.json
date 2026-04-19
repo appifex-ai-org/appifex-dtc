@@ -1,6 +1,6 @@
 {
   "name": "@appifex/fix",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "license": "MIT",
   "type": "module",
   "exports": {
@@ -22,19 +22,29 @@
     "@appifex/core": "workspace:*",
     "@appifex/runner": "workspace:*",
     "@appifex/validate": "workspace:*",
-    "@anthropic-ai/sdk": "^0.52.0"
+    "@appifex/analysis": "workspace:*",
+    "@anthropic-ai/sdk": "^0.90.0"
   },
   "author": "Appifex",
-  "homepage": "https://github.com/appifex/appifex-dtc#readme",
+  "homepage": "https://github.com/appifex-ai-org/appifex-dtc#readme",
   "bugs": {
-    "url": "https://github.com/appifex/appifex-dtc/issues"
+    "url": "https://github.com/appifex-ai-org/appifex-dtc/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/appifex/appifex-dtc.git",
+    "url": "git+https://github.com/appifex-ai-org/appifex-dtc.git",
     "directory": "packages/fix"
   },
   "publishConfig": {
-    "access": "public"
-  }
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "appifex",
+    "dtc",
+    "fix",
+    "llm",
+    "auto-fix"
+  ],
+  "description": "LLM-assisted validation → fix loop with deterministic verification"
 }

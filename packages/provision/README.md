@@ -1,7 +1,7 @@
 # @dtc/provision
 
 App store provisioning and submission:
-- **iOS**: TestFlight via the [`asc` CLI](https://github.com/rudrankriyam/App-Store-Connect-CLI)
+- **iOS**: TestFlight via the App Store Connect REST API + `xcrun altool --upload-package`
 - **Android**: Play Console via [`@googleapis/androidpublisher`](https://www.npmjs.com/package/@googleapis/androidpublisher)
 
 ---
@@ -46,12 +46,15 @@ Go to [App Store Connect → Users and Access → Integrations → App Store Con
 - Save the `.p8` file somewhere safe (e.g. `~/.appstoreconnect/AuthKey_XXXX.p8`)
 - Set file permissions: `chmod 600 /path/to/AuthKey.p8`
 
-### 6. Install the `asc` CLI
+### 6. Install Xcode Command Line Tools
 
 ```bash
-brew install asc
-asc --version  # verify installation
+xcode-select --install  # provides xcrun altool
+xcrun altool --version  # verify availability
 ```
+
+The TestFlight upload pipeline uses `xcrun altool --upload-package` (ships with Xcode)
+plus the App Store Connect REST API — no community `asc` CLI required.
 
 ## Setup
 
@@ -117,32 +120,37 @@ dtc_provision_submit({ ipaPath: "/path/to/App.ipa" })                   # pre-bu
 ## Programmatic Usage
 
 ```typescript
-import { AscClient } from '@dtc/provision'
-import { archiveSwift } from '@dtc/build'
-import { LocalRunner } from '@dtc/runner'
+import { runTestFlightUploadPhase } from '@dtc/provision'
+import { runXcodeArchivePhase } from '@dtc/build'
+import { createRunner } from '@dtc/runner'
+import { ProgressEmitter, loadConfig } from '@dtc/core'
 
-const runner = new LocalRunner(process.cwd())
+const config = await loadConfig('~/.dtc')
+const runner = createRunner(config.runner, { cwd: './my-app' })
+const emitter = new ProgressEmitter()
 
-// Archive the project
-const archive = await archiveSwift(runner, {
+// Archive (reads package.json version, computes next build number via ASC REST)
+const archive = await runXcodeArchivePhase({
+  runner,
+  config,
   projectDir: './my-app',
   scheme: 'PetApp',
-  teamId: 'A1B2C3D4E5',
-  bundleId: 'com.example.petapp',
-  exportMethod: 'app-store',
 })
+if (archive.skipped) {
+  console.log('Archive skipped:', archive.reason)
+  process.exit(0)
+}
 
-// Submit to TestFlight
-const asc = new AscClient(runner, {
-  keyId: process.env.ASC_KEY_ID!,
-  issuerId: process.env.ASC_ISSUER_ID!,
-  keyPath: '~/.appstoreconnect/AuthKey.p8',
+// Upload + assign to internal TestFlight group
+const result = await runTestFlightUploadPhase({
+  runner,
+  config,
+  emitter,
+  ipaPath: archive.ipaPath,
+  buildNumber: archive.buildNumber,
+  marketingVersion: archive.marketingVersion,
 })
-await asc.submitTestFlight({ appId: '123456789', ipaPath: archive.ipaPath! })
-
-// Other AscClient methods
-const apps = await asc.listApps()
-await asc.createProfile({ name: 'PetApp Dev', bundleId: 'com.example.pet', type: 'development' })
+console.log(result.status, (result as any).buildId)
 ```
 
 ---

@@ -1,5 +1,7 @@
-import { archiveSwift, bundleKotlin } from '@appifex/build'
-import { AscClient, PlayConsoleClient } from '@appifex/provision'
+// Phase 5 Plan 06 (TF-01 D-03): AscClient removed — wire through the orchestrators.
+import { bundleKotlin, runXcodeArchivePhase } from '@appifex/build'
+import { PlayConsoleClient, runTestFlightUploadPhase } from '@appifex/provision'
+import { ProgressEmitter } from '@appifex/core'
 import type { Runner, DtcConfig } from '@appifex/core'
 
 export async function handleProvisionSubmit(
@@ -50,6 +52,8 @@ async function handleIosSubmit(
     scheme?: string
     ipaPath?: string
     exportMethod?: 'app-store' | 'ad-hoc' | 'development'
+    marketingVersion?: string
+    buildNumber?: string
   },
   runner: Runner,
   config: DtcConfig,
@@ -70,34 +74,82 @@ async function handleIosSubmit(
     }
   }
 
-  const asc = new AscClient(runner, {
-    keyId: config.apple.ascKeyId,
-    issuerId: config.apple.ascIssuerId,
-    keyPath: config.apple.ascKeyPath,
-  })
+  const emitter = new ProgressEmitter()
 
-  let ipaPath = args.ipaPath
-
-  if (!ipaPath) {
+  // Fresh-archive path: archive via runXcodeArchivePhase (pulls version from package.json,
+  // computes next build number via ASC REST, short-circuits when build is already VALID).
+  if (!args.ipaPath) {
     if (!args.projectDir) {
       return { text: 'projectDir is required when ipaPath is not provided.', isError: true }
     }
-    const archiveResult = await archiveSwift(runner, {
-      projectDir: args.projectDir,
-      scheme: args.scheme,
-      teamId: config.apple.teamId,
-      bundleId: config.apple.bundleId,
-      exportMethod: args.exportMethod ?? 'app-store',
-    })
-
-    if (!archiveResult.success) {
+    try {
+      const archive = await runXcodeArchivePhase({
+        runner,
+        config,
+        projectDir: args.projectDir,
+        scheme: args.scheme ?? 'App',
+      })
+      if (archive.skipped) {
+        return {
+          text: JSON.stringify(
+            {
+              phase: 'archive',
+              success: true,
+              skipped: true,
+              reason: archive.reason,
+              buildId: archive.buildId,
+            },
+            null,
+            2,
+          ),
+          isError: false,
+        }
+      }
+      if (!archive.ipaPath) {
+        return {
+          text: JSON.stringify(
+            {
+              phase: 'archive',
+              success: false,
+              error: 'archive reported success but produced no .ipa path',
+            },
+            null,
+            2,
+          ),
+          isError: true,
+        }
+      }
+      const upload = await runTestFlightUploadPhase({
+        runner,
+        config,
+        emitter,
+        ipaPath: archive.ipaPath,
+        buildNumber: archive.buildNumber,
+        marketingVersion: archive.marketingVersion,
+      })
       return {
         text: JSON.stringify(
           {
-            phase: 'archive',
+            phase: 'submit',
+            platform: 'ios',
+            success: true,
+            ipaPath: archive.ipaPath,
+            buildId: upload.status === 'completed' ? upload.buildId : upload.buildId,
+            status: upload.status,
+            warnings: upload.status === 'completed_with_warnings' ? upload.warnings : [],
+          },
+          null,
+          2,
+        ),
+        isError: false,
+      }
+    } catch (err) {
+      return {
+        text: JSON.stringify(
+          {
+            phase: 'archive-or-submit',
             success: false,
-            error: archiveResult.error,
-            commands: archiveResult.commands,
+            error: err instanceof Error ? err.message : String(err),
           },
           null,
           2,
@@ -105,29 +157,50 @@ async function handleIosSubmit(
         isError: true,
       }
     }
-    ipaPath = archiveResult.ipaPath!
   }
 
-  const submitResult = await asc.submitTestFlight({
-    appId: config.apple.ascAppId,
-    ipaPath,
-    group: config.apple.ascTestFlightGroup,
-  })
-
-  return {
-    text: JSON.stringify(
-      {
-        phase: 'submit',
-        platform: 'ios',
-        success: submitResult.success,
-        ipaPath,
-        output: submitResult.output,
-        error: submitResult.error,
-      },
-      null,
-      2,
-    ),
-    isError: !submitResult.success,
+  // Pre-built-IPA path: caller must supply marketingVersion + buildNumber (we cannot infer them
+  // from an opaque .ipa file without unzipping it — keep the CLI-facing contract explicit).
+  const marketingVersion = args.marketingVersion ?? '1.0.0'
+  const buildNumber = args.buildNumber ?? '1'
+  try {
+    const upload = await runTestFlightUploadPhase({
+      runner,
+      config,
+      emitter,
+      ipaPath: args.ipaPath,
+      buildNumber,
+      marketingVersion,
+    })
+    return {
+      text: JSON.stringify(
+        {
+          phase: 'submit',
+          platform: 'ios',
+          success: true,
+          ipaPath: args.ipaPath,
+          buildId: upload.buildId,
+          status: upload.status,
+          warnings: upload.status === 'completed_with_warnings' ? upload.warnings : [],
+        },
+        null,
+        2,
+      ),
+      isError: false,
+    }
+  } catch (err) {
+    return {
+      text: JSON.stringify(
+        {
+          phase: 'submit',
+          success: false,
+          error: err instanceof Error ? err.message : String(err),
+        },
+        null,
+        2,
+      ),
+      isError: true,
+    }
   }
 }
 

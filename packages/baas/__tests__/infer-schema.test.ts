@@ -84,7 +84,7 @@ describe('PhaseId and PHASE_ORDER registration', () => {
     expect(baasSchemaIdx).toBe(baasRecommendIdx + 1)
     expect(baasAuthIdx).toBe(baasSchemaIdx + 1)
     expect(baasAuthIdx).toBeLessThan(testGenIdx)
-    expect(PHASE_ORDER.indexOf('mock_service')).toBe(baasAuthIdx + 1)
+    expect(PHASE_ORDER.indexOf('mock_service')).toBe(baasAuthIdx + 2) // firebase_provision sits at baasAuthIdx + 1 (Phase 4)
   })
 
   it('CheckpointData has baas_schema key', () => {

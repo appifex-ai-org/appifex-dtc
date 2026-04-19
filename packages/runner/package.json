@@ -1,6 +1,6 @@
 {
   "name": "@appifex/runner",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Execution environment abstraction (local/E2B/Mac Runner) for the DTC toolkit",
   "license": "MIT",
   "type": "module",
@@ -23,16 +23,24 @@
     "@appifex/core": "workspace:*"
   },
   "author": "Appifex",
-  "homepage": "https://github.com/appifex/appifex-dtc#readme",
+  "homepage": "https://github.com/appifex-ai-org/appifex-dtc#readme",
   "bugs": {
-    "url": "https://github.com/appifex/appifex-dtc/issues"
+    "url": "https://github.com/appifex-ai-org/appifex-dtc/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/appifex/appifex-dtc.git",
+    "url": "git+https://github.com/appifex-ai-org/appifex-dtc.git",
     "directory": "packages/runner"
   },
   "publishConfig": {
-    "access": "public"
-  }
+    "access": "public",
+    "provenance": true
+  },
+  "keywords": [
+    "appifex",
+    "dtc",
+    "runner",
+    "e2b",
+    "local-runner"
+  ]
 }

@@ -90,11 +90,10 @@ describe('StitchAdapter', () => {
     const writeCalls = (runner.writeFile as ReturnType<typeof vi.fn>).mock.calls
     const writtenPaths = writeCalls.map((c: string[]) => c[0])
     expect(writtenPaths.some((p: string) => p.includes('screen-0.html'))).toBe(true)
-    // PNG written via fs.writeFile (binary)
-    const { writeFile: fsWrite } = await import('node:fs/promises')
-    const fsCalls = (fsWrite as ReturnType<typeof vi.fn>).mock.calls
-    const fsPaths = fsCalls.map((c: unknown[]) => c[0])
-    expect(fsPaths.some((p: unknown) => String(p).includes('screen-0.png'))).toBe(true)
+    // Phase 7 (WR-02): PNG now written via runner.exec (base64 decode) — not fs.writeFile
+    const execCalls = (runner.exec as ReturnType<typeof vi.fn>).mock.calls
+    const execCommands: string[] = execCalls.map((c: unknown[]) => String(c[1]?.[1] ?? ''))
+    expect(execCommands.some((cmd) => cmd.includes('screen-0.png'))).toBe(true)
   })
 
   it('create() copies first screenshot to previewPath', async () => {
@@ -112,11 +111,10 @@ describe('StitchAdapter', () => {
 
     expect(result.success).toBe(true)
     expect(result.previewPath).toBe('/out/preview.png')
-    // Preview PNG written via fs.writeFile (binary)
-    const { writeFile: fsWrite } = await import('node:fs/promises')
-    const fsCalls = (fsWrite as ReturnType<typeof vi.fn>).mock.calls
-    const fsPaths = fsCalls.map((c: unknown[]) => String(c[0]))
-    expect(fsPaths).toContain('/out/preview.png')
+    // Phase 7 (WR-02): Preview PNG now written via runner.exec (base64 decode) — not fs.writeFile
+    const execCalls = (runner.exec as ReturnType<typeof vi.fn>).mock.calls
+    const execCommands: string[] = execCalls.map((c: unknown[]) => String(c[1]?.[1] ?? ''))
+    expect(execCommands.some((cmd) => cmd.includes('preview.png'))).toBe(true)
   })
 
   it('iterate() calls screen.edit and downloads new artifacts', async () => {

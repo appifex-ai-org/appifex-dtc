@@ -5,21 +5,36 @@ import Foundation
 final class <%= it.entity.name %>DataService {
     private let repository: any <%= it.entity.name %>Repository
     var items: [<%= it.entity.name %>] = []
-    var isLoading = false
     var error: Error?
+
+    // Phase 4 (FIRE-03 D-10): closure captures ListenerRegistration.remove() without exposing FirebaseFirestore to service layer
+    private var cancelListener: (() -> Void)?
 
     init(repository: any <%= it.entity.name %>Repository = Firestore<%= it.entity.name %>Repository()) {
         self.repository = repository
+        startListening()
     }
 
-    func loadAll() async {
-        isLoading = true
-        defer { isLoading = false }
-        do {
-            items = try await repository.list()
-        } catch {
-            self.error = error
+    private func startListening() {
+        let reg = repository.startListening { [weak self] newItems in
+            self?.items = newItems
         }
+        cancelListener = { reg.remove() }
+    }
+
+    // Phase 4 (wr-03): explicit stopListening() method for deterministic cleanup.
+    // @Observable deinit timing is unreliable — call stopListening() from the view's .onDisappear
+    // to guarantee the Firestore listener is cancelled before the view leaves the hierarchy.
+    func stopListening() {
+        cancelListener?()
+        cancelListener = nil
+    }
+
+    deinit {
+        // Phase 4 (FIRE-03 D-10): best-effort cancel on deinit — not sufficient on its own for
+        // @Observable classes (deinit timing is managed by SwiftUI view storage).
+        // Callers MUST also invoke stopListening() from .onDisappear.
+        cancelListener?()
     }
 
     func create(_ item: <%= it.entity.name %>) async {

@@ -1,39 +1,42 @@
-import type { Runner } from '@appifex/core'
-
-function extractJson(text: string): string {
-  const cleaned = text.replace(/```(?:json)?\s*/g, '').replace(/```/g, '')
-  const start = cleaned.indexOf('{')
-  if (start === -1) throw new Error('No JSON object found')
-  let depth = 0
-  let end = -1
-  for (let i = start; i < cleaned.length; i++) {
-    if (cleaned[i] === '{') depth++
-    else if (cleaned[i] === '}') {
-      depth--
-      if (depth === 0) {
-        end = i
-        break
-      }
-    }
-  }
-  if (end === -1) throw new Error('Unclosed JSON object')
-  return cleaned.slice(start, end + 1).replace(/,\s*([}\]])/g, '$1')
-}
+// Phase 6 (VAL-02 D-07 D-08 D-09 D-10): ranker-driven context selection replaces the
+// indiscriminate first-10-glob + type-grep fallback.
+// Phase 6 (VAL-03 D-11 D-12 D-13 D-14): Anthropic tool-use (structured outputs) replaces
+// the legacy delimiter regex + JSON extractor. Tool-use is GA (no beta header).
+// Phase 1 Plan 01-10 (GATE-02): `isFixtureMode() → loadFixture('fix')` short-circuit preserved
+// verbatim at `createMessage` — text-only fixtures cleanly fall through to the D-13 empty-fix path.
+import { isFixtureMode, loadFixture } from '@appifex/core'
+import type { ModifiedScreens, Platform, Runner, TokenBudget } from '@appifex/core'
 import type { ValidationResult } from '@appifex/validate'
+import { buildNavGraph, rankFixContext, scanProject } from '@appifex/analysis'
 import type { FixFnResult } from './fix-loop.js'
+
+// Phase 6 (VAL-03): the PUBLIC CreateMessageFn accepts a structurally-permissive content
+// block shape so pipeline.ts's existing `buildCreateMessageFn` (which returns the legacy
+// `{ type: string; text: string }` shape) keeps compiling without any edits. The parser below
+// narrows each block at runtime via `c.type === 'tool_use' && c.name === 'submit_fixes'`.
+// MODULE-LOCAL — no exports across the package boundary.
+interface FixResponseContent {
+  type: string
+  text?: string
+  id?: string
+  name?: string
+  input?: unknown
+}
+
+interface FixResponse {
+  content: FixResponseContent[]
+  usage: { input_tokens: number; output_tokens: number }
+}
 
 interface MessageCreateParams {
   model: string
   max_tokens: number
   messages: Array<{ role: string; content: string }>
+  tools?: unknown
+  tool_choice?: unknown
 }
 
-interface MessageResponse {
-  content: Array<{ type: string; text: string }>
-  usage: { input_tokens: number; output_tokens: number }
-}
-
-type CreateMessageFn = (params: MessageCreateParams) => Promise<MessageResponse>
+type CreateMessageFn = (params: MessageCreateParams) => Promise<FixResponse>
 
 export interface DefaultFixOpts {
   apiKey: string
@@ -45,7 +48,48 @@ export interface DefaultFixOpts {
   skillPrompt?: string
   /** Enable debug logging of prompts/responses */
   verbose?: boolean
+  // Phase 6 (VAL-02 D-07 D-10): ranker inputs — ALL OPTIONAL, sane fallbacks.
+  // Existing cli/src/pipeline.ts call sites (2982, 3340, 3398, 3477) continue to compile
+  // without modification. Non-breaking extension — matches `model?: string` pattern.
+  modifiedScreens?: ModifiedScreens
+  tokenBudget?: TokenBudget
+  platform?: Platform
 }
+
+// Phase 6 (VAL-03 D-11, D-14): structured outputs via tool-use. input_schema is JSON Schema.
+// `tool_choice: { type: 'tool', name: 'submit_fixes' }` at call site FORCES the model to emit
+// exactly one tool_use block with this schema. See 06-RESEARCH.md §"Anthropic SDK Tool-Use".
+const SUBMIT_FIXES_TOOL = {
+  name: 'submit_fixes',
+  description:
+    'Submit a list of files to overwrite with fixed content. Each entry must include the ' +
+    'full relative path (Sources/... or src/...) and the COMPLETE fixed file content. Only ' +
+    'include files that actually need changes. Do not include reasoning or commentary.',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      fixes: {
+        type: 'array' as const,
+        items: {
+          type: 'object' as const,
+          properties: {
+            path: {
+              type: 'string' as const,
+              description:
+                'Full relative file path from project root, e.g. Sources/Views/LoginView.swift',
+            },
+            content: {
+              type: 'string' as const,
+              description: 'Complete fixed file content — not a diff, not a snippet',
+            },
+          },
+          required: ['path', 'content'],
+        },
+      },
+    },
+    required: ['fixes'],
+  },
+} as const
 
 function buildFixPrompt(
   failures: ValidationResult,
@@ -70,7 +114,7 @@ function buildFixPrompt(
     ? `\n## Actual iOS Accessibility Hierarchy (what Maestro sees at runtime)\n\`\`\`\n${failures.ui.hierarchy}\n\`\`\`\nUse resource-id values to understand which identifiers Maestro can discover. If an expected id is missing, the .accessibilityIdentifier() is not working — likely hidden by a container identifier or .accessibilityElement().\n`
     : ''
 
-  return `Fix the following errors. Only output files that need changes.
+  return `Fix the following errors. Call the submit_fixes tool with every file that must change.
 
 ## Errors
 ${uiFailures}
@@ -83,9 +127,10 @@ ${failingFilesCode}
 
 ## Rules
 - Fix ONLY what's needed to resolve the errors above
-- Output the COMPLETE fixed file content (not just the changed lines)
+- Return COMPLETE fixed file content (not just the changed lines) via the submit_fixes tool
 - Preserve all existing accessibilityIdentifier/testID values
 - For Swift: keep paths starting with Sources/
+- For web: keep paths starting with src/
 
 ## UI Test Failures (Maestro)
 When a UI test fails with "id: X is visible" or "Assertion is false: id: X is visible":
@@ -108,40 +153,8 @@ ${
 - @Published in struct: use @Observable class or @State in view`
 }
 
-## Output Format
-===FIX: Sources/path/to/File.swift===
-complete fixed file content
-===END_FIX===
-
-Only include files that need changes. Use the exact file paths from the Current Code section above.`
-}
-
-// Keep old JSON format parser as fallback
-function buildFixPromptJson(failures: ValidationResult, existingCode: string): string {
-  const uiFailures = failures.ui.results
-    .filter((r) => !r.passed)
-    .map((r) => `- UI: ${r.flowName}: ${r.error}`)
-    .join('\n')
-
-  const unitFailures = failures.unit.failures
-    .map((f) => `- Unit: ${f.testName}: ${f.error}`)
-    .join('\n')
-
-  return `Fix these errors in the code:
-${uiFailures}
-${unitFailures}
-
-Code:
-${existingCode}
-
-Respond with ONLY JSON:
-{
-  "fixes": [
-    { "path": "/full/path/to/file.tsx", "content": "full fixed file content" }
-  ]
-}
-
-Generate the fixes now.`
+## Output
+Call the submit_fixes tool with a \`fixes\` array. Only include files that need changes. Use the exact file paths from the Current Code section above.`
 }
 
 export function createDefaultFixFn(
@@ -152,69 +165,64 @@ export function createDefaultFixFn(
   const createMessage: CreateMessageFn =
     opts.createMessage ??
     (async (params) => {
+      // Phase 1 Plan 01-10 (GATE-02): fixture-replay short-circuit PRESERVED VERBATIM.
+      // Fixture shape is `{ content: Array<{ type: string; text: string }>, usage: {...} }`.
+      // Under the new tool-use parser the text-only content produces no tool_use block, so the
+      // D-13 empty-fix fallback returns `{ filesChanged: [], tokensUsed: 0 }` — GATE-02's contract.
+      if (isFixtureMode()) return loadFixture('fix') as unknown as FixResponse
       const Anthropic = (await import('@anthropic-ai/sdk')).default
       const client = new Anthropic({ apiKey: opts.apiKey })
       // Use streaming to avoid timeout on long-running requests
       const stream = client.messages.stream(params as Parameters<typeof client.messages.stream>[0])
       const finalMessage = await stream.finalMessage()
-      return {
-        content: finalMessage.content.map((c) => ({
-          type: c.type,
-          text: c.type === 'text' ? c.text : '',
-        })),
-        usage: finalMessage.usage,
+      // Phase 6 (VAL-03): preserve tool_use blocks in the returned content so the downstream parser
+      // can find them. Text + tool_use are the only content-block kinds we care about here.
+      const mapped: FixResponseContent[] = []
+      for (const c of finalMessage.content) {
+        if (c.type === 'text') mapped.push({ type: 'text', text: c.text })
+        else if (c.type === 'tool_use')
+          mapped.push({ type: 'tool_use', id: c.id, name: c.name, input: c.input })
       }
+      return { content: mapped, usage: finalMessage.usage }
     })
 
   return async (failures: ValidationResult): Promise<FixFnResult> => {
     try {
-      // Extract file paths mentioned in errors
-      const errorFiles = new Set<string>()
-      for (const f of failures.unit.failures) {
-        if (f.file) errorFiles.add(f.file)
-        const pathMatch = f.error.match(/(Sources\/[^\s:]+|src\/[^\s:]+)/g)
-        if (pathMatch) pathMatch.forEach((p) => errorFiles.add(p))
+      // Phase 6 (VAL-02 D-07 D-10): resolve optional ranker inputs against defaults.
+      // Matches the existing `opts.model ?? '...'` convention above.
+      const platform: Platform = opts.platform ?? 'swiftui'
+      const modifiedScreens: ModifiedScreens = opts.modifiedScreens ?? { added: [], modified: [] }
+      const remainingTokens = opts.tokenBudget?.totalRemaining ?? Infinity
+
+      // Phase 6 (VAL-02 D-07 D-10): ranker-driven context selection.
+      const inventory = await scanProject(opts.projectDir, platform, opts.runner)
+      const navGraph = await buildNavGraph(opts.projectDir, platform, opts.runner)
+      let flowYaml: string | undefined
+      try {
+        flowYaml = await opts.runner.readFile(`${opts.projectDir}/.maestro/e2e/e2e-gate.yaml`)
+      } catch {
+        flowYaml = undefined
+      }
+      const ranked = await rankFixContext({
+        failures,
+        modifiedScreens,
+        navGraph,
+        inventory,
+        flowYaml,
+        projectDir: opts.projectDir,
+        runner: opts.runner,
+        platform,
+        remainingTokens,
+      })
+
+      // Phase 6 (VAL-02, Pitfall 4): N=0 short-circuit — don't waste an LLM call with no context.
+      if (ranked.files.length === 0 && ranked.maxFiles === 0) {
+        return { filesChanged: [], tokensUsed: 0 }
       }
 
-      // Add files flagged by Semgrep
-      const secFindings = failures.security?.findings ?? []
-      for (const f of secFindings) {
-        if (f.file) errorFiles.add(f.file)
-      }
+      const errorFiles = new Set<string>(ranked.files)
 
-      // Also find files that reference the failing type (e.g. if Task.swift fails, include files using Task)
-      const errorTypeNames = new Set<string>()
-      for (const f of failures.unit.failures) {
-        const typeMatch = f.error.match(/type '(\w+)'/g)
-        if (typeMatch) typeMatch.forEach((m) => errorTypeNames.add(m.replace(/type '|'/g, '')))
-      }
-
-      if (errorTypeNames.size > 0) {
-        const allSwift = await opts.runner.glob(`${opts.projectDir}/Sources/**/*.swift`)
-        const allSrc = await opts.runner.glob(`${opts.projectDir}/src/**/*.{ts,tsx}`)
-        for (const file of [...allSwift, ...allSrc]) {
-          try {
-            const content = await opts.runner.readFile(file)
-            for (const typeName of errorTypeNames) {
-              if (content.includes(typeName)) {
-                errorFiles.add(file)
-                break
-              }
-            }
-          } catch {
-            /* skip */
-          }
-        }
-      }
-
-      // Fallback: read all source if no specific files found
-      if (errorFiles.size === 0) {
-        const srcFiles = await opts.runner.glob(`${opts.projectDir}/src/**/*.{ts,tsx}`)
-        const sourcesFiles = await opts.runner.glob(`${opts.projectDir}/Sources/**/*.swift`)
-        for (const f of [...srcFiles, ...sourcesFiles].slice(0, 10)) errorFiles.add(f)
-      }
-
-      // Read only the failing files
+      // Read only the ranker-selected files
       const codeChunks: string[] = []
       for (const file of errorFiles) {
         const fullPath = file.startsWith('/') ? file : `${opts.projectDir}/${file}`
@@ -245,50 +253,49 @@ export function createDefaultFixFn(
         model,
         max_tokens: 16384,
         messages: [{ role: 'user', content: fixPromptText }],
+        tools: [SUBMIT_FIXES_TOOL],
+        tool_choice: { type: 'tool', name: 'submit_fixes' },
       })
 
       const tokensUsed = response.usage.input_tokens + response.usage.output_tokens
-      const text = response.content.find((c) => c.type === 'text')?.text ?? ''
 
       // Log fix response for debugging
       if (opts.verbose) {
         try {
           const { appendFileSync } = await import('node:fs')
-          appendFileSync(`${opts.projectDir}/fix-prompts.log`, `\n--- RESPONSE ---\n${text}\n`)
+          const debugText = JSON.stringify(response.content, null, 2)
+          appendFileSync(`${opts.projectDir}/fix-prompts.log`, `\n--- RESPONSE ---\n${debugText}\n`)
         } catch {
           /* ignore */
         }
       }
 
-      // Try 1: Delimiter format ===FIX: path=== ... ===END_FIX===
-      const fixes: Array<{ path: string; content: string }> = []
-      const fixRegex = /===FIX:\s*(.+?)\s*===([\s\S]*?)===END_FIX===/g
-      let fixMatch: RegExpExecArray | null
-      while ((fixMatch = fixRegex.exec(text)) !== null) {
-        const path = fixMatch[1].trim()
-        const content = fixMatch[2].trim()
-        if (path && content) fixes.push({ path, content })
+      // Phase 6 (VAL-03 D-11 D-13): parse tool_use block. No delimiter, no JSON fallback.
+      // Runtime narrow — `FixResponseContent` is a permissive shape at the type level so
+      // pipeline.ts's legacy `createMessage` keeps compiling; the `&& c.name === 'submit_fixes'`
+      // guards against non-tool_use blocks and foreign tool calls.
+      const toolUse = response.content.find(
+        (c) => c.type === 'tool_use' && c.name === 'submit_fixes',
+      )
+      if (!toolUse) {
+        return { filesChanged: [], tokensUsed }
       }
-
-      // Try 2: JSON fallback
-      if (fixes.length === 0) {
-        try {
-          const json = extractJson(text)
-          const parsed = JSON.parse(json) as { fixes: Array<{ path: string; content: string }> }
-          if (Array.isArray(parsed.fixes)) fixes.push(...parsed.fixes)
-        } catch {
-          /* ignore */
-        }
-      }
-
+      const toolInput = toolUse.input as { fixes?: Array<{ path: string; content: string }> }
+      const fixes = Array.isArray(toolInput.fixes) ? toolInput.fixes : []
       if (fixes.length === 0) {
         return { filesChanged: [], tokensUsed }
       }
 
+      // Phase 6 (VAL-03, Pitfall 1): path-traversal guard on tool-use input.
+      // Reject: absolute paths, `..` segments, and paths outside the four allowed prefixes.
+      // Rejected entries are silently skipped (no write, no throw) — see 06-threat register T-6-05-a.
+      const ALLOWED_PREFIXES = ['Sources/', 'src/', '__tests__/', '.maestro/'] as const
       const filesChanged: string[] = []
       for (const fix of fixes) {
-        // Resolve relative paths against project dir
-        const fullPath = fix.path.startsWith('/') ? fix.path : `${opts.projectDir}/${fix.path}`
+        if (typeof fix.path !== 'string' || typeof fix.content !== 'string') continue
+        if (fix.path.includes('..') || fix.path.startsWith('/')) continue
+        if (!ALLOWED_PREFIXES.some((p) => fix.path.startsWith(p))) continue
+        const fullPath = `${opts.projectDir}/${fix.path}`
         await opts.runner.writeFile(fullPath, fix.content)
         filesChanged.push(fullPath)
       }

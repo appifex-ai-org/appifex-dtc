@@ -15,3 +15,6 @@ export type {
   BundleOpts,
   BundleResult,
 } from './types.js'
+// Phase 5 (TF-01 D-01, TF-03): xcode_archive phase orchestrator
+export { runXcodeArchivePhase } from './xcode-archive-phase.js'
+export type { XcodeArchivePhaseOpts, XcodeArchivePhaseResult } from './xcode-archive-phase.js'

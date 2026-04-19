@@ -1,4 +1,5 @@
 import type { FigmaMcpClientLike, FigmaDesignContext } from './figma-make-adapter.js'
+import { sanitizeLayerName } from './sanitize.js'
 
 const FIGMA_API_BASE = 'https://api.figma.com/v1'
 
@@ -54,13 +55,22 @@ export class FigmaRestClient implements FigmaMcpClientLike {
     const data = (await resp.json()) as FigmaFileResponse
 
     // Extract screen names from top-level frames
+    // Phase 7 (DESIGN-02): sanitize at ingestion boundary so downstream PlatformSpec ids are safe.
+    // Phase 7 (WR-06): push raw display names into screenNames; sanitized IDs are derived
+    // separately so callers receive the original Figma names (e.g. '🏠 Home') rather than
+    // sanitized identifiers (e.g. 'homeScreen'). The takenScreens set still tracks sanitized
+    // IDs to prevent collisions.
     const pages = data.document?.children ?? []
     const screenNames: string[] = []
+    const takenScreens = new Set<string>()
     for (const page of pages) {
       if (page.children) {
         for (const frame of page.children) {
           if (frame.type === 'FRAME' || frame.type === 'COMPONENT') {
-            screenNames.push(frame.name)
+            const raw = frame.name ?? 'unnamed'
+            const sanitized = sanitizeLayerName(raw, takenScreens)
+            takenScreens.add(sanitized)
+            screenNames.push(raw) // push raw display name, not sanitized ID
           }
         }
       }

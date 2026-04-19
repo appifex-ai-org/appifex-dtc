@@ -42,13 +42,29 @@ describe('enforceTokenCap', () => {
 
   // Test 12: returns truncated string (no throw) when over cap
   it('returns a truncated string without throwing when over 8K tokens', () => {
-    const largeSummary = 'a'.repeat(40000) // 40000 / 4 = 10000 tokens — over cap
+    // Phase 02 Plan 02 (FOUND-02): Swift density is ~3 chars/token.
+    // Trigger truncation with content that exceeds 8000 * 3 = 24000 chars.
+    const largeSummary = 'a'.repeat(40000) // 40000 / 3 ≈ 13333 tokens — over cap
     expect(() => enforceTokenCap(largeSummary)).not.toThrow()
     const result = enforceTokenCap(largeSummary)
     expect(result.endsWith('\n[TRUNCATED: summary exceeded 8K token cap]')).toBe(true)
-    // WR-02: truncated output (content + marker) must fit within the cap
-    const maxLen = 8000 * 4
+    // WR-02 + FOUND-02: truncated output (content + marker) must fit within the cap
+    // at 3 chars/token, 8000 * 3 = 24000.
+    const maxLen = 8000 * 3
     expect(result.length).toBeLessThanOrEqual(maxLen)
+  })
+
+  // Phase 02 Plan 02 (FOUND-02): Swift density cap: 8k tokens × 3 chars = 24_000
+  it('uses Swift chars-per-token density of 3 (8k-token cap → 24_000 chars, not 32_000)', () => {
+    // 24_001-char input should trip the cap (>24_000 char budget under 3 chars/token).
+    const input = 'a'.repeat(24_001)
+    const result = enforceTokenCap(input)
+    expect(result.endsWith('\n[TRUNCATED: summary exceeded 8K token cap]')).toBe(true)
+    expect(result.length).toBeLessThanOrEqual(24_000)
+
+    // Under the old 4 chars/token density, 24_001 chars would have been
+    // estimated as ~6001 tokens and passed through untouched.
+    expect(result).not.toBe(input)
   })
 
   // Test 13: truncated output preserves original content prefix

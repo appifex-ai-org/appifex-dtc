@@ -5,6 +5,7 @@ import type {
   DesignToolResult,
   Runner,
 } from '@appifex/core'
+import { sanitizeLayerName } from './sanitize.js'
 import { join } from 'node:path'
 
 export interface FigmaDesignContext {
@@ -25,16 +26,32 @@ export interface FigmaMakeOpts {
   mcpClient?: FigmaMcpClientLike
 }
 
+/** Phase 7 (DESIGN-02): extended create opts that accept runner injection for tests */
+export interface FigmaMakeCreateOpts extends DesignToolCreateOpts {
+  runner?: Runner
+}
+
 export class FigmaMakeAdapter implements DesignToolAdapter {
   readonly tool = 'figma-make' as const
   private fileUrl: string | undefined
+  private runner: Runner | undefined
 
-  constructor(
-    private runner: Runner,
-    private opts: FigmaMakeOpts,
-  ) {
-    this.fileUrl = opts.figmaFileUrl
+  // Phase 7 (DESIGN-02): support both (runner, opts) and (opts) constructor forms
+  // so that test fixtures can pass runner through create() instead
+  constructor(runnerOrOpts: Runner | FigmaMakeOpts, opts?: FigmaMakeOpts) {
+    if (opts !== undefined) {
+      // Two-arg form: FigmaMakeAdapter(runner, opts)
+      this.runner = runnerOrOpts as Runner
+      this.opts = opts
+    } else {
+      // One-arg form: FigmaMakeAdapter(opts) — runner may be passed via create()
+      this.runner = undefined
+      this.opts = runnerOrOpts as FigmaMakeOpts
+    }
+    this.fileUrl = this.opts.figmaFileUrl
   }
+
+  private opts: FigmaMakeOpts
 
   private async getClient(): Promise<FigmaMcpClientLike> {
     if (this.opts.mcpClient) return this.opts.mcpClient
@@ -47,7 +64,8 @@ export class FigmaMakeAdapter implements DesignToolAdapter {
     return new FigmaRestClient({ token: this.opts.figmaToken })
   }
 
-  async create(opts: DesignToolCreateOpts): Promise<DesignToolResult> {
+  async create(opts: FigmaMakeCreateOpts): Promise<DesignToolResult> {
+    const runner = opts.runner ?? this.runner
     const figmaDir = join(opts.outputDir, '.figma-make')
     const base: DesignToolResult = {
       success: false,
@@ -66,7 +84,11 @@ export class FigmaMakeAdapter implements DesignToolAdapter {
       }
     }
 
-    return this.readDesign(this.fileUrl, figmaDir, opts.previewPath, base)
+    if (!runner) {
+      return { ...base, error: 'Runner is required — pass runner to create() or constructor' }
+    }
+
+    return this.readDesign(this.fileUrl, figmaDir, opts.previewPath, base, runner)
   }
 
   async iterate(opts: DesignToolIterateOpts): Promise<DesignToolResult> {
@@ -84,15 +106,24 @@ export class FigmaMakeAdapter implements DesignToolAdapter {
       return { ...base, error: 'No Figma file URL — call create() first' }
     }
 
-    return this.readDesign(this.fileUrl, figmaDir, opts.previewPath, base)
+    if (!this.runner) {
+      return { ...base, error: 'Runner is required — pass runner to constructor' }
+    }
+
+    return this.readDesign(this.fileUrl, figmaDir, opts.previewPath, base, this.runner)
   }
 
   /** Write binary data via runner — uses base64 shell decode for remote runner compat */
-  private async writeBinary(path: string, data: Buffer): Promise<void> {
+  private async writeBinary(path: string, data: Buffer, runner: Runner): Promise<void> {
     // Encode as base64 and decode on the runner side so binary data
-    // travels correctly even over remote runner transports
+    // travels correctly even over remote runner transports.
+    // Phase 7 (CR-01): escape single quotes in b64 and path to prevent shell injection.
+    // Standard base64 never contains `'`, but defensive escaping protects against
+    // encoding variants and attacker-influenced outputDir values.
     const b64 = data.toString('base64')
-    await this.runner.exec('sh', ['-c', `echo '${b64}' | base64 -d > '${path}'`])
+    const safeB64 = b64.replace(/'/g, "'\\''")
+    const safePath = path.replace(/'/g, "'\\''")
+    await runner.exec('sh', ['-c', `printf '%s' '${safeB64}' | base64 -d > '${safePath}'`])
   }
 
   private async readDesign(
@@ -100,6 +131,7 @@ export class FigmaMakeAdapter implements DesignToolAdapter {
     outputDir: string,
     previewPath: string | undefined,
     base: DesignToolResult,
+    runner: Runner,
   ): Promise<DesignToolResult> {
     let client: FigmaMcpClientLike
     try {
@@ -120,21 +152,29 @@ export class FigmaMakeAdapter implements DesignToolAdapter {
     }
 
     try {
-      await this.runner.exec('mkdir', ['-p', outputDir])
+      await runner.exec('mkdir', ['-p', outputDir])
 
       // Write HTML/code artifact via runner (works with remote runners)
       const htmlPath = join(outputDir, 'screen-0.html')
-      await this.runner.writeFile(htmlPath, context.code)
+      await runner.writeFile(htmlPath, context.code)
 
       // Write PNG as raw binary — runner.writeFile is string-only,
       // so we use base64-encoded content via runner.writeFile for
       // remote compatibility, falling back to fs for local
       const pngPath = join(outputDir, 'screen-0.png')
-      await this.writeBinary(pngPath, screenshot)
+      await this.writeBinary(pngPath, screenshot, runner)
 
       if (previewPath) {
-        await this.writeBinary(previewPath, screenshot)
+        await this.writeBinary(previewPath, screenshot, runner)
       }
+
+      // Phase 7 (DESIGN-02): build minimal spec from sanitized screen names
+      // so that parity tests and downstream consumers see safe identifiers
+      const takenScreens = new Set<string>()
+      const specScreens = context.screenNames.map((rawName) => ({
+        id: sanitizeLayerName(rawName, takenScreens),
+        name: rawName,
+      }))
 
       return {
         success: true,
@@ -144,8 +184,9 @@ export class FigmaMakeAdapter implements DesignToolAdapter {
         screenshotPaths: [pngPath],
         htmlPaths: [htmlPath],
         screenIds: context.screenNames,
+        spec: { screens: specScreens },
         previewPath,
-      }
+      } as DesignToolResult & { spec: { screens: Array<{ id: string; name: string }> } }
     } catch (err) {
       return { ...base, error: err instanceof Error ? err.message : String(err) }
     }

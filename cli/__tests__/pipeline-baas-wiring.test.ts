@@ -149,7 +149,7 @@ describe('WIRE-01: Functional — generateDataServices rendering', () => {
     expect(files[0].content).toContain('final class TodoDataService')
     expect(files[0].content).toContain('any TodoRepository')
     expect(files[0].content).toContain('FirestoreTodoRepository()')
-    expect(files[0].content).not.toContain('import FirebaseFirestore')
+    expect(files[0].content).not.toContain('import FirebaseFirestore') // DataService uses closure-based listener (Phase 4)
   })
 
   it('generates Supabase DataService with correct default repository', async () => {

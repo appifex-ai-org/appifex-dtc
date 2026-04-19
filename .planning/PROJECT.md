@@ -4,6 +4,8 @@
 
 A CLI toolset (`dtc`) that turns design files into production-ready native and web app codebases. It drives a layered codegen pipeline — design → spec → test-gen → codegen → build → validate → fix → deliver — across SwiftUI, Kotlin Compose, React, and React Native targets, with BaaS integration (Firebase/Supabase), mock data services, a validation + LLM-assisted auto-fix loop, and an MCP server so AI agents can orchestrate generation workflows. Built for solo indie devs and founders who want to go from design to a shipped app in one command.
 
+v1.0 hardened the SwiftUI + Firebase path end-to-end: open-source release readiness, foundation bugs fixed, credential wizard, Firebase integration, Xcode archive + TestFlight upload, validation gate, design adapter parity, MCP surface, and observability — all shipped in 5 days across 10 phases.
+
 ## Core Value
 
 **Design to TestFlight in one command.** A solo founder with a design file (Pencil, Figma, Stitch) can produce a production-ready SwiftUI + Firebase app deployed to TestFlight, without touching Xcode or Firebase console manually.
@@ -32,20 +34,30 @@ A CLI toolset (`dtc`) that turns design files into production-ready native and w
 - ✓ Apple/Play provisioning client scaffolding (`packages/provision`) — existing
 - ✓ GitHub deliver flow with commit/push/PR (`packages/deliver`) — existing
 
+<!-- v1.0 hardened requirements — shipped 2026-04-19 -->
+- ✓ Open-source-ready @appifex/* monorepo: git-flow, PR gates, Changesets, commitlint, gitleaks, required CI checks — v1.0
+- ✓ Portable `bin/dtc` shim + corrected Swift token density (4→3) + EPIPE guard + MCP process.exit isolation — v1.0
+- ✓ `dtc setup --full` credential wizard (Apple ASC, Firebase, LLM) + `CredentialRegistry` preflight + `dtc doctor --deep` — v1.0
+- ✓ Firebase SPM integration: AppDelegate, auth templates (email/Apple/Google), typed Firestore data layer, idempotent `firebase_provision` phase, security lint hard-fail — v1.0
+- ✓ Xcode archive + TestFlight upload: `js-yaml` project.yml mutator, ASC REST JWT, `xcrun altool` polling, release hygiene, tester group auto-assign (code-verified; live TestFlight run pending) — v1.0
+- ✓ Maestro E2E golden-path gate + `fix-context-ranker` locality + Anthropic structured outputs + hard/soft fail split — v1.0
+- ✓ `sanitizeLayerName` across all 4 design adapters + adapter-parity fixture suite — v1.0
+- ✓ MCP tools: `dtc_firebase_provision`, `dtc_testflight_upload`, `dtc_get_pipeline_status` — v1.0
+- ✓ `.dtc-manifest.json` user-edit guard + live cost/USD terminal display + `.dtc-report` + zippable debug bundle — v1.0
+- ✓ Live branch protection on main+develop + scratch-PR gate proof — v1.0
+
 ### Active
 
-<!-- v1 milestone: harden SwiftUI + Firebase path to "design → TestFlight in one command." -->
+<!-- v2 milestone candidates — post v1.0 live-run verification and known gap remediation -->
 
-- [ ] Solo founder runs `dtc` once and gets a TestFlight build from a design file (zero manual Xcode/Firebase console steps)
-- [ ] Real Firebase Auth wired in generated app: email/password, Apple Sign In, Google Sign In
-- [ ] Real Firestore reads/writes wired in generated app from inferred schema
-- [ ] Automated Xcode archive + code signing + TestFlight upload via App Store Connect API
-- [ ] Firestore security rules generated + hard-fail on static security lint violations (semgrep + baas-security-lint)
-- [ ] End-to-end Maestro flow exercises golden path on simulator against a real dev Firebase project before declaring success
-- [ ] All four design adapters (Pencil, Stitch, Figma-Make, Figma-REST) at parity for v1 inputs
-- [ ] Validation → LLM fix → deterministic verify loop converges reliably within a predictable token budget
-- [ ] Setup wizard / doctor flow guides first-run credential setup (Apple ASC, Firebase project, LLM key)
-- [ ] MCP server exposes the hardened SwiftUI+Firebase path so agents can drive the full pipeline
+- [ ] Live TestFlight delivery confirmed end-to-end against a real Apple Developer account (TF-01..04 human verification)
+- [ ] Agent-orchestrated pipeline reaches TestFlight phases (agent path exits at pipeline.ts:3307 before TestFlight)
+- [ ] `archiveSwift(success=false)` guard — surface xcodebuild failure instead of silent "Archived (no path)" checkpoint
+- [ ] `e2e_gate` added to `FORCE_RERUN_PHASES` — gate re-runs on resume instead of reading stale checkpoint
+- [ ] Live Firebase wizard run (`dtc setup firebase` + real Google account) to close SETUP-04 / Phase 3 UAT
+- [ ] Kotlin Compose hardening to Play Console equivalent flow
+- [ ] BaaS-agnostic adapter abstraction (abstract once Firebase is proven)
+- [ ] Supabase hardening on the production path
 
 ### Out of Scope
 
@@ -53,22 +65,25 @@ A CLI toolset (`dtc`) that turns design files into production-ready native and w
 
 - React codegen target — future milestone (breadth comes after depth on SwiftUI is proven)
 - React Native codegen target — future milestone (same reason as React)
-- Public App Store submission (beyond TestFlight) — human review loop too long for the v1 "one command" promise
+- Public App Store submission (beyond TestFlight) — human review loop too long for the "one command" promise
 - Kotlin Compose hardening to TestFlight-equivalent Play Console flow — future milestone; existing Kotlin path remains as-is
 - Supabase hardening — stays supported but not on the v1 production path
 - BaaS-agnostic adapter abstraction — deferred; Firebase gets hardened first, then patterns abstracted
-- Windows / Linux dev hosts — macOS only for v1 (Xcode requirement)
+- Windows / Linux dev hosts — macOS only (Xcode requirement)
 - Public App Store marketing assets generation (screenshots, descriptions) — later milestone
+- Hosted documentation site (Docusaurus/Nextra) — README + `docs/` suffices for v1
 
 ## Context
 
-**Codebase state:** Substantial brownfield project. Pipeline architecture, all 4 design input adapters, SwiftUI + Kotlin Compose codegen, Firebase/Supabase/Mock BaaS templates, MCP server, and LLM fix loop already exist. The work in this milestone is **hardening and end-to-end integration**, not greenfield construction. See `.planning/codebase/` for full architecture, stack, structure, conventions, integrations, testing, and known concerns.
+**Current state (post v1.0):** The SwiftUI + Firebase hardening path is code-complete across all 10 phases. The CLI is open-source-ready under @appifex/* with full CI gate coverage. Known gaps: TF-01..04 not live-verified (TestFlight upload requires Apple Developer account), agent-orchestrated path exits before TestFlight phases.
+
+**Codebase:** ~50,000 TypeScript LOC across `packages/*/src` + `cli/src`. 242 commits in v1.0 milestone. 666 files changed.
 
 **Target user:** Solo indie developers and founders shipping iOS apps. They tolerate opinionated defaults in exchange for speed. They do not want to hand-configure Xcode, signing certs, provisioning profiles, or Firebase consoles.
 
-**Design input priority:** All four adapters (Pencil, Stitch, Figma-Make, Figma-REST) must reach parity for v1. Pencil has the tightest workspace integration (`.pen` files via the Pencil MCP), but no adapter is treated as second-class.
+**Design input priority:** All four adapters (Pencil, Stitch, Figma-Make, Figma-REST) now at parity — sanitizeLayerName shared, adapter-parity fixture suite passing.
 
-**Agent/MCP context:** The MCP server is not the primary user-facing surface for v1, but it must expose the hardened SwiftUI+Firebase path so agent-driven workflows (Claude Code, Copilot) can call pipeline stages. Agent workflows become the primary surface in a later milestone.
+**Agent/MCP context:** MCP server exposes firebase_provision, testflight_upload, get_pipeline_status. Agent-driven path has a known gap (exits before TestFlight phases) — primary target for v2.
 
 **Key ecosystem facts:**
 - Apple: App Store Connect API, TestFlight, Xcode signing/provisioning complexity
@@ -88,13 +103,16 @@ A CLI toolset (`dtc`) that turns design files into production-ready native and w
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| V1 narrows to SwiftUI + Firebase only | Depth before breadth — a broken 4-platform story is worse than one rock-solid platform for solo founders | — Pending |
-| All four design adapters at parity in v1 | Solo founders bring whatever design they have; adapter parity is cheap relative to codegen hardening | — Pending |
-| Firebase chosen over Supabase/Convex for v1 hardening | Broadest 4-platform SDK coverage; most mature auth/data story for indies | — Pending |
-| Auto-fix = LLM proposer + deterministic verifier loop | Balances power (handle novel failures) with predictability (compile/tests gate every fix) | — Pending |
-| "Shipped" = TestFlight, not public App Store | TestFlight is automatable; public release requires human review that breaks the "one command" promise | — Pending |
-| MCP server maturity deferred | Agent-driven workflows are the next wedge, not v1; v1 keeps MCP functional but doesn't invest further | — Pending |
-| Full-vision roadmap with narrow v1 milestone | Keeps long-term shape visible (React/RN later) while scoping work commitment tightly | — Pending |
+| V1 narrows to SwiftUI + Firebase only | Depth before breadth — a broken 4-platform story is worse than one rock-solid platform for solo founders | ✓ Good — hardening delivered in 5 days; Kotlin/React remain future milestones |
+| All four design adapters at parity in v1 | Solo founders bring whatever design they have; adapter parity is cheap relative to codegen hardening | ✓ Good — sanitizeLayerName + fixture suite completed in Phase 7 |
+| Firebase chosen over Supabase/Convex for v1 hardening | Broadest 4-platform SDK coverage; most mature auth/data story for indies | ✓ Good — Firebase path fully wired; Supabase deferred cleanly |
+| Auto-fix = LLM proposer + deterministic verifier loop | Balances power (handle novel failures) with predictability (compile/tests gate every fix) | ✓ Good — Anthropic structured outputs + fix-context-ranker shipped in Phase 6 |
+| "Shipped" = TestFlight, not public App Store | TestFlight is automatable; public release requires human review that breaks the "one command" promise | ✓ Good — constraint holds; public App Store stays out of scope |
+| MCP server maturity deferred | Agent-driven workflows are the next wedge, not v1; v1 keeps MCP functional but doesn't invest further | ⚠️ Revisit — agent path exits before TestFlight phases; this is a v2 priority gap |
+| Full-vision roadmap with narrow v1 milestone | Keeps long-term shape visible (React/RN later) while scoping work commitment tightly | ✓ Good — 10-phase plan executed cleanly |
+| js-yaml over regex for project.yml mutation | Type-safe parse/mutate/serialize eliminates brittle regex patching of structured config | ✓ Good — shipped in Phase 5 (TF-02) |
+| Changesets in-repo enforcement (no GitHub App) | Keeps entire enforcement surface inside repo with zero third-party dependencies | ✓ Good — changeset-check CI job live and biting |
+| archiver v7 for debug-bundle zip | Pure JS, no native deps; zlib level 6 for exit speed over compression | ✓ Good — debug bundle ships in Phase 7 |
 
 ## Evolution
 
@@ -114,4 +132,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-14 after initialization*
+*Last updated: 2026-04-19 after v1.0 milestone*
