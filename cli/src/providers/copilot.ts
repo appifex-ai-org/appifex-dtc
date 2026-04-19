@@ -38,15 +38,53 @@ export async function startDeviceFlow(clientId: string): Promise<DeviceFlowResul
   }
 }
 
+// Phase 03 (DX-05): honour RFC 8628 §3.5 `slow_down` with an additive
+// +5s bump (or server-provided `interval` if larger) and ±15% jitter
+// on every sleep. RNG + sleep are injectable for deterministic unit
+// tests; production callers supply neither and get Math.random +
+// setTimeout. A 1-second minimum clamp defends against a pathological
+// `interval=0` server response.
+
+export interface PollForTokenOpts {
+  timeoutMs?: number
+  /** Injectable RNG — returns a number in [0, 1). Defaults to Math.random. */
+  rng?: () => number
+  /** Injectable sleep — defaults to a setTimeout-based Promise. */
+  sleep?: (ms: number) => Promise<void>
+}
+
+const MIN_SLEEP_MS = 1_000
+const SLOW_DOWN_BUMP_SECONDS = 5
+const JITTER_FRACTION = 0.15
+
+function applyJitter(baseMs: number, rng: () => number): number {
+  // rng() ∈ [0,1) → jitter ∈ [-JITTER_FRACTION, +JITTER_FRACTION)
+  const jitter = (rng() * 2 - 1) * JITTER_FRACTION
+  const jittered = baseMs * (1 + jitter)
+  return Math.max(MIN_SLEEP_MS, Math.floor(jittered))
+}
+
 export async function pollForToken(
   clientId: string,
   deviceCode: string,
   interval: number,
-  timeoutMs = 300_000,
+  opts: PollForTokenOpts | number = {},
 ): Promise<string> {
+  // Backward-compat: previous signature was
+  //   pollForToken(clientId, deviceCode, interval, timeoutMs=300000).
+  // If a caller still passes a number as the 4th arg, coerce to opts.
+  const parsed: PollForTokenOpts = typeof opts === 'number' ? { timeoutMs: opts } : opts
+  const timeoutMs = parsed.timeoutMs ?? 300_000
+  const rng = parsed.rng ?? Math.random
+  const sleep = parsed.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)))
+
+  let currentInterval = interval
   const start = Date.now()
+
   while (Date.now() - start < timeoutMs) {
-    await new Promise((r) => setTimeout(r, interval * 1000))
+    const sleepMs = applyJitter(currentInterval * 1000, rng)
+    await sleep(sleepMs)
+
     const resp = await fetch(GITHUB_TOKEN_URL, {
       method: 'POST',
       headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
@@ -56,11 +94,24 @@ export async function pollForToken(
         grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
       }),
     })
-    const data = (await resp.json()) as { access_token?: string; error?: string }
+    const data = (await resp.json()) as {
+      access_token?: string
+      error?: string
+      error_description?: string
+      interval?: number
+    }
+
     if (data.access_token) return data.access_token
     if (data.error === 'expired_token') throw new Error('Device flow expired')
     if (data.error === 'access_denied') throw new Error('User denied access')
-    // 'authorization_pending' or 'slow_down' — keep polling
+    if (data.error === 'slow_down') {
+      // Phase 03 (DX-05): RFC 8628 §3.5 — bump interval by +5s,
+      // or use server-provided interval if larger.
+      const bumped = currentInterval + SLOW_DOWN_BUMP_SECONDS
+      const server = typeof data.interval === 'number' ? data.interval : 0
+      currentInterval = Math.max(bumped, server)
+    }
+    // else 'authorization_pending' or unknown — keep currentInterval
   }
   throw new Error('Device flow timed out')
 }
