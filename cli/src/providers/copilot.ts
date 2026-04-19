@@ -1,6 +1,7 @@
 import type { CodegenInput, CodegenResult, GeneratedFile } from '@appifex/codegen'
 import type { ValidationResult } from '@appifex/validate'
 import type { Runner, DebugLogger } from '@appifex/core'
+import { rankFilesByFailureLocality } from '@appifex/analysis'
 import { extractJsonObject } from './json-extract.js'
 
 // Device flow constants
@@ -229,8 +230,10 @@ export function createCopilotFixFn(
       const srcFiles = await opts.runner.glob(`${opts.projectDir}/src/**/*.{ts,tsx}`)
       const sourcesFiles = await opts.runner.glob(`${opts.projectDir}/Sources/**/*.swift`)
       const sourceFiles = [...srcFiles, ...sourcesFiles]
+      // Phase 04 (DX-08): rank by failure locality before slicing — was blind first-20 glob order.
+      const ranked = rankFilesByFailureLocality(sourceFiles, failures)
       const codeChunks: string[] = []
-      for (const file of sourceFiles.slice(0, 20)) {
+      for (const file of ranked.slice(0, 20)) {
         const content = await opts.runner.readFile(file)
         codeChunks.push(`// ${file}\n${content}`)
       }
