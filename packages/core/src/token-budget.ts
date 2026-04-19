@@ -1,5 +1,11 @@
 import type { PhaseId, TokenBudgetConfig } from './types.js'
 
+// Phase 03 (DX-04): single source of truth for the naive
+// char-to-token heuristic. Historical duplicates lived in
+// packages/analysis/src/{token-cap,modification-planner}.ts
+// — both now import this value.
+export const CHARS_PER_TOKEN = 4
+
 export interface BudgetSummary {
   total: number
   used: number

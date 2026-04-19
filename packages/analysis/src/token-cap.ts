@@ -1,6 +1,7 @@
 import type { AppContext } from './types.js'
+import { CHARS_PER_TOKEN } from '@appifex/core'
 
-const CHARS_PER_TOKEN = 4
+// Phase 03 (DX-04): imported from single source in @appifex/core.
 const APP_CONTEXT_TOKEN_CAP = 8_000
 
 export function buildAppContextSummary(ctx: AppContext): string {

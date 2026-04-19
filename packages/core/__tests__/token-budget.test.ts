@@ -61,3 +61,10 @@ describe('TokenBudget', () => {
     expect(summary.phases.codegen).toEqual({ used: 20_000, limit: undefined })
   })
 })
+
+describe('CHARS_PER_TOKEN (DX-04 single source of truth)', () => {
+  it('is exported from @appifex/core barrel', async () => {
+    const mod = await import('../src/index.js')
+    expect(mod.CHARS_PER_TOKEN).toBe(4)
+  })
+})

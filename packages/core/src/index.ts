@@ -3,7 +3,7 @@ export * from './types-validation.js'
 export { loadConfig, saveConfig } from './config.js'
 export { ProgressEmitter, terminalProgressListener } from './progress.js'
 export type { ProgressListener } from './progress.js'
-export { TokenBudget } from './token-budget.js'
+export { TokenBudget, CHARS_PER_TOKEN } from './token-budget.js'
 export type { BudgetSummary } from './token-budget.js'
 export { Checkpoint } from './checkpoint.js'
 export {

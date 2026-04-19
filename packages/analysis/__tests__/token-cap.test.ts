@@ -59,3 +59,10 @@ describe('enforceTokenCap', () => {
     expect(result.endsWith('[TRUNCATED: summary exceeded 8K token cap]')).toBe(true)
   })
 })
+
+describe('CHARS_PER_TOKEN (DX-04 consolidation)', () => {
+  it('is imported from @appifex/core and equals 4', async () => {
+    const { CHARS_PER_TOKEN } = await import('@appifex/core')
+    expect(CHARS_PER_TOKEN).toBe(4)
+  })
+})
