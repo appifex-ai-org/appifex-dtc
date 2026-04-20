@@ -1,12 +1,12 @@
-# @dtc/codegen
+# @appifex/codegen
 
 Pluggable code generation adapter for the DTC toolkit. Accepts a design spec and test files, produces source code.
 
 ## Usage
 
 ```typescript
-import { ClaudeAdapter } from '@dtc/codegen'
-import { LocalRunner } from '@dtc/runner'
+import { ClaudeAdapter } from '@appifex/codegen'
+import { LocalRunner } from '@appifex/runner'
 
 const adapter = new ClaudeAdapter({
   generateFn: async (input) => {
@@ -28,7 +28,7 @@ await adapter.generateAndWrite(input, runner)
 Implement the `CodegenAdapter` interface to use any code generation backend:
 
 ```typescript
-import type { CodegenAdapter } from '@dtc/codegen'
+import type { CodegenAdapter } from '@appifex/codegen'
 
 const myAdapter: CodegenAdapter = {
   name: 'my-custom',

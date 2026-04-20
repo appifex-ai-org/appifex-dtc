@@ -120,7 +120,7 @@ unchanged.
 
 ## Individual commands
 
-Every `@dtc/*` package is accessible as a standalone command:
+Every `@appifex/*` package is accessible as a standalone command:
 
 ```bash
 # Design

@@ -2,7 +2,7 @@ name: App
 options:
   bundleIdPrefix: com.example
   deploymentTarget:
-    iOS: "15.0"
+    iOS: '15.0'
 targets:
   App:
     type: application

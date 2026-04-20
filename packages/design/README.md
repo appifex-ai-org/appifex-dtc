@@ -1,12 +1,12 @@
-# @dtc/design
+# @appifex/design
 
 AI design generation with pluggable adapters for the DTC toolkit.
 
 ## Usage
 
 ```typescript
-import { PencilAdapter } from '@dtc/design'
-import { LocalRunner } from '@dtc/runner'
+import { PencilAdapter } from '@appifex/design'
+import { LocalRunner } from '@appifex/runner'
 
 const runner = new LocalRunner(process.cwd())
 const pencil = new PencilAdapter(runner, { cliKey: process.env.PENCIL_CLI_KEY! })

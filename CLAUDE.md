@@ -39,7 +39,7 @@ A CLI toolset (`dtc`) that turns design files into production-ready native and w
 - React ^18.3.0 - Paired with Ink for CLI views
 - Vitest ^4.0.0 - Runner for all tests (`vitest.config.ts`); includes `packages/**/__tests__/**/*.test.ts` and `cli/__tests__/**/*.test.ts`
 - TypeScript compiler (`tsc`) - Each package builds via `tsc` to `dist/`
-- Build orchestration: root `package.json` `build` script uses `pnpm --filter` to order `@dtc/core` then `@dtc/runner` then everything else then `appifex-dtc`
+- Build orchestration: root `package.json` `build` script uses `pnpm --filter` to order `@appifex/core` then `@appifex/runner` then everything else then `appifex-dtc`
 - Custom setup script: `scripts/build-and-link.mjs` (referenced by `pnpm setup`)
 - Lint: `tsc --noEmit` (no ESLint/Prettier configured)
 ## Key Dependencies
@@ -52,7 +52,7 @@ A CLI toolset (`dtc`) that turns design files into production-ready native and w
 - Pencil MCP client - Custom implementation `packages/design/src/pencil-mcp-client.ts` using MCP SDK
 - Figma REST client - Custom `packages/design/src/figma-rest-client.ts` + `figma-make-adapter.ts`
 - `@googleapis/androidpublisher` ^14.1.0 - `packages/provision/src/play-console-client.ts`
-- `eta` ^3.5.0 - Used by `@dtc/baas` for rendering BaaS templates (`packages/baas/src/render-templates.ts`, templates in `packages/baas/src/templates/`)
+- `eta` ^3.5.0 - Used by `@appifex/baas` for rendering BaaS templates (`packages/baas/src/render-templates.ts`, templates in `packages/baas/src/templates/`)
 - `better-sqlite3` ^11.0.0 - `packages/core/src/checkpoint.ts` (checkpoint/resume DB)
 - Types: `@types/better-sqlite3` ^7.6.0
 - `zod` ^3.24.0 - `packages/mcp-server/src/server-tools-dev.ts`, `server-tools-pipeline.ts` (MCP tool input schemas)
@@ -64,7 +64,7 @@ A CLI toolset (`dtc`) that turns design files into production-ready native and w
 ## Configuration
 - Root `tsconfig.json`: `target: ES2022`, `module: Node16`, `strict: true`, `declaration: true`, `sourceMap: true`, `verbatimModuleSyntax: true`, `isolatedModules: true`, `rootDir: src`, `outDir: dist`
 - Per-package `tsconfig.json` extends root (e.g., `cli/tsconfig.json`)
-- `vitest.config.ts` defines aliases for all `@dtc/*` workspace packages pointing at `src/index.ts` (not `dist/`), enabling source-level testing without building
+- `vitest.config.ts` defines aliases for all `@appifex/*` workspace packages pointing at `src/index.ts` (not `dist/`), enabling source-level testing without building
 - `testTimeout: 10_000`
 - `config.json` loaded/saved via `packages/core/src/config.ts`
 - Default location: `~/.dtc/config.json` (see `cli/src/setup-wizard.ts:11`)
@@ -121,7 +121,7 @@ A CLI toolset (`dtc`) that turns design files into production-ready native and w
 - ESM only (`"type": "module"` in every package). Relative imports MUST include `.js` extension in `.ts` sources — e.g. `import { Checkpoint } from '../src/checkpoint.js'`, `import type { DtcConfig } from './types.js'`
 - `verbatimModuleSyntax` requires explicit `import type` for type-only imports
 ## Import Organization
-- Workspace aliases `@dtc/<pkg>` → `packages/<pkg>/src/index.ts` in `vitest.config.ts:10-29`. Runtime uses pnpm `workspace:*` in each package's `dependencies`
+- Workspace aliases `@appifex/<pkg>` → `packages/<pkg>/src/index.ts` in `vitest.config.ts:10-29`. Runtime uses pnpm `workspace:*` in each package's `dependencies`
 - CLI alias `'appifex-dtc' → cli/src/pipeline.ts` (`vitest.config.ts:28`)
 ## Error Handling
 - `try { … } catch { return DEFAULT }` for soft-failure reads — `loadConfig` defaults on failure (`packages/core/src/config.ts:13-24`); `loadRunContext` returns `null` (`packages/core/src/run-context.ts:17-29`)
@@ -167,7 +167,7 @@ A CLI toolset (`dtc`) that turns design files into production-ready native and w
 ## Architecture
 
 ## Pattern Overview
-- Workspace layout defined in `pnpm-workspace.yaml` (`packages/*`, `cli`). `vitest.config.ts` aliases each `@dtc/*` to its `src/index.ts` for in-repo testing.
+- Workspace layout defined in `pnpm-workspace.yaml` (`packages/*`, `cli`). `vitest.config.ts` aliases each `@appifex/*` to its `src/index.ts` for in-repo testing.
 - Ports-and-adapters: `Runner` port in `packages/core/src/types.ts` with three adapters in `packages/runner/src/{local-runner,e2b-runner,remote-runner}.ts` plus a decorator `packages/mcp-server/src/command-collecting-runner.ts`. Same for `AgentAdapter` (`packages/agent/src/types.ts`, `packages/agent/src/adapters/{claude,codex,gemini,base}.ts`).
 - Ordered pipeline phases defined once in `packages/core/src/run-context.ts::PHASE_ORDER` and consumed across `cli/src/pipeline.ts`, `packages/core/src/checkpoint.ts`, and `packages/mcp-server`. Each phase emits `ProgressEvent`s and persists a `CheckpointData` row keyed by `PhaseId` (`packages/core/src/types-pipeline.ts`).
 - DI-style phase functions: `runTestRegenPhase`, `runDesignDeltaPhase`, `createSkipGate`, `generatePreBuildSummary` in `cli/src/pipeline.ts` take "deps bundles" so they are unit-testable in isolation.
@@ -176,12 +176,12 @@ A CLI toolset (`dtc`) that turns design files into production-ready native and w
 ## Layers
 - Purpose: parse argv, wizard setup, render terminal UI, invoke pipeline.
 - Key files: `cli/src/entry.ts` (shebang + command dispatch), `cli/src/cli.ts` (arg parser), `cli/src/pipeline.ts` (orchestration, package `appifex-dtc`), `cli/src/setup.ts`, `cli/src/setup-wizard.ts`, `cli/src/doctor.ts`, `cli/src/preflight.ts`, `cli/src/resume-bootstrap.ts`, `cli/src/snapshot-revert.ts`, `cli/src/providers/copilot.ts`, views in `cli/src/views/*.tsx`.
-- Depends on: every `@dtc/*` plus `ink`, `ink-spinner`, `react`, `@clack/prompts`, `chalk`, `@anthropic-ai/sdk`, `@github/copilot-sdk`.
+- Depends on: every `@appifex/*` plus `ink`, `ink-spinner`, `react`, `@clack/prompts`, `chalk`, `@anthropic-ai/sdk`, `@github/copilot-sdk`.
 - Used by: the `dtc` binary (`bin/dtc` → `cli/dist/entry.js`) and the MCP server when it re-runs the pipeline.
 - Purpose: single source of truth for domain types, config, progress, token budget, checkpoint, run-context, debug logging, prerequisites, skill loading, snapshot sidecar.
 - Key files: `packages/core/src/types.ts` (barrel of `types-{design,testing,validation,pipeline,config,context}.ts`), `config.ts`, `progress.ts`, `token-budget.ts`, `checkpoint.ts` (SQLite via `better-sqlite3`), `run-context.ts` (JSON `.dtc/run-context.json`), `debug-logger.ts`, `prerequisites.ts`, `skill-loader.ts`, `snapshot-sidecar.ts`, `baas-recommend.ts`, `backend-context.ts`.
 - Depends on: `better-sqlite3` only.
-- Used by: every other `@dtc/*` package + the CLI.
+- Used by: every other `@appifex/*` package + the CLI.
 - Files: `packages/runner/src/{local-runner,e2b-runner,remote-runner,create-runner,index}.ts`. Capabilities probe in `LocalRunner` via `which` for `maestro`, `xcodebuild`, `xcodegen`, `semgrep`, `java`, `gradle`, `adb`, `emulator`, plus `ANDROID_HOME` check.
 ## Data Flow — `dtc run` (in `cli/src/pipeline.ts::runPipeline`)
 - In-memory accumulator: `RunContextBuilder` (`packages/core/src/run-context.ts:76+`).
@@ -211,8 +211,8 @@ A CLI toolset (`dtc`) that turns design files into production-ready native and w
 - `SidecarCorruptError` (`packages/core/src/snapshot-sidecar.ts`) for tamper detection.
 ## Cross-Cutting Concerns
 - **Logging:** `createDebugLogger` (`packages/core/src/debug-logger.ts`) writes to `{outputDir}/.dtc-debug/` when `--verbose`; `chalk` + Ink for UX; `ProgressEmitter` for phase events (`packages/core/src/progress.ts`).
-- **Validation:** inline CLI flag validation in `cli/src/entry.ts` (`validatePlatform`, `validateBaasProvider`, `VALID_MODES`); JSON shape validation in `loadRunContext`; static checks via `@dtc/baas-check`, `@dtc/mock-check`, and `packages/validate/src/semgrep.ts`.
-- **Authentication:** all creds live in `~/.dtc/config.json` (`DtcConfig` in `packages/core/src/types-config.ts`): `llm.apiKey`, `apple.asc*`, `android.serviceAccountKeyPath` / keystore, `deliver.*`, `design.*`. `@dtc/provision` applies Apple/Play creds; `@dtc/deliver` delegates GitHub auth to the local `gh` CLI; LLM calls use `@anthropic-ai/sdk` or shell to `claude --print` (`cli/src/pipeline.ts:588-600`).
+- **Validation:** inline CLI flag validation in `cli/src/entry.ts` (`validatePlatform`, `validateBaasProvider`, `VALID_MODES`); JSON shape validation in `loadRunContext`; static checks via `@appifex/baas-check`, `@appifex/mock-check`, and `packages/validate/src/semgrep.ts`.
+- **Authentication:** all creds live in `~/.dtc/config.json` (`DtcConfig` in `packages/core/src/types-config.ts`): `llm.apiKey`, `apple.asc*`, `android.serviceAccountKeyPath` / keystore, `deliver.*`, `design.*`. `@appifex/provision` applies Apple/Play creds; `@appifex/deliver` delegates GitHub auth to the local `gh` CLI; LLM calls use `@anthropic-ai/sdk` or shell to `claude --print` (`cli/src/pipeline.ts:588-600`).
 <!-- GSD:architecture-end -->
 
 <!-- GSD:skills-start source:skills/ -->
