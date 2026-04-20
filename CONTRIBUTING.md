@@ -1,6 +1,8 @@
 # Contributing to appifex-dtc
 
-Thanks for your interest! This project follows **git-flow** with **Conventional Commits** and **Changesets** for releases.
+Thanks for your interest! This project is maintained by **Appifex AI Technologies, Inc.** PRs are welcome, but expect a single reviewer gate and potentially slower review cadence. When a maintainers team is established, CODEOWNERS and branch protection will be updated accordingly.
+
+This project follows **git-flow** with **Conventional Commits** and **Changesets** for releases.
 
 ## Prerequisites
 

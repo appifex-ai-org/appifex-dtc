@@ -1,11 +1,11 @@
-# @dtc/fix
+# @appifex/fix
 
 TDD red-to-green fix loop with multi-layer circuit breakers.
 
 ## Usage
 
 ```typescript
-import { fixLoop } from '@dtc/fix'
+import { fixLoop } from '@appifex/fix'
 
 const result = await fixLoop(initialValidation, {
   fixFn: async (failures) => {
