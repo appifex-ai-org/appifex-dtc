@@ -1,9 +1,13 @@
 #!/usr/bin/env node
 import chalk from 'chalk'
+import { createRequire } from 'module'
 import { parseArgs } from './cli.js'
 import { setupWizard } from './setup-wizard.js'
 import { renderRunApp } from './views/RunApp.js'
 import { CliError, type Platform } from '@appifex/core'
+
+const _require = createRequire(import.meta.url)
+const _pkg = _require('../package.json') as { version: string }
 
 /**
  * Phase 02 Plan 01 (FOUND-04): top-level CliError translator.
@@ -26,7 +30,7 @@ export function handleCliError(err: unknown): never {
   process.exit(1)
 }
 
-const VERSION = '0.1.0'
+const VERSION = _pkg.version
 
 const SUPPORTED_PLATFORMS = new Set<string>(['swiftui', 'kotlin-compose', 'react'])
 
