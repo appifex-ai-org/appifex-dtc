@@ -140,7 +140,7 @@ packages/
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). This project is currently maintained by a single maintainer — PRs are welcome, but review throughput is limited.
+See [CONTRIBUTING.md](CONTRIBUTING.md). This project is maintained by **Appifex AI Technologies, Inc.** — PRs are welcome, but review throughput is limited.
 
 ## License
 
