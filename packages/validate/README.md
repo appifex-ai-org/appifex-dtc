@@ -1,12 +1,12 @@
-# @dtc/validate
+# @appifex/validate
 
 Run all tests (Maestro UI + XCTest/JUnit unit) and get unified results.
 
 ## Usage
 
 ```typescript
-import { validateAll, runMaestro, runUnitTests } from '@dtc/validate'
-import { LocalRunner } from '@dtc/runner'
+import { validateAll, runMaestro, runUnitTests } from '@appifex/validate'
+import { LocalRunner } from '@appifex/runner'
 
 const runner = new LocalRunner(process.cwd())
 

@@ -1,4 +1,4 @@
-# @dtc/mcp-server
+# @appifex/mcp-server
 
 MCP server that exposes the full DTC design-to-code toolkit to AI agents over the [Model Context Protocol](https://modelcontextprotocol.io/).
 
@@ -379,9 +379,9 @@ AI Agent (Pydantic AI / Claude Desktop / Claude Code)
     |
     | MCPServerStdio (spawns as subprocess)
     v
-@dtc/mcp-server (TypeScript, stdio transport)
+@appifex/mcp-server (TypeScript, stdio transport)
     |
-    | imports @dtc/core, @dtc/runner, @dtc/design, @dtc/spec, etc.
+    | imports @appifex/core, @appifex/runner, @appifex/design, @appifex/spec, etc.
     v
 DTC Package APIs
     |
@@ -412,7 +412,7 @@ pnpm install
 npx vitest run packages/mcp-server/__tests__/
 
 # Build
-pnpm --filter @dtc/mcp-server run build
+pnpm --filter @appifex/mcp-server run build
 ```
 
 ## Important Notes

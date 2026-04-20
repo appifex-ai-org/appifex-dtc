@@ -1,12 +1,12 @@
-# @dtc/build
+# @appifex/build
 
 Build SwiftUI and Kotlin Compose projects via a Runner abstraction.
 
 ## Usage
 
 ```typescript
-import { buildSwift, buildKotlinCompose } from '@dtc/build'
-import { LocalRunner } from '@dtc/runner'
+import { buildSwift, buildKotlinCompose } from '@appifex/build'
+import { LocalRunner } from '@appifex/runner'
 
 const runner = new LocalRunner(process.cwd())
 

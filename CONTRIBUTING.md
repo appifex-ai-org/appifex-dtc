@@ -1,6 +1,8 @@
 # Contributing to appifex-dtc
 
-Thanks for your interest! This project follows **git-flow** with **Conventional Commits** and **Changesets** for releases.
+Thanks for your interest! This project is currently **solo-maintained** by [@rayliu-factory](https://github.com/rayliu-factory). PRs are welcome, but expect a single reviewer gate and potentially slower review cadence. When a maintainers team is established, CODEOWNERS and branch protection will be updated accordingly.
+
+This project follows **git-flow** with **Conventional Commits** and **Changesets** for releases.
 
 ## Prerequisites
 

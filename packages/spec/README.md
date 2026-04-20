@@ -1,11 +1,11 @@
-# @dtc/spec
+# @appifex/spec
 
 Design spec extraction and platform translation for the DTC toolkit.
 
 ## Usage
 
 ```typescript
-import { extractSpec, translateSpec } from '@dtc/spec'
+import { extractSpec, translateSpec } from '@appifex/spec'
 
 // Parse design spec from JSON
 const spec = extractSpec(jsonString)
@@ -17,7 +17,7 @@ const ktSpec = translateSpec(spec, 'kotlin-compose')       // testTag, Kotlin Co
 
 ## What it does
 
-1. **Extract**: Parses a design spec JSON (from `@dtc/design`) into a typed `DesignSpec`
+1. **Extract**: Parses a design spec JSON (from `@appifex/design`) into a typed `DesignSpec`
 2. **Translate**: Maps generic components to platform-specific types and generates testIDs
 
-The platform spec is consumed by `@dtc/test-gen` to generate tests and by `@dtc/codegen` to generate code.
+The platform spec is consumed by `@appifex/test-gen` to generate tests and by `@appifex/codegen` to generate code.

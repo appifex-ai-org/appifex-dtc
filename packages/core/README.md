@@ -1,4 +1,4 @@
-# @dtc/core
+# @appifex/core
 
 Shared types, progress emitter, token budget, checkpoint, and configuration for the DTC toolkit.
 
@@ -10,7 +10,7 @@ import {
   ProgressEmitter, terminalProgressListener,
   TokenBudget,
   Checkpoint,
-} from '@dtc/core'
+} from '@appifex/core'
 
 // Config
 const config = await loadConfig('~/.dtc')
