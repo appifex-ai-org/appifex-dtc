@@ -67,7 +67,7 @@ Add to your project's `.mcp.json`:
 }
 ```
 
-## Connecting from the Appifex Backend
+## Connecting from the Appifex AI Technologies, Inc. Backend
 
 ### Option A: Pydantic AI Agent Toolset
 
