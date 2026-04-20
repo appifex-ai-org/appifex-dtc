@@ -1,4 +1,4 @@
-# @dtc/provision
+# @appifex/provision
 
 App store provisioning and submission:
 - **iOS**: TestFlight via the App Store Connect REST API + `xcrun altool --upload-package`
@@ -120,10 +120,10 @@ dtc_provision_submit({ ipaPath: "/path/to/App.ipa" })                   # pre-bu
 ## Programmatic Usage
 
 ```typescript
-import { runTestFlightUploadPhase } from '@dtc/provision'
-import { runXcodeArchivePhase } from '@dtc/build'
-import { createRunner } from '@dtc/runner'
-import { ProgressEmitter, loadConfig } from '@dtc/core'
+import { runTestFlightUploadPhase } from '@appifex/provision'
+import { runXcodeArchivePhase } from '@appifex/build'
+import { createRunner } from '@appifex/runner'
+import { ProgressEmitter, loadConfig } from '@appifex/core'
 
 const config = await loadConfig('~/.dtc')
 const runner = createRunner(config.runner, { cwd: './my-app' })
@@ -250,9 +250,9 @@ dtc_provision_submit({ aabPath: "/path/to/app.aab" })                       # pr
 ### Programmatic Usage
 
 ```typescript
-import { PlayConsoleClient } from '@dtc/provision'
-import { bundleKotlin } from '@dtc/build'
-import { createRunner } from '@dtc/runner'
+import { PlayConsoleClient } from '@appifex/provision'
+import { bundleKotlin } from '@appifex/build'
+import { createRunner } from '@appifex/runner'
 
 const runner = createRunner({ type: 'local' })
 

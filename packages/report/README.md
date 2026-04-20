@@ -1,11 +1,11 @@
-# @dtc/report
+# @appifex/report
 
 Generate final pipeline reports with test results, fix history, and token usage.
 
 ## Usage
 
 ```typescript
-import { buildReport, formatMarkdown, formatJson } from '@dtc/report'
+import { buildReport, formatMarkdown, formatJson } from '@appifex/report'
 
 const report = buildReport({
   projectName: 'Pet Adoption App',

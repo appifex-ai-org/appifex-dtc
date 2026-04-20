@@ -1,11 +1,11 @@
-# @dtc/runner
+# @appifex/runner
 
 Execution environment abstraction for the DTC toolkit. The same tools work locally, in E2B cloud sandboxes, or on remote Mac Runners.
 
 ## Usage
 
 ```typescript
-import { createRunner, LocalRunner, E2BRunner, RemoteRunner } from '@dtc/runner'
+import { createRunner, LocalRunner, E2BRunner, RemoteRunner } from '@appifex/runner'
 
 // Factory (reads from DtcConfig.runner)
 const runner = createRunner({ type: 'local' })

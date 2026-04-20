@@ -1,11 +1,11 @@
-# @dtc/test-gen
+# @appifex/test-gen
 
 Generate all tests (UI + unit) before code. This is the "tests first" step of the two-layer TDD approach.
 
 ## Usage
 
 ```typescript
-import { generateUITests, generateUnitTests } from '@dtc/test-gen'
+import { generateUITests, generateUnitTests } from '@appifex/test-gen'
 
 // Generate Maestro UI test flows from platform spec
 const flows = generateUITests(platformSpec)
