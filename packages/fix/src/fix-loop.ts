@@ -1,4 +1,10 @@
-import type { FixResult, FixAttempt, FixRecommendation, CircuitBreakReason , TokenBudget} from '@appifex/core'
+import type {
+  FixResult,
+  FixAttempt,
+  FixRecommendation,
+  CircuitBreakReason,
+  TokenBudget,
+} from '@appifex/core'
 import { BudgetExhaustedError, FIX_LOOP_MIN_RESERVE_RATIO } from '@appifex/core'
 import type { ValidationResult } from '@appifex/validate'
 
