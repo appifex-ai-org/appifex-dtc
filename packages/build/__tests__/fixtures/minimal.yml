@@ -1,0 +1,24 @@
+name: App
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    iOS: '15.0'
+targets:
+  App:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+    info:
+      path: Sources/Info.plist
+      properties:
+        CFBundleDisplayName: App
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.example.App
+  AppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: App

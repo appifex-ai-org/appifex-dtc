@@ -59,11 +59,10 @@ describe('uploadIpa — canonical altool flag set (Pitfall 8)', () => {
     fsMocks.stat.mockRejectedValue(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }))
     const runner = makeRunner({ exitCode: 0, stdout: '{"tool-version":"4.11.1"}', stderr: '' })
 
-     
     await uploadIpa({ runner, ...STANDARD_ARGS } as any)
 
     expect(runner.exec).toHaveBeenCalled()
-     
+
     const [cmd, args] = (runner.exec as any).mock.calls[0]
     expect(cmd).toBe('xcrun')
     expect(args).toContain('altool')
@@ -90,9 +89,9 @@ describe('uploadIpa — canonical altool flag set (Pitfall 8)', () => {
   it('does NOT use deprecated --upload-app or camelCase flags', async () => {
     fsMocks.stat.mockRejectedValue(Object.assign(new Error('ENOENT'), { code: 'ENOENT' }))
     const runner = makeRunner({ exitCode: 0, stdout: '{}', stderr: '' })
-     
+
     await uploadIpa({ runner, ...STANDARD_ARGS } as any)
-     
+
     const [, args] = (runner.exec as any).mock.calls[0]
     expect(args).not.toContain('--upload-app')
     expect(args).not.toContain('--apiKey')
@@ -115,7 +114,6 @@ describe('ensureKeyAtStandardPath (Pitfall 4)', () => {
   })
 
   it('is idempotent when the standard-path file already exists', async () => {
-     
     fsMocks.stat.mockResolvedValue({ isFile: () => true, isSymbolicLink: () => true } as any)
     await ensureKeyAtStandardPath('/user/keys/AuthKey_KEY1.p8', 'KEY1')
     // symlink must NOT be called when stat succeeds

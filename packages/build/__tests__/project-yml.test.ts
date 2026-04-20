@@ -12,10 +12,7 @@ import {
   type ProjectYml,
 } from '../src/project-yml.js'
 
-const FIXTURE_PATH = path.resolve(
-  __dirname,
-  '../../../.planning/phases/05-xcode-archive-testflight-upload/fixtures/project-yml/minimal.yml',
-)
+const FIXTURE_PATH = path.resolve(__dirname, 'fixtures/minimal.yml')
 const FIXTURE = readFileSync(FIXTURE_PATH, 'utf-8')
 
 function createMockRunner(initialFiles: Record<string, string> = {}): Runner & {

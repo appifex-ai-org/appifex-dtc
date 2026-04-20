@@ -31,7 +31,6 @@ export async function pollUntilProcessed(
   const phase: PhaseId = opts.phaseId ?? 'provision'
   const start = Date.now()
 
-   
   while (true) {
     const elapsed = Date.now() - start
     if (elapsed >= timeout) return 'TIMEOUT'

@@ -11,13 +11,7 @@ import type { Runner } from '@appifex/core'
 import { archiveSwift } from '../src/swift-archive.js'
 import { readProjectYml } from '../src/project-yml.js'
 
-const FIXTURE = readFileSync(
-  path.resolve(
-    __dirname,
-    '../../../.planning/phases/05-xcode-archive-testflight-upload/fixtures/project-yml/minimal.yml',
-  ),
-  'utf-8',
-)
+const FIXTURE = readFileSync(path.resolve(__dirname, 'fixtures/minimal.yml'), 'utf-8')
 
 function createMockRunner(
   initialFiles: Record<string, string> = {},
