@@ -1,5 +1,14 @@
 # @appifex/cli
 
+## 1.0.1
+
+### Patch Changes
+
+- [#17](https://github.com/appifex-ai-org/appifex-dtc/pull/17) [`f106db3`](https://github.com/appifex-ai-org/appifex-dtc/commit/f106db30f1e37275160417f1df8d06066f806c52) Thanks [@rayliu-factory](https://github.com/rayliu-factory)! - OSS readiness: untrack internal planning files, fix package scope refs, expand README, add ROADMAP
+
+- Updated dependencies []:
+  - @appifex/mcp-server@1.0.1
+
 ## 1.0.0
 
 ### Major Changes

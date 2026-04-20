@@ -1,5 +1,12 @@
 # @appifex/mcp-server
 
+## 1.0.1
+
+### Patch Changes
+
+- Updated dependencies [[`f106db3`](https://github.com/appifex-ai-org/appifex-dtc/commit/f106db30f1e37275160417f1df8d06066f806c52)]:
+  - @appifex/cli@1.0.1
+
 ## 1.0.0
 
 ### Major Changes
