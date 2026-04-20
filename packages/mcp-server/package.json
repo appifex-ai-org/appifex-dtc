@@ -1,6 +1,6 @@
 {
   "name": "@appifex/mcp-server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server exposing the DTC toolkit to AI agents",
   "license": "MIT",
   "type": "module",
