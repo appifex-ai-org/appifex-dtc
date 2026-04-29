@@ -40,6 +40,23 @@ Two screens:
 
 `.github/workflows/e2e.yml` runs both jobs (`e2e-build` on PR, `e2e-simulator` on push) using `--design-ir fixtures/tiny-mock/design-ir.json` per the spike fallback path documented below.
 
+To reproduce the PR-safe build gate locally:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm build
+
+DTC_LLM_MODE=fixture node cli/dist/entry.js run \
+  --design-ir fixtures/tiny-mock/design-ir.json \
+  --platform swiftui --baas mock \
+  --no-upload --skip-simulator --ci \
+  --out fixtures/tiny-mock/out
+
+node scripts/verify-tiny-mock-output.mjs --out fixtures/tiny-mock/out
+```
+
+The gate requires the fixture pipeline to exit cleanly. Reaching the Build phase is not sufficient.
+
 **Outcome:** (b) — **partial offline** (live-verified 2026-04-15 against a real `helloworld.pen` with WiFi off).
 
 What works offline:

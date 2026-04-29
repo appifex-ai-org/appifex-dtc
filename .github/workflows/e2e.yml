@@ -43,23 +43,29 @@ jobs:
         shell: bash
         run: |
           # GATE-02 success criterion: pipeline runs hermetically (zero LLM
-          # tokens) and reaches the Build phase (xcodegen + xcodebuild are
-          # invoked inside packages/build/src/swift.ts). Cassette content
-          # quality — whether the generated Swift compiles cleanly — is a
-          # separate concern tracked outside Phase 01.
-          set +e
+          # tokens), exits cleanly, and produces a generated SwiftUI project
+          # with parseable .dtc state. xcodegen + xcodebuild are invoked inside
+          # packages/build/src/swift.ts.
+          set -o pipefail
           node cli/dist/entry.js run \
             --design-ir fixtures/tiny-mock/design-ir.json \
             --platform swiftui --baas mock \
             --no-upload --skip-simulator --ci \
             --out fixtures/tiny-mock/out 2>&1 | tee /tmp/pipeline.log
-          PIPELINE_EXIT=${PIPESTATUS[0]}
-          if grep -qE "(◐|✓|✗) Build " /tmp/pipeline.log; then
-            echo "GATE-02 ok: pipeline reached Build phase hermetically (pipeline exit=$PIPELINE_EXIT)"
-            exit 0
-          fi
-          echo "::error::Pipeline did not reach Build phase. exit=$PIPELINE_EXIT"
-          exit 1
+      - name: Verify generated tiny fixture output
+        run: node scripts/verify-tiny-mock-output.mjs --out fixtures/tiny-mock/out
+      - name: Upload tiny fixture diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiny-fixture-diagnostics
+          if-no-files-found: ignore
+          path: |
+            /tmp/pipeline.log
+            fixtures/tiny-mock/out/.dtc/**
+            fixtures/tiny-mock/out/.dtc-debug/**
+            fixtures/tiny-mock/out/project.yml
+            fixtures/tiny-mock/out/App.xcodeproj/**
 
   e2e-simulator:
     if: github.event_name == 'push'
