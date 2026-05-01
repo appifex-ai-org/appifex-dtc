@@ -23,7 +23,7 @@ describe('config', () => {
 
     expect(config).toEqual({
       llm: { provider: 'anthropic', apiKey: '' },
-      design: { tool: 'pencil' },
+      design: { tool: 'prompt' },
       runner: { type: 'local' },
     })
   })
@@ -77,7 +77,7 @@ describe('config', () => {
     const loaded = await loadConfig(configDir)
     // Should have the saved llm but defaults for the rest
     expect(loaded.llm).toEqual({ provider: 'openai', apiKey: 'key' })
-    expect(loaded.design).toEqual({ tool: 'pencil' })
+    expect(loaded.design).toEqual({ tool: 'prompt' })
     expect(loaded.runner).toEqual({ type: 'local' })
   })
 })

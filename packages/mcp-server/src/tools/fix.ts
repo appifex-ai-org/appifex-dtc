@@ -1,4 +1,9 @@
-import { fixLoop, createDefaultFixFn, createClaudeCliFixFn } from '@appifex/fix'
+import {
+  fixLoop,
+  createDefaultFixFn,
+  createClaudeCliFixFn,
+  createCodexCliFixFn,
+} from '@appifex/fix'
 import { validateAll } from '@appifex/validate'
 import { buildSwift, buildKotlin } from '@appifex/build'
 import type { Runner, Platform, DtcConfig } from '@appifex/core'
@@ -53,12 +58,14 @@ export async function handleFix(
   const fixFn =
     config.llm.provider === 'claude-cli'
       ? createClaudeCliFixFn({ runner, projectDir, model: config.llm.model })
-      : createDefaultFixFn({
-          apiKey: config.llm.apiKey ?? '',
-          runner,
-          projectDir,
-          model: config.llm.model,
-        })
+      : config.llm.provider === 'codex-cli'
+        ? createCodexCliFixFn({ runner, projectDir, model: config.llm.model })
+        : createDefaultFixFn({
+            apiKey: config.llm.apiKey ?? '',
+            runner,
+            projectDir,
+            model: config.llm.model,
+          })
 
   const result = await fixLoop(initialValidation, {
     fixFn,

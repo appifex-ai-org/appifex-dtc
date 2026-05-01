@@ -4,8 +4,8 @@
 
 ## Commands
 
-- `dtc setup` — interactive credential wizard
-- `dtc setup --full` — captures Apple, Firebase, LLM, OAuth in one flow
+- `dtc setup` — quick local setup wizard
+- `dtc setup --full` — production setup: Firebase, Apple/TestFlight, Google Play, delivery, OAuth
 - `dtc doctor` — verifies prerequisites (Node, Xcode, firebase-tools, ASC key, etc.)
 - `dtc run` — runs the design → TestFlight pipeline
 - `dtc run --resume` — resumes from last checkpoint

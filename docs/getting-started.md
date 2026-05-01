@@ -17,16 +17,25 @@ npm install -g @appifex/cli
 ## One-time setup
 
 ```bash
+dtc setup
+```
+
+The quick wizard captures only what you need for a first local run:
+- App name + output directory
+- LLM provider, including local Codex or Claude CLI
+- Design tool
+- Runner environment
+- Token budget
+
+All credentials live at `~/.dtc/config.json`. Nothing is committed to your project.
+
+For production delivery setup, run:
+
+```bash
 dtc setup --full
 ```
 
-The wizard captures:
-- LLM provider + API key
-- Apple ASC API key + issuer ID
-- Firebase project (creates one if needed)
-- Google/Apple OAuth client IDs
-
-All credentials live at `~/.dtc/config.json`. Nothing is committed to your project.
+That adds Firebase, Apple/TestFlight, Google Play, git delivery, and OAuth setup.
 
 ## First run
 

@@ -12,15 +12,22 @@ const ADAPTERS: Partial<Record<AgentType, () => AgentAdapter>> = {
   gemini: () => new GeminiAgent(),
 }
 
+export interface DetectAgentOpts {
+  preferred?: AgentType
+}
+
 export function createAgent(type: AgentType): AgentAdapter {
   const factory = ADAPTERS[type]
   if (!factory) throw new Error(`Agent '${type}' is not yet implemented`)
   return factory()
 }
 
-/** Auto-detect the first available agent CLI, in priority order */
-export async function detectAgent(): Promise<AgentAdapter | null> {
-  for (const type of AGENT_PRIORITY) {
+/** Auto-detect the first available agent CLI, in priority order. */
+export async function detectAgent(opts: DetectAgentOpts = {}): Promise<AgentAdapter | null> {
+  const priority = opts.preferred
+    ? [opts.preferred, ...AGENT_PRIORITY.filter((type) => type !== opts.preferred)]
+    : AGENT_PRIORITY
+  for (const type of priority) {
     const factory = ADAPTERS[type]
     if (!factory) continue
     const agent = factory()

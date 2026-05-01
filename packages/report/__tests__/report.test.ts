@@ -101,6 +101,33 @@ describe('formatMarkdown', () => {
     expect(md).toContain('ALL GREEN') // or similar
     expect(md).toContain('Token') // token usage section
   })
+
+  it('shows unknown local CLI cost and changed file names', () => {
+    const report = buildReport({
+      projectName: 'Codex App',
+      platforms: ['swiftui'],
+      designIterations: 1,
+      validation: { swiftui: sampleValidation },
+      fix: { swiftui: sampleFix },
+      tokenUsage: {},
+      totalDuration: 1000,
+      agent: {
+        agentName: 'codex',
+        model: 'gpt-5.5',
+        stopReason: 'success',
+        costUnknown: true,
+        filesGenerated: ['Sources/App.swift'],
+      },
+      costUsdTotal: null,
+      costNote: 'Unknown - Codex CLI did not report token usage or cost.',
+    })
+
+    const md = formatMarkdown(report)
+
+    expect(md).toContain('unknown (local CLI did not report usage)')
+    expect(md).toContain('Unknown - Codex CLI did not report token usage or cost.')
+    expect(md).toContain('Changed: `Home.tsx`, `utils.ts`')
+  })
 })
 
 describe('formatJson', () => {

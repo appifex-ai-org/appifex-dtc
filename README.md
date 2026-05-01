@@ -43,8 +43,11 @@ Requires Node ≥22, pnpm ≥9, macOS with Xcode 15+ (for iOS/Swift targets).
 ## Quickstart
 
 ```bash
-# One-time setup: LLM API key, Apple ASC credentials, Firebase project
+# One-time local setup: app metadata, LLM/agent, design tool, runner
 dtc setup
+
+# Production setup: Firebase, TestFlight, Play Console, delivery
+dtc setup --full
 
 # Run the full pipeline
 dtc run --design my-app.pen --platform swiftui
@@ -101,7 +104,8 @@ Each stage is a checkpointed phase. A failed or interrupted run resumes from the
 ## CLI reference
 
 ```
-dtc setup              One-time credential and project configuration
+dtc setup              Quick local setup
+dtc setup --full       Production setup for Firebase, stores, delivery
 dtc run                Execute the full pipeline (see dtc run --help)
 dtc doctor             Check prerequisites and credential health
 dtc resume             Resume an interrupted pipeline run

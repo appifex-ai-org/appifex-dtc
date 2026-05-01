@@ -17,6 +17,7 @@ const { spawn } = await import('node:child_process')
 // spawn site is unit-testable. This import will fail until Task 2 adds the export.
 const pipelineModule: { runClaudePrint?: (...args: unknown[]) => unknown } =
   await import('../src/pipeline.js')
+const pipelineModuleWithCodex: { runCodexExec?: (...args: unknown[]) => unknown } = pipelineModule
 
 function makeFakeChildEmittingEpipeOnStdin() {
   const child = new EventEmitter() as EventEmitter & {
@@ -85,6 +86,42 @@ describe('runClaudePrint (cli/pipeline.ts) — EPIPE handling', () => {
       expect(epipe.site).toBe('cli/pipeline.ts:claude-print')
       expect(epipe.payloadBytes).toBe(expectedBytes)
       expect(epipe.name).toBe('EpipeError')
+    }
+  })
+})
+
+describe('runCodexExec (cli/pipeline.ts) — EPIPE handling', () => {
+  beforeEach(() => {
+    vi.mocked(spawn).mockReset()
+  })
+
+  it('rejects with EpipeError when stdin emits EPIPE', async () => {
+    expect(typeof pipelineModuleWithCodex.runCodexExec).toBe('function')
+
+    vi.mocked(spawn).mockImplementation((() => makeFakeChildEmittingEpipeOnStdin()) as any)
+
+    const prompt = 'x'.repeat(100_000)
+    const expectedBytes = Buffer.byteLength(prompt, 'utf8')
+
+    await expect(
+      pipelineModuleWithCodex.runCodexExec!({
+        prompt,
+        model: 'default',
+        cwd: '/tmp',
+      }),
+    ).rejects.toThrow(EpipeError)
+
+    try {
+      await pipelineModuleWithCodex.runCodexExec!({
+        prompt,
+        model: 'default',
+        cwd: '/tmp',
+      })
+    } catch (err) {
+      expect(err).toBeInstanceOf(EpipeError)
+      const epipe = err as EpipeError
+      expect(epipe.site).toBe('cli/pipeline.ts:codex-exec')
+      expect(epipe.payloadBytes).toBe(expectedBytes)
     }
   })
 })

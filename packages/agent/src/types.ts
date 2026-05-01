@@ -17,6 +17,8 @@ export interface AgentRunOpts {
   designImagePath?: string
   /** Resume a previous session by ID instead of starting fresh */
   resumeSessionId?: string
+  /** Internal: file path where the agent writes its final assistant message */
+  outputLastMessagePath?: string
 }
 
 export type AgentStopReason = 'success' | 'budget_exceeded' | 'timeout' | 'error'

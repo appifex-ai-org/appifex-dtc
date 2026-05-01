@@ -66,14 +66,14 @@ export interface DtcConfig {
 }
 
 export interface LlmConfig {
-  provider: 'anthropic' | 'openai' | 'google' | 'copilot' | 'claude-cli'
+  provider: 'anthropic' | 'openai' | 'google' | 'copilot' | 'claude-cli' | 'codex-cli'
   apiKey: string
   githubToken?: string
   model?: string
   fastModel?: string
 }
 
-export type DesignToolName = 'pencil' | 'stitch' | 'figma-make'
+export type DesignToolName = 'prompt' | 'pencil' | 'stitch' | 'figma-make'
 
 export interface DesignConfig {
   tool: DesignToolName

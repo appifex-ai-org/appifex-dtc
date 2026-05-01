@@ -51,6 +51,27 @@ function makeFakeChildEmittingEpipeOnStdin() {
   return child
 }
 
+function makeSuccessfulChild() {
+  const child = new EventEmitter() as EventEmitter & {
+    stdin: Writable
+    stdout: EventEmitter
+    stderr: EventEmitter
+    kill: (sig?: string) => void
+  }
+  const stdinEmitter = new EventEmitter()
+  child.stdin = {
+    on: stdinEmitter.on.bind(stdinEmitter),
+    write: () => true,
+    end: () => {
+      setImmediate(() => child.emit('close', 0))
+    },
+  } as unknown as Writable
+  child.stdout = new EventEmitter()
+  child.stderr = new EventEmitter()
+  child.kill = () => {}
+  return child
+}
+
 function fakeRunner(): Runner {
   return {
     exec: vi.fn(async () => ({ stdout: '', stderr: '', code: 0 })),
@@ -123,6 +144,42 @@ describe('createClaudeCliFixFn — EPIPE handling', () => {
     const e = new EpipeError('msg', 'site', 42)
     expect(e).toBeInstanceOf(CliError)
     expect(e.name).toBe('EpipeError')
+  })
+
+  it('detects changed files without requiring a git repo', async () => {
+    vi.mocked(spawn).mockImplementation((() => makeSuccessfulChild()) as any)
+    let readCount = 0
+    const runner = {
+      ...fakeRunner(),
+      glob: vi.fn(async (pattern: string) =>
+        pattern.includes('/Sources/') ? ['/tmp/proj/Sources/ContentView.swift'] : [],
+      ),
+      readFile: vi.fn(async (file: string) => {
+        if (file.endsWith('ContentView.swift')) {
+          readCount += 1
+          return readCount === 1 ? 'old source' : 'fixed source'
+        }
+        return ''
+      }),
+    } as unknown as Runner
+    const fixFn = createClaudeCliFixFn({
+      runner,
+      projectDir: '/tmp/proj',
+      timeoutMs: 60_000,
+    })
+
+    const result = await fixFn({
+      unit: { failures: [], total: 0, passed: 0 },
+      ui: {
+        total: 1,
+        passed: 0,
+        failed: 1,
+        results: [{ flowName: 'weather', passed: false, error: 'missing id', assertions: [] }],
+      },
+      allPassed: false,
+    } as unknown as ValidationResult)
+
+    expect(result.filesChanged).toEqual(['Sources/ContentView.swift'])
   })
 
   // Suppress unused-var warning; emptyFailures may be used in a future test extension.

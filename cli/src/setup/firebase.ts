@@ -40,8 +40,27 @@ export async function runFirebaseSection(
     return
   }
 
-  // Hard-fail when firebase-tools CLI is absent.
+  // Explain the Firebase dependency before failing; first-run users may only want
+  // a local mock backend while they learn the CLI.
   if (!which('firebase')) {
+    p.log.warn(
+      'Firebase setup needs the firebase-tools CLI to create a Firebase project and download GoogleService-Info.plist.',
+    )
+    p.log.info('Install later with: npm install -g firebase-tools && firebase login')
+    const skipFirebase = await p.confirm({
+      message: 'Skip Firebase for now and use mock backend services?',
+      initialValue: true,
+    })
+    assertNotCancelled(skipFirebase)
+    if (skipFirebase) {
+      const current = await loadConfig(configDir)
+      await saveConfig(configDir, {
+        ...current,
+        baas: { ...current.baas, provider: 'mock' },
+      })
+      p.log.info('Firebase skipped. Runs will use mock backend services unless overridden.')
+      return
+    }
     throw new ConfigError(
       'firebase-tools CLI is required. Install: npm install -g firebase-tools (or: curl -sL firebase.tools | bash)',
     )

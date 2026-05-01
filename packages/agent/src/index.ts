@@ -1,4 +1,5 @@
 export { createAgent, detectAgent } from './registry.js'
+export type { DetectAgentOpts } from './registry.js'
 export { buildAgentPrompt } from './prompt-builder.js'
 export type { PromptBuilderOpts } from './prompt-builder.js'
 export { ClaudeCodeAgent } from './adapters/claude.js'

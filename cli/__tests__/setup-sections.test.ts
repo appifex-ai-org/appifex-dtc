@@ -104,6 +104,30 @@ describe('runLlmSection', () => {
     expect(updatedConfig.llm).toBeDefined()
     expect(updatedConfig.llm.provider).toBe('anthropic')
   })
+
+  it('saves Codex CLI provider without asking for an API key', async () => {
+    const { saveConfig, loadConfig } = await import('@appifex/core')
+    await saveConfig(configDir, {
+      llm: { provider: 'anthropic', apiKey: 'sk-old', model: 'claude-3' },
+      design: { tool: 'pencil' },
+      runner: { type: 'local' },
+    })
+
+    const clack = await import('@clack/prompts')
+    vi.mocked(clack.select).mockResolvedValueOnce('codex-cli').mockResolvedValueOnce('default')
+
+    const { runLlmSection } = await import('../src/setup/llm.js')
+    const existingConfig = await loadConfig(configDir)
+    await runLlmSection(configDir, existingConfig)
+
+    const updatedConfig = await loadConfig(configDir)
+    expect(updatedConfig.llm).toEqual({
+      provider: 'codex-cli',
+      apiKey: '',
+      model: 'default',
+    })
+    expect(clack.password).not.toHaveBeenCalled()
+  })
 })
 
 // ── setupWizard ordering tests ────────────────────────────────────────────
@@ -119,7 +143,7 @@ describe('setupWizard section ordering', () => {
     vi.restoreAllMocks()
   })
 
-  it('Test 8: calls sections in order: project -> llm -> design -> runner -> apple -> android -> deliver -> budget -> oauth', async () => {
+  it('Test 8: quick setup calls only beginner sections in order', async () => {
     const { saveConfig } = await import('@appifex/core')
     await saveConfig(configDir, {
       llm: { provider: 'anthropic', apiKey: 'sk-test' },
@@ -140,6 +164,28 @@ describe('setupWizard section ordering', () => {
     }
 
     await indexMod.setupWizard(configDir)
+
+    expect(callOrder).toEqual(['project', 'llm', 'design', 'runner', 'budget'])
+  })
+
+  it('full setup calls production sections in order', async () => {
+    const { saveConfig } = await import('@appifex/core')
+    await saveConfig(configDir, {
+      llm: { provider: 'anthropic', apiKey: 'sk-test' },
+      design: { tool: 'pencil' },
+      runner: { type: 'local' },
+    })
+
+    const callOrder: string[] = []
+    const indexMod = await import('../src/setup/index.js')
+
+    for (const name of indexMod.SECTION_ORDER) {
+      vi.spyOn(indexMod.SECTIONS, name).mockImplementation(async () => {
+        callOrder.push(name)
+      })
+    }
+
+    await indexMod.setupWizard(configDir, { full: true })
 
     expect(callOrder).toEqual([
       'project',

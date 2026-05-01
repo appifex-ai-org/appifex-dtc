@@ -41,6 +41,8 @@ export function formatMarkdown(report: PipelineReport): string {
     if (report.agent.model) lines.push(`| Model | ${report.agent.model} |`)
     lines.push(`| Stop Reason | ${report.agent.stopReason} |`)
     if (report.agent.costUsd != null) lines.push(`| Cost | $${report.agent.costUsd.toFixed(4)} |`)
+    else if (report.agent.costUnknown)
+      lines.push('| Cost | unknown (local CLI did not report usage) |')
     if (report.agent.sessionId) lines.push(`| Session ID | \`${report.agent.sessionId}\` |`)
     // Phase 7 (WR-03): guard against missing filesGenerated (e.g. deserialized from older checkpoint)
     const filesGenerated = report.agent.filesGenerated ?? []
@@ -129,6 +131,14 @@ export function formatMarkdown(report: PipelineReport): string {
           lines.push(
             `- **Attempt ${attempt.attempt}**: ${before} → ${after} (${attempt.tokensUsed.toLocaleString()} tokens, ${attempt.filesChanged.length} files changed)`,
           )
+          if (attempt.filesChanged.length > 0) {
+            const shown = attempt.filesChanged.slice(0, 8).map((f) => `\`${f}\``)
+            const more =
+              attempt.filesChanged.length > shown.length
+                ? `, +${attempt.filesChanged.length - shown.length} more`
+                : ''
+            lines.push(`  Changed: ${shown.join(', ')}${more}`)
+          }
         }
         lines.push('')
       }
@@ -178,12 +188,16 @@ export function formatMarkdown(report: PipelineReport): string {
 
   // Phase 7 (OBS-01 D-15): Cost Estimate section
   const hasCost =
-    report.costUsdPerPhase != null || report.costUsdTotal != null || report.pricingAsOf != null
+    report.costUsdPerPhase != null ||
+    report.costUsdTotal != null ||
+    report.pricingAsOf != null ||
+    report.costNote != null
   if (hasCost) {
     lines.push('## Cost Estimate')
     lines.push('')
     if (report.model) lines.push(`**Model:** ${report.model}`)
     if (report.pricingAsOf) lines.push(`**Prices as of:** ${report.pricingAsOf}`)
+    if (report.costNote) lines.push(`**Cost:** ${report.costNote}`)
     lines.push('')
     if (report.costUsdPerPhase) {
       lines.push('| Phase | Tokens (in/out) | USD |')

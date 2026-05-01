@@ -7,6 +7,8 @@ export interface AgentReportInfo {
   sessionId?: string
   stopReason: string
   costUsd?: number
+  /** True when a local CLI did not expose token/cost usage. */
+  costUnknown?: boolean
   filesGenerated: string[]
   /** Summary output from the agent */
   output?: string
@@ -32,6 +34,8 @@ export interface BuildReportInput {
   model?: string
   /** Phase 7 (OBS-01 D-15): pricing table as-of date (honesty contract). */
   pricingAsOf?: string
+  /** Human-readable note when cost cannot be estimated honestly. */
+  costNote?: string
 }
 
 export interface ReportSummary {
@@ -70,6 +74,8 @@ export interface PipelineReport {
   model?: string
   /** Phase 7 (OBS-01 D-15): pricing table as-of date (honesty contract). */
   pricingAsOf?: string
+  /** Human-readable note when cost cannot be estimated honestly. */
+  costNote?: string
 }
 
 export function buildReport(input: BuildReportInput): PipelineReport {
@@ -124,5 +130,6 @@ export function buildReport(input: BuildReportInput): PipelineReport {
     costUsdTotal: input.costUsdTotal,
     model: input.model,
     pricingAsOf: input.pricingAsOf,
+    costNote: input.costNote,
   }
 }

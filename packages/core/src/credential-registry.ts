@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs'
 import type { DtcConfig } from './types.js'
 import { isFixtureMode } from './llm-fixture.js'
 import { probeAscOffline, probeAscLive, signAscJwt } from './asc-jwt.js'
+import { which } from './prerequisites.js'
 
 export type CredentialStatus = 'OK' | 'MISSING' | 'INVALID' | 'EXPIRED'
 
@@ -39,6 +40,19 @@ export async function probeLlm(
   opts: CredentialCheckOpts,
 ): Promise<CredentialCheck> {
   const base = { name: 'llm', severity: 'critical' as const }
+  const provider = config?.llm?.provider
+  if (provider === 'claude-cli' || provider === 'codex-cli') {
+    const binary = provider === 'claude-cli' ? 'claude' : 'codex'
+    const label = provider === 'claude-cli' ? 'Claude Code CLI' : 'Codex CLI'
+    const available = which(binary)
+    return {
+      ...base,
+      status: available ? 'OK' : 'MISSING',
+      message: available ? `${label} available` : `${binary} CLI not found`,
+      remedy: available ? undefined : `Install ${label} and authenticate locally.`,
+    }
+  }
+
   const key = config?.llm?.apiKey
   if (!key || key.length === 0) {
     return {

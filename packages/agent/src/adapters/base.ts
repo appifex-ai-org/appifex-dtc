@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import type { AgentRunOpts, AgentResult, AgentStopReason } from '../types.js'
 
 /** Max stdout/stderr buffer size (10MB) — prevents OOM on long-running agents */
@@ -62,6 +63,7 @@ function spawnAgentWithInput(
     let idleTimedOut = false
 
     const isStreamJson = args.includes('stream-json')
+    const isJsonEvents = args.includes('--json')
     const state: StreamJsonState = { lastAssistantText: '' }
 
     // Idle watchdog — kill process if no stdout for IDLE_TIMEOUT_MS
@@ -88,12 +90,13 @@ function spawnAgentWithInput(
       opts.onOutput?.(text)
       resetIdleTimer()
 
-      if (isStreamJson) {
+      if (isStreamJson || isJsonEvents) {
         for (const line of text.split('\n')) {
           if (!line.trim()) continue
           try {
             const event = JSON.parse(line) as Record<string, unknown>
-            parseStreamEvent(event, state)
+            if (isStreamJson) parseStreamEvent(event, state)
+            else parseJsonEvent(event, state)
           } catch {
             /* not JSON */
           }
@@ -164,7 +167,7 @@ function spawnAgentWithInput(
         settle(() =>
           resolve({
             success: false,
-            output: isStreamJson ? state.lastAssistantText : stdout,
+            output: finalOutput(opts, state, stdout, isStreamJson || isJsonEvents),
             exitCode: code ?? 1,
             error: `Agent timed out after ${Math.round((opts.timeoutMs ?? 0) / 60_000)} minutes.`,
             stopReason: 'timeout',
@@ -181,7 +184,7 @@ function spawnAgentWithInput(
         settle(() =>
           resolve({
             success: false,
-            output: isStreamJson ? state.lastAssistantText : stdout,
+            output: finalOutput(opts, state, stdout, isStreamJson || isJsonEvents),
             exitCode: code ?? 1,
             error: `Agent idle for ${Math.round(IDLE_TIMEOUT_MS / 60_000)} minutes with no output — killed. Likely ran out of budget.`,
             stopReason: reason,
@@ -211,16 +214,23 @@ function spawnAgentWithInput(
         return
       }
 
+      const stopReason =
+        code === 0 ? (state.stopReason ?? (state.isError ? 'error' : 'success')) : 'error'
+      const success = code === 0 && stopReason === 'success'
       settle(() =>
         resolve({
-          success: code === 0,
-          output: stdout,
-          exitCode: code ?? 1,
-          error:
-            code !== 0
-              ? stderr.slice(-2000) || stdout.slice(-2000) || `Agent exited with code ${code}`
-              : undefined,
-          stopReason: code === 0 ? 'success' : 'error',
+          success,
+          output: finalOutput(opts, state, stdout, isJsonEvents),
+          exitCode: code ?? (success ? 0 : 1),
+          error: !success
+            ? state.errors?.join('; ') ||
+              stderr.slice(-2000) ||
+              stdout.slice(-2000) ||
+              `Agent exited with code ${code}`
+            : undefined,
+          stopReason,
+          sessionId: state.sessionId,
+          costUsd: state.costUsd,
         }),
       )
     })
@@ -231,6 +241,24 @@ function spawnAgentWithInput(
       settle(() => reject(err))
     })
   })
+}
+
+function finalOutput(
+  opts: AgentRunOpts,
+  state: StreamJsonState,
+  stdout: string,
+  preferLastMessage: boolean,
+): string {
+  if (opts.outputLastMessagePath) {
+    try {
+      const text = readFileSync(opts.outputLastMessagePath, 'utf8').trim()
+      if (text) return text
+    } catch {
+      /* no last-message file */
+    }
+  }
+  if (preferLastMessage && state.lastAssistantText) return state.lastAssistantText
+  return stdout
 }
 
 function parseStreamEvent(event: Record<string, unknown>, state: StreamJsonState): void {
@@ -263,4 +291,59 @@ function parseStreamEvent(event: Record<string, unknown>, state: StreamJsonState
       state.stopReason = 'success'
     }
   }
+}
+
+function parseJsonEvent(event: Record<string, unknown>, state: StreamJsonState): void {
+  const sessionId = findStringValue(event, [
+    'session_id',
+    'sessionId',
+    'conversation_id',
+    'conversationId',
+    'thread_id',
+    'threadId',
+  ])
+  if (sessionId) state.sessionId = sessionId
+
+  const text = findStringValue(event, ['text', 'message', 'content', 'last_message', 'lastMessage'])
+  if (text && text.length > state.lastAssistantText.length) state.lastAssistantText = text
+
+  const cost = findNumberValue(event, ['total_cost_usd', 'cost_usd', 'costUsd'])
+  if (typeof cost === 'number') state.costUsd = cost
+
+  const type = String(event.type ?? event.event ?? '').toLowerCase()
+  const level = String(event.level ?? '').toLowerCase()
+  if (type.includes('error') || level === 'error') {
+    state.isError = true
+    const message = findStringValue(event, ['error', 'message'])
+    if (message) state.errors = [...(state.errors ?? []), message]
+    state.stopReason = 'error'
+  }
+}
+
+function findStringValue(value: unknown, keys: string[], depth = 0): string | undefined {
+  if (!value || typeof value !== 'object' || depth > 4) return undefined
+  const record = value as Record<string, unknown>
+  for (const key of keys) {
+    const candidate = record[key]
+    if (typeof candidate === 'string' && candidate.trim()) return candidate
+  }
+  for (const candidate of Object.values(record)) {
+    const found = findStringValue(candidate, keys, depth + 1)
+    if (found) return found
+  }
+  return undefined
+}
+
+function findNumberValue(value: unknown, keys: string[], depth = 0): number | undefined {
+  if (!value || typeof value !== 'object' || depth > 4) return undefined
+  const record = value as Record<string, unknown>
+  for (const key of keys) {
+    const candidate = record[key]
+    if (typeof candidate === 'number') return candidate
+  }
+  for (const candidate of Object.values(record)) {
+    const found = findNumberValue(candidate, keys, depth + 1)
+    if (found !== undefined) return found
+  }
+  return undefined
 }

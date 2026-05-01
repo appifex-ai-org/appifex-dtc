@@ -171,26 +171,55 @@ interface StreamEvent {
 }
 
 class CodexProgressParser implements ProgressParser {
+  private buffer = ''
+
   parse(chunk: string): ProgressEvent[] {
     const events: ProgressEvent[] = []
-    for (const line of chunk.split('\n')) {
+    this.buffer += chunk
+    const lines = this.buffer.split('\n')
+    this.buffer = lines.pop() ?? ''
+
+    for (const line of lines) {
+      const text = line.trim()
+      if (!text) continue
       try {
-        const event = JSON.parse(line) as { type?: string; tool?: string; args?: string }
-        if (event.type === 'tool_call') {
-          if (event.tool === 'shell' && event.args?.includes('xcodebuild')) {
-            events.push({
-              phase: 'build',
-              status: 'running',
-              message: 'Building',
-              timestamp: Date.now(),
-            })
-          }
-        }
+        const event = JSON.parse(text) as Record<string, unknown>
+        const parsed = this.parseEvent(event)
+        if (parsed) events.push(parsed)
       } catch {
-        /* not JSON, skip */
+        const parsed = this.parseText(text)
+        if (parsed) events.push(parsed)
       }
     }
     return events
+  }
+
+  private parseEvent(event: Record<string, unknown>): ProgressEvent | null {
+    const text = JSON.stringify(event)
+    return this.parseText(text)
+  }
+
+  private parseText(text: string): ProgressEvent | null {
+    if (text.includes('xcodegen generate')) {
+      return this.event('build', 'running', 'Generating Xcode project')
+    }
+    if (text.includes('xcodebuild build') || text.includes('xcodebuild')) {
+      return this.event('build', 'running', 'Building')
+    }
+    if (text.includes('maestro test')) {
+      return this.event('validate', 'running', 'Running Maestro UI tests')
+    }
+    if (text.includes('swift test') || text.includes('xcodebuild test')) {
+      return this.event('validate', 'running', 'Running tests')
+    }
+    if (text.includes('write_file') || text.includes('"Write"') || text.includes('"Edit"')) {
+      return this.event('codegen', 'running', 'Writing files')
+    }
+    return null
+  }
+
+  private event(phase: PhaseId, status: ProgressEvent['status'], message: string): ProgressEvent {
+    return { phase, status, message, timestamp: Date.now() }
   }
 }
 

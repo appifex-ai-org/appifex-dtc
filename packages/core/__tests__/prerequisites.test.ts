@@ -73,6 +73,18 @@ describe('checkCriticalPrerequisites — LLM access under fixture mode', () => {
     expect(llm.status).toBe('pass')
     expect(llm.message).toMatch(/fixture mode/)
   })
+
+  it('treats codex-cli as local CLI access instead of requiring an API key', () => {
+    const cfg: DtcConfig = {
+      llm: { provider: 'codex-cli', apiKey: '' },
+      design: { tool: 'pencil' },
+      runner: { type: 'local' },
+    }
+    const report = checkCriticalPrerequisites('kotlin-compose', cfg)
+    const llm = findLlmCheck(report)
+    expect(['pass', 'fail']).toContain(llm.status)
+    expect(llm.message).not.toMatch(/API key missing/)
+  })
 })
 
 // Phase 03 Plan 05 (SETUP-03, D-11): checkFirebaseTools tests

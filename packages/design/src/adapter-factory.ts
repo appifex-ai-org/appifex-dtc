@@ -134,6 +134,8 @@ export function createDesignAdapter({
 }: CreateDesignAdapterOpts): DesignToolAdapter {
   const tool = config.tool
   switch (tool) {
+    case 'prompt':
+      throw new Error('Prompt-only design mode does not use a design adapter')
     case 'pencil': {
       const cliKey = config.apiKey || process.env.PENCIL_CLI_KEY || ''
       return new PencilToolAdapter(runner, cliKey)

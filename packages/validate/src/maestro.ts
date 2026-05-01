@@ -23,6 +23,24 @@ export interface MaestroResult {
   hierarchy?: string
 }
 
+function maestroEnvironmentFailure(error: string, flowsTotal = 1): MaestroResult {
+  return {
+    total: Math.max(flowsTotal, 1),
+    passed: 0,
+    failed: Math.max(flowsTotal, 1),
+    results: [
+      {
+        flowName: 'maestro-environment',
+        passed: false,
+        duration: 0,
+        error,
+        assertions: [],
+      },
+    ],
+    error,
+  }
+}
+
 async function findSimulatorAndApp(
   runner: Runner,
   projectDir: string,
@@ -67,14 +85,9 @@ export async function runMaestro(runner: Runner, opts: MaestroOpts): Promise<Mae
       { timeout: 120_000 },
     )
     if (install.exitCode !== 0) {
-      return {
-        total: 0,
-        passed: 0,
-        failed: 0,
-        results: [],
-        error:
-          'Maestro auto-install failed — install manually: curl -Ls "https://get.maestro.mobile.dev" | bash',
-      }
+      return maestroEnvironmentFailure(
+        'Maestro auto-install failed — install manually: curl -Ls "https://get.maestro.mobile.dev" | bash',
+      )
     }
     // Add to PATH for this session
     const home = process.env.HOME ?? ''
@@ -84,7 +97,7 @@ export async function runMaestro(runner: Runner, opts: MaestroOpts): Promise<Mae
   // Check flows exist
   const flows = await runner.glob(`${opts.flowDir}/*.yaml`)
   if (flows.length === 0) {
-    return { total: 0, passed: 0, failed: 0, results: [], error: 'No Maestro flow files found' }
+    return maestroEnvironmentFailure('No Maestro flow files found')
   }
 
   // Snapshot crash log count before launching — use wildcard to match any app name
@@ -98,13 +111,7 @@ export async function runMaestro(runner: Runner, opts: MaestroOpts): Promise<Mae
     // Kotlin Compose: install APK on Android emulator
     const apkGlob = await runner.glob(`${opts.projectDir}/app/build/outputs/apk/debug/*.apk`)
     if (apkGlob.length === 0) {
-      return {
-        total: 0,
-        passed: 0,
-        failed: 0,
-        results: [],
-        error: 'No debug APK found. Run buildKotlin() first.',
-      }
+      return maestroEnvironmentFailure('No debug APK found. Run buildKotlin() first.', flows.length)
     }
     // Infer applicationId from app/build.gradle.kts; fall back to default
     const gradleFile = `${opts.projectDir}/app/build.gradle.kts`
@@ -118,14 +125,10 @@ export async function runMaestro(runner: Runner, opts: MaestroOpts): Promise<Mae
     // Ensure an Android emulator is running
     const emulatorSerial = await findOrBootEmulator(runner)
     if (!emulatorSerial) {
-      return {
-        total: 0,
-        passed: 0,
-        failed: 0,
-        results: [],
-        error:
-          'No Android emulator found and unable to boot one. Create an AVD or connect a device.',
-      }
+      return maestroEnvironmentFailure(
+        'No Android emulator found and unable to boot one. Create an AVD or connect a device.',
+        flows.length,
+      )
     }
     await runner.exec('adb', ['-s', emulatorSerial, 'install', '-r', apkGlob[0]])
     await runner.exec('adb', [
@@ -142,13 +145,10 @@ export async function runMaestro(runner: Runner, opts: MaestroOpts): Promise<Mae
     // SwiftUI: find built .app and install on simulator
     const found = await findSimulatorAndApp(runner, opts.projectDir)
     if (!found) {
-      return {
-        total: 0,
-        passed: 0,
-        failed: 0,
-        results: [],
-        error: 'Could not find built .app or available simulator. Build the app first.',
-      }
+      return maestroEnvironmentFailure(
+        'Could not find built .app or available simulator. Build the app first.',
+        flows.length,
+      )
     }
     appId = found.appId
     simId = found.simId
@@ -233,13 +233,7 @@ export async function runMaestro(runner: Runner, opts: MaestroOpts): Promise<Mae
         error: crashInfo,
       }
     }
-    return {
-      total: 0,
-      passed: 0,
-      failed: 0,
-      results: [],
-      error: result.stderr || 'No JUNIT results found',
-    }
+    return maestroEnvironmentFailure(result.stderr || 'No JUNIT results found', flows.length)
   }
 
   // Parse all JUNIT files

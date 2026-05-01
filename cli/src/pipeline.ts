@@ -82,16 +82,27 @@ import {
 // runTestFlightUploadPhase orchestrator.
 import { PlayConsoleClient, runTestFlightUploadPhase } from '@appifex/provision'
 import { validateAll, type ValidationResult } from '@appifex/validate'
-import { fixLoop, createDefaultFixFn, createClaudeCliFixFn } from '@appifex/fix'
+import {
+  fixLoop,
+  createDefaultFixFn,
+  createClaudeCliFixFn,
+  createCodexCliFixFn,
+} from '@appifex/fix'
 import { buildReport, formatMarkdown, formatJson, type PipelineReport } from '@appifex/report'
 import { deliver, type DeliverResult } from '@appifex/deliver'
 import { detectBaasProvider } from '@appifex/baas'
 // Copilot provider is handled inline in buildCreateMessageFn
-import { homedir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { writeFileSync as writeFileSyncFs, mkdirSync as mkdirSyncFs } from 'node:fs'
-import { writeFile as writeFileAsync, mkdir as mkdirAsync } from 'node:fs/promises'
+import {
+  writeFile as writeFileAsync,
+  mkdir as mkdirAsync,
+  mkdtemp,
+  readFile,
+  rm,
+} from 'node:fs/promises'
 import type { DesignTokens, DesignDeltaReport } from '@appifex/core'
 
 // Phase 14 (D-09): phases that ALWAYS re-run on resume regardless of
@@ -120,6 +131,25 @@ function extractGeneratedFiles(codegenResult: { files: unknown[] }): string[] {
       .filter((p): p is string => typeof p === 'string')
   }
   return []
+}
+
+function messagesToText(messages: Array<{ role: string; content: any }>): string {
+  return messages
+    .map((m) => {
+      if (typeof m.content === 'string') return m.content
+      if (Array.isArray(m.content)) {
+        return m.content
+          .filter((p: any) => p.type === 'text')
+          .map((p: any) => p.text)
+          .join('\n')
+      }
+      return String(m.content)
+    })
+    .join('\n\n')
+}
+
+function isTextOnlyCliProvider(provider: DtcConfig['llm']['provider']): boolean {
+  return provider === 'claude-cli' || provider === 'codex-cli'
 }
 
 /**
@@ -350,6 +380,119 @@ export async function runClaudePrint(opts: RunClaudePrintOpts): Promise<{
       }
     })
   })
+}
+
+export interface RunCodexExecOpts {
+  prompt: string
+  model?: string
+  cwd: string
+}
+
+export async function runCodexExec(opts: RunCodexExecOpts): Promise<{
+  content: Array<{ type: string; text: string }>
+  usage: { input_tokens: number; output_tokens: number }
+}> {
+  const { spawn } = await import('node:child_process')
+  const { prompt, model, cwd } = opts
+  const payloadBytes = Buffer.byteLength(prompt, 'utf8')
+  const tempDir = await mkdtemp(join(tmpdir(), 'dtc-codex-'))
+  const outputPath = join(tempDir, 'last-message.txt')
+  const args = [
+    'exec',
+    '--sandbox',
+    'read-only',
+    '--full-auto',
+    '--skip-git-repo-check',
+    '--output-last-message',
+    outputPath,
+  ]
+  if (model && model !== 'default') {
+    args.push('--model', model)
+  }
+  args.push('-')
+
+  try {
+    return await new Promise<{
+      content: Array<{ type: string; text: string }>
+      usage: { input_tokens: number; output_tokens: number }
+    }>((resolve, reject) => {
+      const child = spawn('codex', args, {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        cwd,
+      })
+      let settled = false
+      const settle = (fn: () => void) => {
+        if (!settled) {
+          settled = true
+          fn()
+        }
+      }
+
+      child.stdin.on('error', (err: NodeJS.ErrnoException) => {
+        if (err.code === 'EPIPE') {
+          settle(() =>
+            reject(
+              new EpipeError(
+                `LLM CLI closed stdin before prompt fully written (site=cli/pipeline.ts:codex-exec, ${payloadBytes} bytes)`,
+                'cli/pipeline.ts:codex-exec',
+                payloadBytes,
+              ),
+            ),
+          )
+          return
+        }
+        child.kill('SIGTERM')
+        settle(() => reject(err))
+      })
+      child.stdin.write(prompt)
+      child.stdin.end()
+
+      let stdout = ''
+      let stderr = ''
+      child.stdout.on('data', (d: Buffer) => {
+        stdout += d.toString()
+      })
+      child.stderr.on('data', (d: Buffer) => {
+        stderr += d.toString()
+      })
+      child.on('close', async (code) => {
+        if (code !== 0) {
+          settle(() =>
+            reject(
+              new Error(
+                `codex exec exited with code ${code}${stderr ? `\nstderr: ${stderr}` : ''}${stdout ? `\nstdout preview: ${stdout.slice(0, 200)}` : ''}`,
+              ),
+            ),
+          )
+          return
+        }
+
+        try {
+          const text = (await readFile(outputPath, 'utf8')).trim()
+          if (!text) {
+            settle(() =>
+              reject(
+                new Error(
+                  `codex exec returned empty response${stderr ? `\nstderr: ${stderr}` : ''}`,
+                ),
+              ),
+            )
+            return
+          }
+          settle(() =>
+            resolve({
+              content: [{ type: 'text', text }],
+              usage: { input_tokens: 0, output_tokens: 0 },
+            }),
+          )
+        } catch (err) {
+          settle(() => reject(err))
+        }
+      })
+    })
+  } finally {
+    await rm(tempDir, { recursive: true, force: true })
+  }
 }
 
 type PenFileDecision = 'new' | 'extend'
@@ -971,23 +1114,27 @@ export async function runPipeline(
         max_tokens: number
         messages: Array<{ role: string; content: any }>
       }) => {
-        const prompt = params.messages
-          .map((m) => {
-            if (typeof m.content === 'string') return m.content
-            if (Array.isArray(m.content))
-              return m.content
-                .filter((p: any) => p.type === 'text')
-                .map((p: any) => p.text)
-                .join('\n')
-            return String(m.content)
-          })
-          .join('\n\n')
-
+        const prompt = messagesToText(params.messages)
         const model = cfg.llm.model ?? 'claude-sonnet-4-6'
         // Phase 02 Plan 03 (FOUND-03): delegate to exported runClaudePrint so the
         // spawn site is unit-testable and EPIPE hard-fails with typed EpipeError
         // instead of being silently swallowed.
         return runClaudePrint({ prompt, model, cwd: outputDir })
+      }
+    }
+
+    // Codex CLI — shell out to `codex exec`, using the user's local Codex login.
+    if (cfg.llm.provider === 'codex-cli') {
+      return async (params: {
+        model: string
+        max_tokens: number
+        messages: Array<{ role: string; content: any }>
+      }) => {
+        return runCodexExec({
+          prompt: messagesToText(params.messages),
+          model: cfg.llm.model ?? 'default',
+          cwd: outputDir,
+        })
       }
     }
 
@@ -1000,17 +1147,7 @@ export async function runPipeline(
         messages: Array<{ role: string; content: any }>
       }) => {
         // Serialize all messages into a single prompt so Copilot sees full context
-        const prompt = params.messages
-          .map((m) => {
-            if (typeof m.content === 'string') return m.content
-            if (Array.isArray(m.content))
-              return m.content
-                .filter((p: any) => p.type === 'text')
-                .map((p: any) => p.text)
-                .join('\n')
-            return String(m.content)
-          })
-          .join('\n\n')
+        const prompt = messagesToText(params.messages)
 
         const client = new CopilotClient({
           githubToken: cfg.llm.githubToken,
@@ -1746,7 +1883,8 @@ export async function runPipeline(
   }
 
   // 1. Design with review loop
-  const adapter = createDesignAdapter({ config: config.design, runner })
+  const promptOnlyDesign = config.design.tool === 'prompt'
+  const adapter = promptOnlyDesign ? null : createDesignAdapter({ config: config.design, runner })
   // designPath always points to the working copy (never the user's original)
   const designPath = join(outputDir, 'design.pen')
   const previewPath = join(outputDir, 'preview.png')
@@ -1797,7 +1935,11 @@ export async function runPipeline(
     emit('design', 'skipped', 'Using design from previous run')
     checkpoint.savePhase(checkpointRunId, 'design', { designFile: designPath })
     await flushContext()
-  } else {
+  } else if (promptOnlyDesign) {
+    emit('design', 'completed', 'Prompt-only mode — skipping external design tool')
+    checkpoint.savePhase(checkpointRunId, 'design', { designFile: '' })
+    await flushContext()
+  } else if (adapter) {
     // ── Generate design via configured tool ──
     const designPrompt =
       adapter.tool === 'pencil'
@@ -1856,7 +1998,7 @@ export async function runPipeline(
   let designIterations = opts.designFile ? 0 : 1
 
   // Interactive review loop for GENERATED designs only (user-provided designs skip this)
-  if (!opts.designFile && isInteractive(opts)) {
+  if (!opts.designFile && !promptOnlyDesign && isInteractive(opts)) {
     const clack = await import('@clack/prompts')
 
     console.log() // blank line after TUI
@@ -1890,7 +2032,7 @@ export async function runPipeline(
         }
 
         emit('design', 'started', `Iterating (round ${designIterations + 1})`)
-        const iterResult = await adapter.iterate({
+        const iterResult = await adapter!.iterate({
           prompt: iteratePrompt as string,
           outputDir,
           previewPath,
@@ -1929,7 +2071,7 @@ export async function runPipeline(
   // (Pencil only — Stitch uses SDK, Figma Make uses its own MCP)
   const pencilKey = config.design.apiKey || process.env.PENCIL_CLI_KEY || ''
   let mcpClient: InstanceType<typeof PencilMcpClient> | null = null
-  if (adapter.tool === 'pencil') {
+  if (adapter?.tool === 'pencil') {
     try {
       mcpClient = new PencilMcpClient({ cliKey: pencilKey })
       await mcpClient.connect()
@@ -1963,7 +2105,7 @@ export async function runPipeline(
 
           if (!clack.isCancel(action) && action === 'fix') {
             const fixPrompt = `Fix these layout issues:\n${layout.problems.map((p) => p.message).join('\n')}`
-            await adapter.iterate({ prompt: fixPrompt, outputDir, previewPath })
+            await adapter!.iterate({ prompt: fixPrompt, outputDir, previewPath })
             if (await runner.exists(previewPath)) {
               await openPreview(previewPath)
             }
@@ -2027,7 +2169,7 @@ export async function runPipeline(
   if (!specSkipped) {
     emit('spec', 'started', 'Generating spec')
 
-    if (designArtifacts && adapter.tool === 'figma-make') {
+    if (designArtifacts && adapter?.tool === 'figma-make') {
       // ── Figma Make spec extraction: Tailwind code + LLM vision ──
       emit('spec', 'running', 'Extracting spec from Figma Make design')
       const { readFileSync } = await import('node:fs')
@@ -2036,7 +2178,7 @@ export async function runPipeline(
           ? readFileSync(designArtifacts.htmlPaths[0], 'utf-8')
           : ''
       const createMessage = await getCreateMessage()
-      const canSendImages = config.llm.provider !== 'claude-cli'
+      const canSendImages = !isTextOnlyCliProvider(config.llm.provider)
       const result = await extractSpecFromFigmaMake({
         codeContent,
         metadata: {},
@@ -2065,7 +2207,7 @@ export async function runPipeline(
         })),
       )
       const createMessage = await getCreateMessage()
-      const canSendImages = config.llm.provider !== 'claude-cli'
+      const canSendImages = !isTextOnlyCliProvider(config.llm.provider)
       const result = await extractSpecFromHtmlDesign({
         designMdContent,
         htmlContents,
@@ -2080,7 +2222,7 @@ export async function runPipeline(
       })
       spec = result.spec
       specTokens = result.tokensUsed
-    } else if (adapter.tool === 'pencil') {
+    } else if (adapter?.tool === 'pencil') {
       // ── Pencil 3-tier waterfall ──
       try {
         const specContent = await runner.readFile(designPath)
@@ -2127,8 +2269,8 @@ export async function runPipeline(
             `Generating spec via LLM (${config.llm.provider}/${config.llm.model ?? 'default'})`,
           )
           const createMessage = await getCreateMessage()
-          // claude-cli provider (claude --print) is text-only — skip design image
-          const canSendImages = config.llm.provider !== 'claude-cli'
+          // Local CLI providers are text-only here — skip design image.
+          const canSendImages = !isTextOnlyCliProvider(config.llm.provider)
           const specDesignImage =
             canSendImages && (await runner.exists(previewPath)) ? previewPath : undefined
           try {
@@ -2161,7 +2303,7 @@ export async function runPipeline(
         `Generating spec via LLM (${config.llm.provider}/${config.llm.model ?? 'default'})`,
       )
       const createMessage = await getCreateMessage()
-      const canSendImages = config.llm.provider !== 'claude-cli'
+      const canSendImages = !isTextOnlyCliProvider(config.llm.provider)
       const specDesignImage =
         canSendImages && (await runner.exists(previewPath)) ? previewPath : undefined
       const result = await generateSpecFromPrompt({
@@ -2836,6 +2978,19 @@ export async function runPipeline(
   // ── Agent-based path: single session for codegen + build + fix + validate ──
   const agentType = opts.agentType ?? config.agent?.type ?? 'auto'
   let agentHandled = false
+  let codexAgentReport:
+    | {
+        agentName: string
+        model?: string
+        sessionId?: string
+        stopReason: string
+        costUsd?: number
+        costUnknown?: boolean
+        filesGenerated: string[]
+        output?: string
+      }
+    | undefined
+  const codexAgentGeneratedFiles: string[] = []
 
   if (agentType !== 'api') {
     const { createAgent, detectAgent, createProgressParser, buildAgentPrompt } =
@@ -2844,7 +2999,13 @@ export async function runPipeline(
 
     let agent: AgentAdapterType | null = null
     if (agentType === 'auto') {
-      agent = await detectAgent()
+      const preferred =
+        config.llm.provider === 'codex-cli'
+          ? 'codex'
+          : config.llm.provider === 'claude-cli'
+            ? 'claude'
+            : undefined
+      agent = await detectAgent({ preferred })
       if (!agent) {
         emit('codegen', 'running', 'No agent CLI found, falling back to API pipeline')
       }
@@ -3094,105 +3255,144 @@ export async function runPipeline(
           const costUsd =
             typeof result.costUsd === 'number'
               ? result.costUsd
-              : (tokensToUsd(model, bd.input, bd.output) ?? undefined)
+              : agent.name === 'codex'
+                ? undefined
+                : (tokensToUsd(model, bd.input, bd.output) ?? undefined)
           emit('codegen', 'completed', 'Agent completed codegen', undefined, {
             tokensInput: bd.input,
             tokensOutput: bd.output,
             costUsd,
           })
         }
-        emit('build', 'completed', 'Agent handled build')
-        emit('validate', 'completed', 'Agent completed — all tests passing')
-        emit('fix', 'skipped', 'Agent handled fixes inline')
-
-        // Run security scan on agent-generated code
-        emit(
-          'security',
-          'started',
-          `Scanning with ${opts.platform === 'swiftui' ? 'p/swift' : opts.platform === 'kotlin-compose' ? 'p/kotlin' : 'p/react'} rules`,
-        )
-        const { runSemgrep } = await import('@appifex/validate')
-        const secResult = await runSemgrep(runner, {
-          projectDir: outputDir,
-          platform: opts.platform,
-        })
-        if (secResult.error) {
-          emit('security', 'failed', secResult.error)
-        } else if (secResult.findings.length === 0) {
-          emit('security', 'completed', 'No findings — clean')
+        if (agent.name === 'codex') {
+          try {
+            for (const pattern of [
+              'Sources/**/*.swift',
+              'src/**/*.{ts,tsx}',
+              '__tests__/**/*.swift',
+              '__tests__/**/*.{ts,tsx}',
+            ]) {
+              const files = await runner.glob(`${outputDir}/${pattern}`)
+              for (const f of files) {
+                codexAgentGeneratedFiles.push(f.replace(outputDir + '/', ''))
+              }
+            }
+          } catch {
+            /* glob failure shouldn't prevent build/validation */
+          }
+          codexAgentReport = {
+            agentName: agent.name,
+            model: config.agent?.model ?? config.llm.model,
+            sessionId: result.sessionId,
+            stopReason: result.stopReason,
+            costUsd: result.costUsd,
+            costUnknown: result.costUsd == null,
+            filesGenerated: codexAgentGeneratedFiles,
+            output: result.output?.slice(0, 2000),
+          }
+          ctxBuilder.setFilesGenerated(codexAgentGeneratedFiles)
+          if (result.sessionId) ctxBuilder.setAgentSessionId(result.sessionId)
+          emit('build', 'started', 'Running local build after Codex codegen')
+          emit('validate', 'started', 'Running local validation after Codex codegen')
         } else {
-          emit('security', 'failed', `${secResult.findings.length} finding(s)`)
+          emit('build', 'completed', 'Agent handled build')
+          emit('validate', 'completed', 'Agent completed — all tests passing')
+          emit('fix', 'skipped', 'Agent handled fixes inline')
 
-          // Run fix loop for security findings
-          emit('fix', 'started', 'Fixing security findings')
-          const secValidation: ValidationResult = {
-            ui: { total: 0, passed: 0, failed: 0, results: [] },
-            unit: { total: 0, passed: 0, failed: 0, failures: [] },
-            security: secResult,
-            allPassed: false,
-          }
-          const secBuildFn = async () =>
-            opts.platform === 'kotlin-compose'
-              ? buildKotlin(runner, { projectDir: outputDir })
-              : buildSwift(runner, { projectDir: outputDir, scheme: appName })
-          const secValidateFn = async (): Promise<ValidationResult> => {
-            const sec = await runSemgrep(runner, { projectDir: outputDir, platform: opts.platform })
-            return {
-              ui: { total: 0, passed: 0, failed: 0, results: [] },
-              unit: { total: 0, passed: 0, failed: 0, failures: [] },
-              security: sec,
-              allPassed: sec.failed === 0,
-            }
-          }
-          const createMessage = await getCreateMessage()
-          const secFixFn =
-            config.llm.provider === 'claude-cli'
-              ? createClaudeCliFixFn({ runner, projectDir: outputDir, model: config.llm.model })
-              : createDefaultFixFn({
-                  apiKey: config.llm.apiKey ?? '',
-                  runner,
-                  projectDir: outputDir,
-                  model: config.llm.model,
-                  createMessage,
-                  skillPrompt: skills.fixPrompt,
-                  verbose: opts.verbose,
-                })
-          const fr = await fixLoop(secValidation, {
-            fixFn: secFixFn,
-            buildFn: secBuildFn,
-            validateFn: secValidateFn,
-            maxAttempts: 3,
-            tokenBudget: budget.totalRemaining,
-            budgetInstance: budget,
-          })
-          // Phase 7 (MCP-03 D-11 — revision B-03): fix-loop rewrites refresh manifest entry in place.
-          // FixResult has `attempts[].filesChanged: string[]` per attempt (NOT `filesRewritten`).
-          {
-            const rewrittenSet = new Set<string>()
-            for (const a of fr.attempts) for (const f of a.filesChanged) rewrittenSet.add(f)
-            const filesRewritten = Array.from(rewrittenSet)
-            if (filesRewritten.length > 0) {
-              await refreshManifestEntries(outputDir, filesRewritten, 'fix')
-            }
-          }
-          // Phase 7 (OBS-01 D-14 — revision B-05): live per-phase cost on completed event.
-          {
-            const model = config.agent?.model ?? config.llm.model ?? 'claude-sonnet-4-6'
-            const bd = budget.phaseBreakdown('fix')
-            const costUsd = tokensToUsd(model, bd.input, bd.output) ?? undefined
-            emit(
-              'fix',
-              fr.status === 'all_green' ? 'completed' : 'failed',
-              `${fr.status} — ${fr.attempts.length} attempts`,
-              fr.totalTokensUsed,
-              { tokensInput: bd.input, tokensOutput: bd.output, costUsd },
-            )
-          }
+          // Run security scan on agent-generated code
           emit(
             'security',
-            fr.status === 'all_green' ? 'completed' : 'failed',
-            fr.status === 'all_green' ? 'Fixed — clean' : 'Finding(s) remaining after fix loop',
+            'started',
+            `Scanning with ${opts.platform === 'swiftui' ? 'p/swift' : opts.platform === 'kotlin-compose' ? 'p/kotlin' : 'p/react'} rules`,
           )
+          const { runSemgrep } = await import('@appifex/validate')
+          const secResult = await runSemgrep(runner, {
+            projectDir: outputDir,
+            platform: opts.platform,
+          })
+          if (secResult.error) {
+            emit('security', 'failed', secResult.error)
+          } else if (secResult.findings.length === 0) {
+            emit('security', 'completed', 'No findings — clean')
+          } else {
+            emit('security', 'failed', `${secResult.findings.length} finding(s)`)
+
+            // Run fix loop for security findings
+            emit('fix', 'started', 'Fixing security findings')
+            const secValidation: ValidationResult = {
+              ui: { total: 0, passed: 0, failed: 0, results: [] },
+              unit: { total: 0, passed: 0, failed: 0, failures: [] },
+              security: secResult,
+              allPassed: false,
+            }
+            const secBuildFn = async () =>
+              opts.platform === 'kotlin-compose'
+                ? buildKotlin(runner, { projectDir: outputDir })
+                : buildSwift(runner, { projectDir: outputDir, scheme: appName })
+            const secValidateFn = async (): Promise<ValidationResult> => {
+              const sec = await runSemgrep(runner, {
+                projectDir: outputDir,
+                platform: opts.platform,
+              })
+              return {
+                ui: { total: 0, passed: 0, failed: 0, results: [] },
+                unit: { total: 0, passed: 0, failed: 0, failures: [] },
+                security: sec,
+                allPassed: sec.failed === 0,
+              }
+            }
+            const createMessage = await getCreateMessage()
+            const secFixFn =
+              config.llm.provider === 'claude-cli'
+                ? createClaudeCliFixFn({ runner, projectDir: outputDir, model: config.llm.model })
+                : config.llm.provider === 'codex-cli'
+                  ? createCodexCliFixFn({ runner, projectDir: outputDir, model: config.llm.model })
+                  : createDefaultFixFn({
+                      apiKey: config.llm.apiKey ?? '',
+                      runner,
+                      projectDir: outputDir,
+                      model: config.llm.model,
+                      createMessage,
+                      skillPrompt: skills.fixPrompt,
+                      verbose: opts.verbose,
+                    })
+            const fr = await fixLoop(secValidation, {
+              fixFn: secFixFn,
+              buildFn: secBuildFn,
+              validateFn: secValidateFn,
+              maxAttempts: 3,
+              tokenBudget: budget.totalRemaining,
+              budgetInstance: budget,
+            })
+            // Phase 7 (MCP-03 D-11 — revision B-03): fix-loop rewrites refresh manifest entry in place.
+            // FixResult has `attempts[].filesChanged: string[]` per attempt (NOT `filesRewritten`).
+            {
+              const rewrittenSet = new Set<string>()
+              for (const a of fr.attempts) for (const f of a.filesChanged) rewrittenSet.add(f)
+              const filesRewritten = Array.from(rewrittenSet)
+              if (filesRewritten.length > 0) {
+                await refreshManifestEntries(outputDir, filesRewritten, 'fix')
+              }
+            }
+            // Phase 7 (OBS-01 D-14 — revision B-05): live per-phase cost on completed event.
+            {
+              const model = config.agent?.model ?? config.llm.model ?? 'claude-sonnet-4-6'
+              const bd = budget.phaseBreakdown('fix')
+              const costUsd = tokensToUsd(model, bd.input, bd.output) ?? undefined
+              emit(
+                'fix',
+                fr.status === 'all_green' ? 'completed' : 'failed',
+                `${fr.status} — ${fr.attempts.length} attempts`,
+                fr.totalTokensUsed,
+                { tokensInput: bd.input, tokensOutput: bd.output, costUsd },
+              )
+            }
+            emit(
+              'security',
+              fr.status === 'all_green' ? 'completed' : 'failed',
+              fr.status === 'all_green' ? 'Fixed — clean' : 'Finding(s) remaining after fix loop',
+            )
+          }
         }
       } else if (result.stopReason === 'budget_exceeded') {
         const sessionHint = result.sessionId
@@ -3207,106 +3407,117 @@ export async function runPipeline(
         emit('codegen', 'failed', result.error ?? 'Agent session failed')
       }
 
-      agentHandled = true
+      if (codexAgentReport) {
+        agentHandled = false
+      } else {
+        agentHandled = true
 
-      // Collect files the agent generated
-      const generatedFiles: string[] = []
-      try {
-        for (const pattern of [
-          'Sources/**/*.swift',
-          'src/**/*.{ts,tsx}',
-          '__tests__/**/*.swift',
-          '__tests__/**/*.{ts,tsx}',
-        ]) {
-          const files = await runner.glob(`${outputDir}/${pattern}`)
-          for (const f of files) {
-            generatedFiles.push(f.replace(outputDir + '/', ''))
+        // Collect files the agent generated
+        const generatedFiles: string[] = []
+        try {
+          for (const pattern of [
+            'Sources/**/*.swift',
+            'src/**/*.{ts,tsx}',
+            '__tests__/**/*.swift',
+            '__tests__/**/*.{ts,tsx}',
+          ]) {
+            const files = await runner.glob(`${outputDir}/${pattern}`)
+            for (const f of files) {
+              generatedFiles.push(f.replace(outputDir + '/', ''))
+            }
           }
+        } catch {
+          /* glob failure shouldn't prevent report generation */
         }
-      } catch {
-        /* glob failure shouldn't prevent report generation */
-      }
 
-      // Build final validation for the report
-      const reportDir = join(outputDir, '.dtc-report')
-      const agentUnitTestCount = unitTests.reduce((sum, t) => sum + t.testCount, 0)
-      const finalValidation = result.success
-        ? ({
-            ui: { total: uiTests.length, passed: uiTests.length, failed: 0, results: [] },
-            unit: {
-              total: agentUnitTestCount,
-              passed: agentUnitTestCount,
-              failed: 0,
-              failures: [],
-            },
-            allPassed: true,
-          } as ValidationResult)
-        : ({
-            ui: { total: 0, passed: 0, failed: 0, results: [] },
-            unit: { total: 0, passed: 0, failed: 0, failures: [] },
-            allPassed: false,
-          } as ValidationResult)
+        // Build final validation for the report
+        const reportDir = join(outputDir, '.dtc-report')
+        const agentUnitTestCount = unitTests.reduce((sum, t) => sum + t.testCount, 0)
+        const finalValidation = result.success
+          ? ({
+              ui: { total: uiTests.length, passed: uiTests.length, failed: 0, results: [] },
+              unit: {
+                total: agentUnitTestCount,
+                passed: agentUnitTestCount,
+                failed: 0,
+                failures: [],
+              },
+              allPassed: true,
+            } as ValidationResult)
+          : ({
+              ui: { total: 0, passed: 0, failed: 0, results: [] },
+              unit: { total: 0, passed: 0, failed: 0, failures: [] },
+              allPassed: false,
+            } as ValidationResult)
 
-      // Generate report and return
-      emit('report', 'started', 'Generating report')
-      const agentReport = {
-        agentName: agent.name,
-        model: config.agent?.model ?? config.llm.model,
-        sessionId: result.sessionId,
-        stopReason: result.stopReason,
-        costUsd: result.costUsd,
-        filesGenerated: generatedFiles,
-        output: result.output?.slice(0, 2000),
-      }
-      // Phase 7 (OBS-01 D-15): populate cost fields from TokenBudget + pricing table.
-      const agentModel = config.agent?.model ?? config.llm.model ?? 'claude-sonnet-4-6'
-      const agentCostFields = buildCostFields(budget, agentModel)
-      const report = buildReport({
-        projectName: opts.prompt.slice(0, 50),
-        platforms: [opts.platform],
-        designIterations,
-        validation: { [opts.platform]: finalValidation },
-        fix: {},
-        tokenUsage,
-        totalDuration: Date.now() - startTime,
-        agent: agentReport,
-        tokenUsageBreakdown: agentCostFields.tokenUsageBreakdown,
-        costUsdPerPhase: agentCostFields.costUsdPerPhase,
-        costUsdTotal: agentCostFields.costUsdTotal,
-        model: agentModel,
-        pricingAsOf: PRICING_AS_OF,
-      })
-      // Phase 7 (OBS-02 D-15): write to canonical .dtc-report/ (both JSON + MD).
-      try {
-        await writeReportFiles(outputDir, report)
-      } catch {
-        /* report write must not block pipeline return */
-      }
-      emit('report', 'completed', 'Report saved to .dtc-report/')
-      await flushContext()
+        // Generate report and return
+        emit('report', 'started', 'Generating report')
+        const agentReport = {
+          agentName: agent.name,
+          model: config.agent?.model ?? config.llm.model,
+          sessionId: result.sessionId,
+          stopReason: result.stopReason,
+          costUsd: result.costUsd,
+          costUnknown: agent.name === 'codex' && result.costUsd == null,
+          filesGenerated: generatedFiles,
+          output: result.output?.slice(0, 2000),
+        }
+        // Phase 7 (OBS-01 D-15): populate cost fields from TokenBudget + pricing table.
+        const agentModel = config.agent?.model ?? config.llm.model ?? 'claude-sonnet-4-6'
+        const agentCostUnknown = agentReport.costUnknown === true
+        const agentCostFields = agentCostUnknown
+          ? { tokenUsageBreakdown: {}, costUsdPerPhase: {}, costUsdTotal: null }
+          : buildCostFields(budget, agentModel)
+        const report = buildReport({
+          projectName: opts.prompt.slice(0, 50),
+          platforms: [opts.platform],
+          designIterations,
+          validation: { [opts.platform]: finalValidation },
+          fix: {},
+          tokenUsage,
+          totalDuration: Date.now() - startTime,
+          agent: agentReport,
+          tokenUsageBreakdown: agentCostFields.tokenUsageBreakdown,
+          costUsdPerPhase: agentCostFields.costUsdPerPhase,
+          costUsdTotal: agentCostFields.costUsdTotal,
+          model: agentModel,
+          pricingAsOf: PRICING_AS_OF,
+          costNote: agentCostUnknown
+            ? 'Unknown - Codex CLI did not report token usage or cost.'
+            : undefined,
+        })
+        // Phase 7 (OBS-02 D-15): write to canonical .dtc-report/ (both JSON + MD).
+        try {
+          await writeReportFiles(outputDir, report)
+        } catch {
+          /* report write must not block pipeline return */
+        }
+        emit('report', 'completed', 'Report saved to .dtc-report/')
+        await flushContext()
 
-      // Save run context for future resume/add-feature/refactor (always, even on failure)
-      if (result.sessionId) ctxBuilder.setAgentSessionId(result.sessionId)
-      ctxBuilder.setFilesGenerated(generatedFiles)
-      const runStatus = result.success
-        ? ('completed' as const)
-        : result.stopReason === 'budget_exceeded'
-          ? ('budget_exceeded' as const)
-          : ('failed' as const)
-      try {
-        await saveRunContext(outputDir, ctxBuilder.build(runStatus))
-      } catch {
-        /* context save must not block return */
-      }
+        // Save run context for future resume/add-feature/refactor (always, even on failure)
+        if (result.sessionId) ctxBuilder.setAgentSessionId(result.sessionId)
+        ctxBuilder.setFilesGenerated(generatedFiles)
+        const runStatus = result.success
+          ? ('completed' as const)
+          : result.stopReason === 'budget_exceeded'
+            ? ('budget_exceeded' as const)
+            : ('failed' as const)
+        try {
+          await saveRunContext(outputDir, ctxBuilder.build(runStatus))
+        } catch {
+          /* context save must not block return */
+        }
 
-      try {
-        checkpoint.close()
-      } catch {
-        /* ignore */
+        try {
+          checkpoint.close()
+        } catch {
+          /* ignore */
+        }
+        process.removeListener('SIGINT', sigintHandler)
+        process.removeListener('exit', exitCleanup)
+        return { report, validation: finalValidation, markdown: formatMarkdown(report) }
       }
-      process.removeListener('SIGINT', sigintHandler)
-      process.removeListener('exit', exitCleanup)
-      return { report, validation: finalValidation, markdown: formatMarkdown(report) }
     }
   }
 
@@ -3316,157 +3527,166 @@ export async function runPipeline(
   // D-06: err.message only — ctxBuilder.build('failed') captures recorded phases,
   // no stack traces written to the context file.
   try {
-    // 4. Codegen — clean old source files to prevent collisions with previous runs
-    const { rm } = await import('node:fs/promises')
-    for (const dir of ['Sources', 'src']) {
-      if (await runner.exists(`${outputDir}/${dir}`)) {
-        await rm(`${outputDir}/${dir}`, { recursive: true, force: true })
+    if (!codexAgentReport) {
+      // 4. Codegen — clean old source files to prevent collisions with previous runs
+      const { rm } = await import('node:fs/promises')
+      for (const dir of ['Sources', 'src']) {
+        if (await runner.exists(`${outputDir}/${dir}`)) {
+          await rm(`${outputDir}/${dir}`, { recursive: true, force: true })
+        }
       }
-    }
-    // Also clean stale build artifacts and xcodeproj
-    for (const dir of ['build', 'App.xcodeproj']) {
-      if (await runner.exists(`${outputDir}/${dir}`)) {
-        await rm(`${outputDir}/${dir}`, { recursive: true, force: true })
+      // Also clean stale build artifacts and xcodeproj
+      for (const dir of ['build', 'App.xcodeproj']) {
+        if (await runner.exists(`${outputDir}/${dir}`)) {
+          await rm(`${outputDir}/${dir}`, { recursive: true, force: true })
+        }
       }
-    }
 
-    if (!platformSpec) {
-      throw new Error('Internal error: platformSpec not initialized before codegen phase')
-    }
-    emit('codegen', 'started', 'Generating code (layered: models → views → viewmodels)')
-    const designImageExists = await runner.exists(previewPath)
-    const codegenInput = {
-      spec: platformSpec,
-      uiTestPaths: uiTests.map((f) => join(flowDir, f.fileName)),
-      unitTestPaths: unitTests.map((t) => join(testDir, t.fileName)),
-      outputDir: outputDir,
-      designImagePath: designImageExists ? previewPath : undefined,
-      skillPrompt: skills.codegenPrompt,
-      uiTestContent: uiTests.map((f) => ({ path: f.fileName, content: f.content })),
-      unitTestContent: unitTests.map((t) => ({ path: t.fileName, content: t.content })),
-      // D-05: Forward modification plan to layered codegen (omit when empty to keep prompt clean)
-      ...(runMode === 'add-feature' && modificationPlan.items.length > 0
-        ? { modificationPlan }
-        : {}),
-      // D-14: Inject BaaS context so LLM generates ViewModels importing from repository protocols
-      baasContext: ctxBuilder.build('completed').baasContext,
-      // D-01 Pass 2: Tell LLM to style-match auth screens without touching auth wiring
-      baasAuthScreens: !!ctxBuilder.build('completed').baasContext?.authConfig,
-    }
-
-    let codegenResult
-    if (config.llm.provider === 'claude-cli') {
-      // Claude CLI doesn't support layered — fall back to monolithic
-      if (!opts.generateFn) {
-        opts.generateFn = createClaudeCliGenerateFn({ model: config.llm.model })
+      if (!platformSpec) {
+        throw new Error('Internal error: platformSpec not initialized before codegen phase')
       }
-      const codegen = new ClaudeAdapter({ generateFn: opts.generateFn })
-      codegenResult = await codegen.generateAndWrite(codegenInput, runner)
-    } else {
-      // Layered codegen: presentation ∥ domain → integration
-      const createMessage = await getCreateMessage()
-      const layeredFn = createLayeredGenerateFn({
-        apiKey: config.llm.apiKey ?? '',
-        model: config.llm.model,
-        createMessage,
-      })
+      emit('codegen', 'started', 'Generating code (layered: models → views → viewmodels)')
+      const designImageExists = await runner.exists(previewPath)
+      const codegenInput = {
+        spec: platformSpec,
+        uiTestPaths: uiTests.map((f) => join(flowDir, f.fileName)),
+        unitTestPaths: unitTests.map((t) => join(testDir, t.fileName)),
+        outputDir: outputDir,
+        designImagePath: designImageExists ? previewPath : undefined,
+        skillPrompt: skills.codegenPrompt,
+        uiTestContent: uiTests.map((f) => ({ path: f.fileName, content: f.content })),
+        unitTestContent: unitTests.map((t) => ({ path: t.fileName, content: t.content })),
+        // D-05: Forward modification plan to layered codegen (omit when empty to keep prompt clean)
+        ...(runMode === 'add-feature' && modificationPlan.items.length > 0
+          ? { modificationPlan }
+          : {}),
+        // D-14: Inject BaaS context so LLM generates ViewModels importing from repository protocols
+        baasContext: ctxBuilder.build('completed').baasContext,
+        // D-01 Pass 2: Tell LLM to style-match auth screens without touching auth wiring
+        baasAuthScreens: !!ctxBuilder.build('completed').baasContext?.authConfig,
+      }
 
-      // Log the spec that's feeding codegen
-      await debug.logJson('spec-for-codegen.json', platformSpec)
+      let codegenResult
+      if (config.llm.provider === 'claude-cli') {
+        // Claude CLI doesn't support layered — fall back to monolithic
+        if (!opts.generateFn) {
+          opts.generateFn = createClaudeCliGenerateFn({ model: config.llm.model })
+        }
+        const codegen = new ClaudeAdapter({ generateFn: opts.generateFn })
+        codegenResult = await codegen.generateAndWrite(codegenInput, runner)
+      } else {
+        // Layered codegen: presentation ∥ domain → integration
+        const createMessage = await getCreateMessage()
+        const layeredFn = createLayeredGenerateFn({
+          apiKey: config.llm.apiKey ?? '',
+          model: config.llm.model,
+          createMessage,
+        })
 
-      const layeredResult = await layeredFn(codegenInput)
+        // Log the spec that's feeding codegen
+        await debug.logJson('spec-for-codegen.json', platformSpec)
 
-      if (layeredResult.success) {
+        const layeredResult = await layeredFn(codegenInput)
+
+        if (layeredResult.success) {
+          emit(
+            'codegen',
+            'running',
+            `${layeredResult.presentationFiles.length} views, ${layeredResult.domainFiles.length} models, ${layeredResult.integrationFiles.length} viewmodels`,
+          )
+        }
+
+        // Write all files to disk (skip protected files)
+        const protectedFiles = new Set(['project.yml', 'App.xcodeproj', 'Info.plist'])
+        // D-04: Protect BaaS-generated AppEntry from codegen overwrite on FRESH runs only.
+        // D-05: For add-feature runs, AppEntry is in the modification plan — the LLM merges
+        // AuthManager into the existing entry point, and its output MUST be written to disk.
+        if (ctxBuilder.build('completed').baasContext?.schema && runMode !== 'add-feature') {
+          protectedFiles.add('AppEntry.swift')
+        }
+        if (layeredResult.success) {
+          for (const file of layeredResult.files) {
+            const basename = file.path.split('/').pop() ?? file.path
+            if (protectedFiles.has(basename)) continue
+            await runner.writeFile(join(outputDir, file.path), file.content)
+          }
+        }
+
+        codegenResult = layeredResult
+      }
+
+      // Phase 7 (MCP-03 D-11): write manifest after codegen. Single site per run.
+      // Fix-loop phase updates entries in place via refreshManifestEntries (see Task 2).
+      if (codegenResult.success) {
+        try {
+          const entries: ManifestEntry[] = []
+          const codegenOutputs: string[] = extractGeneratedFiles(codegenResult)
+          for (const rel of codegenOutputs) {
+            if (isExcluded(rel)) continue
+            try {
+              const sha256 = await computeSha256(join(outputDir, rel))
+              entries.push({
+                path: rel,
+                sha256,
+                generatedAt: new Date().toISOString(),
+                phase: 'codegen',
+              })
+            } catch {
+              // file not readable — skip; not a show-stopper
+            }
+          }
+          const runCtxForManifest = ctxBuilder.build('completed')
+          const manifest: Manifest = {
+            manifestVersion: 1,
+            generatedAt: new Date().toISOString(),
+            runId: runCtxForManifest.runId,
+            entries,
+          }
+          await writeManifest(outputDir, manifest)
+        } catch {
+          // manifest write failure must not block the pipeline
+        }
+      }
+
+      // Phase 7 (OBS-01 D-14 — revision B-05): live per-phase cost on completed event.
+      {
+        const model = config.llm.model ?? 'claude-sonnet-4-6'
+        const bd = budget.phaseBreakdown('codegen')
+        const costUsd = tokensToUsd(model, bd.input, bd.output) ?? undefined
         emit(
           'codegen',
-          'running',
-          `${layeredResult.presentationFiles.length} views, ${layeredResult.domainFiles.length} models, ${layeredResult.integrationFiles.length} viewmodels`,
+          codegenResult.success ? 'completed' : 'failed',
+          codegenResult.success
+            ? `${codegenResult.files.length} files`
+            : (codegenResult.error ?? 'Failed'),
+          codegenResult.tokensUsed,
+          codegenResult.success
+            ? { tokensInput: bd.input, tokensOutput: bd.output, costUsd }
+            : undefined,
         )
       }
-
-      // Write all files to disk (skip protected files)
-      const protectedFiles = new Set(['project.yml', 'App.xcodeproj', 'Info.plist'])
-      // D-04: Protect BaaS-generated AppEntry from codegen overwrite on FRESH runs only.
-      // D-05: For add-feature runs, AppEntry is in the modification plan — the LLM merges
-      // AuthManager into the existing entry point, and its output MUST be written to disk.
-      if (ctxBuilder.build('completed').baasContext?.schema && runMode !== 'add-feature') {
-        protectedFiles.add('AppEntry.swift')
-      }
-      if (layeredResult.success) {
-        for (const file of layeredResult.files) {
-          const basename = file.path.split('/').pop() ?? file.path
-          if (protectedFiles.has(basename)) continue
-          await runner.writeFile(join(outputDir, file.path), file.content)
-        }
-      }
-
-      codegenResult = layeredResult
+      await flushContext()
+      await debug.logJson('codegen-result.json', {
+        success: codegenResult.success,
+        files: codegenResult.files.map((f) => f.path),
+        tokensUsed: codegenResult.tokensUsed,
+        error: codegenResult.error,
+        ...(isLayeredCodegenResult(codegenResult)
+          ? {
+              presentationFiles: codegenResult.presentationFiles.map((f) => f.path),
+              domainFiles: codegenResult.domainFiles.map((f) => f.path),
+              integrationFiles: codegenResult.integrationFiles.map((f) => f.path),
+            }
+          : {}),
+      })
+    } else {
+      await debug.logJson('codegen-result.json', {
+        success: true,
+        files: codexAgentGeneratedFiles,
+        tokensUsed: 0,
+        agent: 'codex',
+      })
     }
-
-    // Phase 7 (MCP-03 D-11): write manifest after codegen. Single site per run.
-    // Fix-loop phase updates entries in place via refreshManifestEntries (see Task 2).
-    if (codegenResult.success) {
-      try {
-        const entries: ManifestEntry[] = []
-        const codegenOutputs: string[] = extractGeneratedFiles(codegenResult)
-        for (const rel of codegenOutputs) {
-          if (isExcluded(rel)) continue
-          try {
-            const sha256 = await computeSha256(join(outputDir, rel))
-            entries.push({
-              path: rel,
-              sha256,
-              generatedAt: new Date().toISOString(),
-              phase: 'codegen',
-            })
-          } catch {
-            // file not readable — skip; not a show-stopper
-          }
-        }
-        const runCtxForManifest = ctxBuilder.build('completed')
-        const manifest: Manifest = {
-          manifestVersion: 1,
-          generatedAt: new Date().toISOString(),
-          runId: runCtxForManifest.runId,
-          entries,
-        }
-        await writeManifest(outputDir, manifest)
-      } catch {
-        // manifest write failure must not block the pipeline
-      }
-    }
-
-    // Phase 7 (OBS-01 D-14 — revision B-05): live per-phase cost on completed event.
-    {
-      const model = config.llm.model ?? 'claude-sonnet-4-6'
-      const bd = budget.phaseBreakdown('codegen')
-      const costUsd = tokensToUsd(model, bd.input, bd.output) ?? undefined
-      emit(
-        'codegen',
-        codegenResult.success ? 'completed' : 'failed',
-        codegenResult.success
-          ? `${codegenResult.files.length} files`
-          : (codegenResult.error ?? 'Failed'),
-        codegenResult.tokensUsed,
-        codegenResult.success
-          ? { tokensInput: bd.input, tokensOutput: bd.output, costUsd }
-          : undefined,
-      )
-    }
-    await flushContext()
-    await debug.logJson('codegen-result.json', {
-      success: codegenResult.success,
-      files: codegenResult.files.map((f) => f.path),
-      tokensUsed: codegenResult.tokensUsed,
-      error: codegenResult.error,
-      ...(isLayeredCodegenResult(codegenResult)
-        ? {
-            presentationFiles: codegenResult.presentationFiles.map((f) => f.path),
-            domainFiles: codegenResult.domainFiles.map((f) => f.path),
-            integrationFiles: codegenResult.integrationFiles.map((f) => f.path),
-          }
-        : {}),
-    })
 
     // WIRE-02: Patch build dependencies with BaaS SDK packages
     if (resolvedBaasProvider !== null && resolvedBaasProvider !== 'mock') {
@@ -3576,6 +3796,12 @@ export async function runPipeline(
             projectDir: outputDir,
             model: config.llm.model,
           })
+        } else if (config.llm.provider === 'codex-cli') {
+          opts.fixFn = createCodexCliFixFn({
+            runner,
+            projectDir: outputDir,
+            model: config.llm.model,
+          })
         } else {
           opts.fixFn = createDefaultFixFn({
             apiKey: config.llm.apiKey ?? '',
@@ -3647,6 +3873,12 @@ export async function runPipeline(
         if (!opts.fixFn) {
           if (config.llm.provider === 'claude-cli') {
             opts.fixFn = createClaudeCliFixFn({
+              runner,
+              projectDir: outputDir,
+              model: config.llm.model,
+            })
+          } else if (config.llm.provider === 'codex-cli') {
+            opts.fixFn = createCodexCliFixFn({
               runner,
               projectDir: outputDir,
               model: config.llm.model,
@@ -3750,15 +3982,17 @@ export async function runPipeline(
           const secFixFn =
             config.llm.provider === 'claude-cli'
               ? createClaudeCliFixFn({ runner, projectDir: outputDir, model: config.llm.model })
-              : createDefaultFixFn({
-                  apiKey: config.llm.apiKey ?? '',
-                  runner,
-                  projectDir: outputDir,
-                  model: config.llm.model,
-                  createMessage,
-                  skillPrompt: skills.fixPrompt,
-                  verbose: opts.verbose,
-                })
+              : config.llm.provider === 'codex-cli'
+                ? createCodexCliFixFn({ runner, projectDir: outputDir, model: config.llm.model })
+                : createDefaultFixFn({
+                    apiKey: config.llm.apiKey ?? '',
+                    runner,
+                    projectDir: outputDir,
+                    model: config.llm.model,
+                    createMessage,
+                    skillPrompt: skills.fixPrompt,
+                    verbose: opts.verbose,
+                  })
           const fr = await fixLoop(secValidation, {
             fixFn: secFixFn,
             buildFn,
@@ -3829,7 +4063,10 @@ export async function runPipeline(
     emit('report', 'started', 'Generating report')
     // Phase 7 (OBS-01 D-15): populate cost fields from TokenBudget + pricing table.
     const apiModel = config.llm.model ?? 'claude-sonnet-4-6'
-    const apiCostFields = buildCostFields(budget, apiModel)
+    const cliCostUnknown = codexAgentReport?.costUnknown === true
+    const apiCostFields = cliCostUnknown
+      ? { tokenUsageBreakdown: {}, costUsdPerPhase: {}, costUsdTotal: null }
+      : buildCostFields(budget, apiModel)
     const report = buildReport({
       projectName: opts.prompt.slice(0, 50),
       platforms: [opts.platform],
@@ -3838,11 +4075,15 @@ export async function runPipeline(
       fix: fixResult ? { [opts.platform]: fixResult } : {},
       tokenUsage,
       totalDuration: Date.now() - startTime,
+      agent: codexAgentReport,
       tokenUsageBreakdown: apiCostFields.tokenUsageBreakdown,
       costUsdPerPhase: apiCostFields.costUsdPerPhase,
       costUsdTotal: apiCostFields.costUsdTotal,
       model: apiModel,
       pricingAsOf: PRICING_AS_OF,
+      costNote: cliCostUnknown
+        ? 'Unknown - Codex CLI did not report token usage or cost.'
+        : undefined,
     })
     // Phase 7 (OBS-02 D-15): write to canonical .dtc-report/ (both JSON + MD).
     await writeReportFiles(outputDir, report)

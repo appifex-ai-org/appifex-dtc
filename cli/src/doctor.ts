@@ -82,6 +82,7 @@ export async function runDoctor(opts: DoctorOpts = {}): Promise<void> {
     if (
       !config.llm.apiKey &&
       config.llm.provider !== 'claude-cli' &&
+      config.llm.provider !== 'codex-cli' &&
       config.llm.provider !== 'copilot'
     ) {
       config = undefined

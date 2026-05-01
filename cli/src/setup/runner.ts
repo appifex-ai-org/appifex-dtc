@@ -58,7 +58,7 @@ export async function runRunnerSection(
       {
         value: 'auto',
         label: 'Auto-detect (recommended)',
-        hint: 'uses first available: Claude > Codex > Gemini',
+        hint: 'uses selected LLM provider first, then Claude > Codex > Gemini',
       },
       { value: 'claude', label: 'Claude Code', hint: 'claude CLI' },
       { value: 'codex', label: 'OpenAI Codex', hint: 'codex CLI' },

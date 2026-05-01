@@ -44,20 +44,16 @@ export const SECTION_ORDER: SectionName[] = [
   'oauth',
 ]
 
+export const QUICK_SECTION_ORDER: SectionName[] = ['project', 'llm', 'design', 'runner', 'budget']
+
 export interface SetupWizardOpts {
   only?: SectionName
   /**
-   * Force all sections.
+   * Force all production sections.
    *
-   * --full semantics (resolves D-10 checker note): For first-run / fresh installs,
-   * `dtc setup` already runs every section, so `--full` is functionally a no-op gate today.
-   * The flag is plumbed through `setupWizard(configDir, { full })` so that:
-   *   (a) callers / tests can assert intent (`dtc setup --full` from CI scripts), and
-   *   (b) when a later phase adds incremental re-run (skip-when-already-configured) it
-   *       flips back on by gating on `opts.full`.
-   * Section bodies SHOULD read `opts.full` only when they implement skip-when-configured;
-   * until then `opts.full` is observed but does not change behavior. No section may
-   * silently behave differently based on `opts.full` without a corresponding test.
+   * Plain `dtc setup` is intentionally a quick local setup for first-time users:
+   * project, LLM, design tool, runner, budget. `dtc setup --full` additionally
+   * configures Firebase, Apple/TestFlight, Android, git delivery, and OAuth.
    */
   full?: boolean
   /** Caller-provided app name; when set, project section skips the appName prompt. */
@@ -114,12 +110,31 @@ export async function setupWizard(configDir?: string, opts: SetupWizardOpts = {}
     return
   }
 
-  for (const name of SECTION_ORDER) {
+  const order = opts.full ? SECTION_ORDER : QUICK_SECTION_ORDER
+  if (opts.full) {
+    console.log('Running full production setup: Firebase, stores, delivery, and OAuth included.')
+  } else {
+    console.log(
+      'Running quick local setup. Use `dtc setup --full` later for Firebase, TestFlight, Play Console, and delivery.',
+    )
+  }
+
+  for (const name of order) {
     // Skip project section when caller has pre-supplied both values
     if (name === 'project' && hasCallerProject) {
       continue
     }
     await SECTIONS[name](dir, cfg, opts)
+  }
+
+  if (!opts.full) {
+    console.log(
+      [
+        'Quick setup complete.',
+        'Firebase is only needed for production backend wiring.',
+        'When ready, run `dtc setup firebase` or `dtc setup --full`.',
+      ].join('\n'),
+    )
   }
 }
 

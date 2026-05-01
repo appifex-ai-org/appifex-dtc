@@ -6,7 +6,7 @@ const CONFIG_FILE = 'config.json'
 
 const DEFAULT_CONFIG: DtcConfig = {
   llm: { provider: 'anthropic', apiKey: '' },
-  design: { tool: 'pencil' },
+  design: { tool: 'prompt' },
   runner: { type: 'local' },
 }
 

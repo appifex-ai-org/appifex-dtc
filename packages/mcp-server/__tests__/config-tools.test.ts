@@ -22,7 +22,7 @@ describe('dtc_load_config handler', () => {
 
     const parsed = JSON.parse(result.text)
     expect(parsed.llm.provider).toBe('anthropic')
-    expect(parsed.design.tool).toBe('pencil')
+    expect(parsed.design.tool).toBe('prompt')
     expect(parsed.runner.type).toBe('local')
   })
 

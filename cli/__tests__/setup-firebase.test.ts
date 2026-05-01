@@ -12,6 +12,7 @@ vi.mock('node:child_process', () => ({
 
 vi.mock('@clack/prompts', () => ({
   text: vi.fn(),
+  confirm: vi.fn(),
   log: { info: vi.fn(), success: vi.fn(), warn: vi.fn(), error: vi.fn() },
   spinner: vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })),
   isCancel: vi.fn().mockReturnValue(false),
@@ -77,12 +78,15 @@ describe('runFirebaseSection', () => {
     expect(vi.mocked(spawnSync)).not.toHaveBeenCalled()
   })
 
-  it('Test 2: throws ConfigError when firebase CLI is not installed', async () => {
+  it('Test 2: throws ConfigError when firebase CLI is not installed and user declines mock backend', async () => {
     // Mock which() to return false for firebase
     vi.doMock('@appifex/core', async (importOriginal) => {
       const actual = await importOriginal<typeof import('@appifex/core')>()
       return { ...actual, which: vi.fn().mockReturnValue(false) }
     })
+
+    const { confirm } = await import('@clack/prompts')
+    vi.mocked(confirm).mockResolvedValueOnce(false)
 
     const { ConfigError } = await import('@appifex/core')
     const { runFirebaseSection } = await import('../src/setup/firebase.js')
@@ -90,6 +94,25 @@ describe('runFirebaseSection', () => {
     await expect(
       runFirebaseSection(configDir, makeConfig(), { appName: 'MyApp', projectDir: '/tmp/proj' }),
     ).rejects.toThrow(ConfigError)
+  })
+
+  it('skips Firebase and saves mock BaaS when firebase CLI is missing and user accepts', async () => {
+    vi.doMock('@appifex/core', async (importOriginal) => {
+      const actual = await importOriginal<typeof import('@appifex/core')>()
+      return { ...actual, which: vi.fn().mockReturnValue(false) }
+    })
+
+    const { confirm } = await import('@clack/prompts')
+    vi.mocked(confirm).mockResolvedValueOnce(true)
+
+    const { saveConfig, loadConfig } = await import('@appifex/core')
+    await saveConfig(configDir, makeConfig())
+
+    const { runFirebaseSection } = await import('../src/setup/firebase.js')
+    await runFirebaseSection(configDir, makeConfig(), { appName: 'MyApp', projectDir: '/tmp/proj' })
+
+    const updated = await loadConfig(configDir)
+    expect(updated.baas?.provider).toBe('mock')
   })
 
   it('Test 3: login gate — runs firebase login when login:list fails, throws if login fails too', async () => {

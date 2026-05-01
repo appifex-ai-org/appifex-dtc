@@ -150,7 +150,7 @@ describe('runMaestro', () => {
     expect(result.results.find((r) => !r.passed)?.error).toContain('petGrid not visible')
   })
 
-  it('returns empty result when no JUNIT files found', async () => {
+  it('returns failed environment result when no JUNIT files found', async () => {
     const runner = mockRunner({
       exec: vi
         .fn()
@@ -164,7 +164,9 @@ describe('runMaestro', () => {
       reportDir: '/tmp/report',
     })
 
-    expect(result.total).toBe(0)
+    expect(result.total).toBe(1)
+    expect(result.failed).toBe(1)
+    expect(result.results[0]?.flowName).toBe('maestro-environment')
     expect(result.error).toBeDefined()
   })
 })

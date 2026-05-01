@@ -11,7 +11,16 @@ export async function runDesignSection(
   const design = await p.select({
     message: 'Design tool',
     options: [
-      { value: 'pencil', label: 'Pencil', hint: 'AI-native design (requires Pencil desktop app)' },
+      {
+        value: 'prompt',
+        label: 'Prompt only',
+        hint: 'no external design tool; uses your selected LLM',
+      },
+      {
+        value: 'pencil',
+        label: 'Pencil',
+        hint: "uses Pencil's own Claude agent",
+      },
       {
         value: 'stitch',
         label: 'Google Stitch',
@@ -30,7 +39,11 @@ export async function runDesignSection(
   let figmaToken: string | undefined = existingConfig.design?.figmaToken
   let figmaFileUrl: string | undefined = existingConfig.design?.figmaFileUrl
 
-  if (design === 'stitch') {
+  if (design === 'prompt') {
+    designApiKey = undefined
+    figmaToken = undefined
+    figmaFileUrl = undefined
+  } else if (design === 'stitch') {
     const keyInput = await p.password({
       message: 'Stitch API key (from stitch.withgoogle.com)',
       validate: (v) => (v.length === 0 ? 'API key is required for Stitch' : undefined),

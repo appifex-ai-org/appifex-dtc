@@ -281,6 +281,18 @@ function checkLlmAccess(config?: DtcConfig): PrereqCheck {
     }
   }
 
+  if (provider === 'codex-cli') {
+    const has = which('codex')
+    return {
+      name: 'LLM access',
+      description: 'AI model for code generation',
+      severity: 'critical',
+      status: has ? 'pass' : 'fail',
+      message: has ? 'Codex CLI available' : 'codex CLI not found',
+      installHint: 'Install Codex CLI and run `codex login`',
+    }
+  }
+
   if (provider === 'copilot') {
     return {
       name: 'LLM access',
@@ -314,6 +326,15 @@ function checkDesignTool(config?: DtcConfig): PrereqCheck {
   }
 
   const { tool } = config.design
+  if (tool === 'prompt') {
+    return {
+      name: 'Design tool',
+      description: 'UI design generation tool',
+      severity: 'info',
+      status: 'pass',
+      message: 'Prompt-only design mode',
+    }
+  }
   if (tool === 'pencil') {
     const arch = process.arch === 'arm64' ? 'arm64' : 'x64'
     const has = existsSync(
