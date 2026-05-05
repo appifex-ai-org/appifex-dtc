@@ -351,13 +351,13 @@ export async function runCodexCli(opts: RunCodexCliOpts): Promise<{
       const child = spawn(
         'codex',
         [
+          '--ask-for-approval',
+          'never',
           'exec',
           '--model',
           model,
           '--sandbox',
           'read-only',
-          '--ask-for-approval',
-          'never',
           '--skip-git-repo-check',
           '--color',
           'never',

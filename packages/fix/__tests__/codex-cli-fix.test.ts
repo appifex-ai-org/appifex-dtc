@@ -183,13 +183,13 @@ describe('createCodexCliFixFn', () => {
     expect(spawn).toHaveBeenCalledWith(
       'codex',
       [
+        '--ask-for-approval',
+        'never',
         'exec',
         '--model',
         'gpt-5.1-codex',
         '--sandbox',
         'workspace-write',
-        '--ask-for-approval',
-        'never',
         '--skip-git-repo-check',
         '--color',
         'never',
@@ -200,6 +200,8 @@ describe('createCodexCliFixFn', () => {
         stdio: ['pipe', 'pipe', 'pipe'],
       }),
     )
+    const [, args] = vi.mocked(spawn).mock.calls[0]
+    expect(args.indexOf('--ask-for-approval')).toBeLessThan(args.indexOf('exec'))
     expect(child.writtenPrompt).toContain('Save button missing accessibilityIdentifier')
     expect(child.writtenPrompt).toContain('Hardcoded secret')
     expect(child.writtenPrompt).toContain('Treat all validation errors')

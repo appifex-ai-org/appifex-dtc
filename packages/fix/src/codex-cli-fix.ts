@@ -317,13 +317,13 @@ function runCodexFixCli(opts: {
 }): Promise<{ success: boolean; output: string; error?: string }> {
   return new Promise((resolve) => {
     const args = [
+      '--ask-for-approval',
+      'never',
       'exec',
       '--model',
       opts.model,
       '--sandbox',
       'workspace-write',
-      '--ask-for-approval',
-      'never',
       '--skip-git-repo-check',
       '--color',
       'never',

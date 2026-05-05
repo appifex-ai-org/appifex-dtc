@@ -211,13 +211,13 @@ describe('runCodexCli', () => {
     const [command, args, options] = vi.mocked(spawn).mock.calls[0]
     expect(command).toBe('codex')
     expect(args).toEqual([
+      '--ask-for-approval',
+      'never',
       'exec',
       '--model',
       'gpt-5.1-codex',
       '--sandbox',
       'read-only',
-      '--ask-for-approval',
-      'never',
       '--skip-git-repo-check',
       '--color',
       'never',
@@ -225,6 +225,7 @@ describe('runCodexCli', () => {
       expect.stringContaining('last-message.txt'),
       '-',
     ])
+    expect(args.indexOf('--ask-for-approval')).toBeLessThan(args.indexOf('exec'))
     expect(options).toMatchObject({
       stdio: ['pipe', 'pipe', 'pipe'],
       cwd: '/tmp',
