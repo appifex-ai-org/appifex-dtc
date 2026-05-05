@@ -259,6 +259,50 @@ export function createSkipGate(inputs: SkipGateInputs): SkipGate {
   }
 }
 
+export function serializeMessagesForCli(messages: Array<{ role: string; content: unknown }>): {
+  prompt: string
+  omittedImageCount: number
+} {
+  let omittedImageCount = 0
+  const sections = messages.map((message) => {
+    let text = ''
+    if (typeof message.content === 'string') {
+      text = message.content
+    } else if (Array.isArray(message.content)) {
+      const parts: string[] = []
+      for (const part of message.content) {
+        if (
+          part &&
+          typeof part === 'object' &&
+          'type' in part &&
+          (part as { type?: unknown }).type === 'text' &&
+          typeof (part as { text?: unknown }).text === 'string'
+        ) {
+          parts.push((part as { text: string }).text)
+        } else if (
+          part &&
+          typeof part === 'object' &&
+          'type' in part &&
+          (part as { type?: unknown }).type === 'image_url'
+        ) {
+          omittedImageCount += 1
+        }
+      }
+      text = parts.join('\n')
+    } else {
+      text = String(message.content)
+    }
+    return `## ${message.role}\n\n${text}`
+  })
+
+  const omittedNote =
+    omittedImageCount > 0
+      ? `\n\n[dtc note: omitted ${omittedImageCount} image part(s); codex-cli provider is text-only in this release.]`
+      : ''
+
+  return { prompt: sections.join('\n\n') + omittedNote, omittedImageCount }
+}
+
 /**
  * Phase 02 Plan 03 (FOUND-03): Exported helper that invokes `claude --print` for
  * text-only LLM calls. Extracted from `buildCreateMessageFn` so the spawn site is
@@ -269,6 +313,131 @@ export interface RunClaudePrintOpts {
   prompt: string
   model: string
   cwd: string
+}
+
+export interface RunCodexCliOpts {
+  prompt: string
+  model: string
+  cwd: string
+}
+
+export async function runCodexCli(opts: RunCodexCliOpts): Promise<{
+  content: Array<{ type: string; text: string }>
+  usage: { input_tokens: number; output_tokens: number }
+}> {
+  const { spawn } = await import('node:child_process')
+  const { mkdtemp, readFile, rm } = await import('node:fs/promises')
+  const { join } = await import('node:path')
+  const { tmpdir } = await import('node:os')
+  const { prompt, model, cwd } = opts
+  const payloadBytes = Buffer.byteLength(prompt, 'utf8')
+  const tempDir = await mkdtemp(join(tmpdir(), 'dtc-codex-cli-'))
+  const outputPath = join(tempDir, 'last-message.txt')
+
+  try {
+    return await new Promise<{
+      content: Array<{ type: string; text: string }>
+      usage: { input_tokens: number; output_tokens: number }
+    }>((resolve, reject) => {
+      const child = spawn(
+        'codex',
+        [
+          'exec',
+          '--model',
+          model,
+          '--sandbox',
+          'read-only',
+          '--ask-for-approval',
+          'never',
+          '--skip-git-repo-check',
+          '--color',
+          'never',
+          '--output-last-message',
+          outputPath,
+          '-',
+        ],
+        {
+          stdio: ['pipe', 'pipe', 'pipe'],
+          cwd,
+        },
+      )
+      let settled = false
+      const settle = (fn: () => void) => {
+        if (!settled) {
+          settled = true
+          fn()
+        }
+      }
+      child.stdin.on('error', (err: NodeJS.ErrnoException) => {
+        if (err.code === 'EPIPE') {
+          settle(() =>
+            reject(
+              new EpipeError(
+                `LLM CLI closed stdin before prompt fully written (site=cli/pipeline.ts:codex-cli, ${payloadBytes} bytes)`,
+                'cli/pipeline.ts:codex-cli',
+                payloadBytes,
+              ),
+            ),
+          )
+          return
+        }
+        child.kill('SIGTERM')
+        settle(() => reject(err))
+      })
+
+      let stdout = ''
+      let stderr = ''
+      child.stdout.on('data', (d: Buffer) => {
+        stdout += d.toString()
+      })
+      child.stderr.on('data', (d: Buffer) => {
+        stderr += d.toString()
+      })
+      child.on('error', (err) => {
+        settle(() => reject(err))
+      })
+      child.on('close', (code) => {
+        if (code !== 0) {
+          settle(() =>
+            reject(
+              new Error(
+                `codex exec exited with code ${code}\nstderr: ${stderr}\nstdout preview: ${stdout.slice(0, 200)}\nInstall Codex CLI and run \`codex --login\`.`,
+              ),
+            ),
+          )
+          return
+        }
+        void readFile(outputPath, 'utf-8')
+          .then((raw) => {
+            const text = raw.trim()
+            if (!text) {
+              settle(() =>
+                reject(
+                  new Error(
+                    `codex exec returned empty response${stderr ? `\nstderr: ${stderr}` : ''}`,
+                  ),
+                ),
+              )
+              return
+            }
+            settle(() =>
+              resolve({
+                content: [{ type: 'text', text }],
+                usage: { input_tokens: 0, output_tokens: 0 },
+              }),
+            )
+          })
+          .catch((err: unknown) => {
+            settle(() => reject(err))
+          })
+      })
+
+      child.stdin.write(prompt)
+      child.stdin.end()
+    })
+  } finally {
+    await rm(tempDir, { recursive: true, force: true })
+  }
 }
 
 export async function runClaudePrint(opts: RunClaudePrintOpts): Promise<{
