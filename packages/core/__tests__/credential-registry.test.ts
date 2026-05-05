@@ -4,6 +4,15 @@ import { writeFile, mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { generateKeyPairSync } from 'node:crypto'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+
+const childProcessMock = vi.hoisted(() => ({
+  execSync: vi.fn(),
+}))
+
+vi.mock('node:child_process', () => ({
+  execSync: childProcessMock.execSync,
+}))
+
 import type { DtcConfig } from '../src/types.js'
 import {
   runCredentialChecks,
@@ -36,6 +45,7 @@ describe('CredentialRegistry — probe implementations', () => {
     } else {
       process.env.DTC_LLM_MODE = savedMode
     }
+    childProcessMock.execSync.mockReset()
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
     await rm(tmpDir, { recursive: true, force: true })
@@ -446,8 +456,9 @@ describe('CredentialRegistry — probe implementations', () => {
     expect(report.hasBlockingFailures).toBe(true)
   })
 
-  it('codex-cli shallow LLM probe returns OK without apiKey', async () => {
+  it('codex-cli shallow LLM probe returns OK without apiKey when codex is found', async () => {
     delete process.env.DTC_LLM_MODE
+    childProcessMock.execSync.mockReturnValue(Buffer.from(''))
     const config = {
       llm: { provider: 'codex-cli' as const, apiKey: '' },
       design: { tool: 'pencil' as const },
@@ -461,10 +472,14 @@ describe('CredentialRegistry — probe implementations', () => {
     expect(llmCheck!.status).toBe('OK')
     expect(llmCheck!.message).toBe('codex-cli (local auth)')
     expect(report.hasBlockingFailures).toBe(false)
+    expect(childProcessMock.execSync).toHaveBeenCalledWith('which codex', { stdio: 'ignore' })
   })
 
-  it('codex-cli deep LLM probe skips API ping and returns OK', async () => {
+  it('codex-cli deep LLM probe returns MISSING without apiKey when codex is missing', async () => {
     delete process.env.DTC_LLM_MODE
+    childProcessMock.execSync.mockImplementation(() => {
+      throw new Error('not found')
+    })
     const config = {
       llm: { provider: 'codex-cli' as const, apiKey: '' },
       design: { tool: 'pencil' as const },
@@ -475,8 +490,10 @@ describe('CredentialRegistry — probe implementations', () => {
     const llmCheck = report.checks.find((c) => c.name === 'llm')
 
     expect(llmCheck).toBeDefined()
-    expect(llmCheck!.status).toBe('OK')
-    expect(llmCheck!.message).toBe('codex-cli (local auth)')
-    expect(report.hasBlockingFailures).toBe(false)
+    expect(llmCheck!.status).toBe('MISSING')
+    expect(llmCheck!.message).toBe('codex CLI not found')
+    expect(llmCheck!.remedy).toBe('Install Codex CLI and run `codex --login`.')
+    expect(report.hasBlockingFailures).toBe(true)
+    expect(childProcessMock.execSync).toHaveBeenCalledWith('which codex', { stdio: 'ignore' })
   })
 })
