@@ -368,17 +368,17 @@ export async function runCodexCli(opts: RunCodexCliOpts): Promise<{
           fn()
         }
       }
+      let pendingEpipeError: EpipeError | null = null
       child.stdin.on('error', (err: NodeJS.ErrnoException) => {
         if (err.code === 'EPIPE') {
-          settle(() =>
-            reject(
-              new EpipeError(
-                `LLM CLI closed stdin before prompt fully written (site=cli/pipeline.ts:codex-cli, ${payloadBytes} bytes)`,
-                'cli/pipeline.ts:codex-cli',
-                payloadBytes,
-              ),
-            ),
-          )
+          pendingEpipeError =
+            pendingEpipeError ??
+            new EpipeError(
+              `LLM CLI closed stdin before prompt fully written (site=cli/pipeline.ts:codex-cli, ${payloadBytes} bytes)`,
+              'cli/pipeline.ts:codex-cli',
+              payloadBytes,
+            )
+          child.kill('SIGTERM')
           return
         }
         child.kill('SIGTERM')
@@ -405,6 +405,10 @@ export async function runCodexCli(opts: RunCodexCliOpts): Promise<{
               ),
             ),
           )
+          return
+        }
+        if (pendingEpipeError) {
+          settle(() => reject(pendingEpipeError))
           return
         }
         void readFile(outputPath, 'utf-8')

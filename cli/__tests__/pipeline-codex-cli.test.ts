@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { EventEmitter } from 'node:events'
 import { writeFile } from 'node:fs/promises'
 import type { Writable } from 'node:stream'
+import { EpipeError } from '@appifex/core'
 
 vi.mock('node:child_process', () => ({
   spawn: vi.fn(),
@@ -38,11 +39,41 @@ function makeFakeCodexChildWritingLastMessage(text: string, args: string[]) {
       return true
     },
     end: () => {
-      void writeFile(outputPath, text, 'utf-8').then(() => {
-        child.stdout.emit('data', Buffer.from(`received ${Buffer.concat(chunks).length} bytes`))
-        child.emit('close', 0)
-      })
+      void writeFile(outputPath, text, 'utf-8')
+        .then(() => {
+          child.stdout.emit('data', Buffer.from(`received ${Buffer.concat(chunks).length} bytes`))
+          child.emit('close', 0)
+        })
+        .catch((err: unknown) => child.emit('error', err))
     },
+  } as unknown as Writable
+  child.stdout = new EventEmitter()
+  child.stderr = new EventEmitter()
+  child.kill = vi.fn()
+  return child
+}
+
+function makeFakeCodexChildEmittingEpipeOnStdin() {
+  const child = new EventEmitter() as EventEmitter & {
+    stdin: Writable
+    stdout: EventEmitter
+    stderr: EventEmitter
+    kill: ReturnType<typeof vi.fn>
+  }
+  const stdinEmitter = new EventEmitter()
+  child.stdin = {
+    on: stdinEmitter.on.bind(stdinEmitter),
+    once: stdinEmitter.once.bind(stdinEmitter),
+    emit: stdinEmitter.emit.bind(stdinEmitter),
+    write: () => {
+      setImmediate(() => {
+        const err: NodeJS.ErrnoException = new Error('write EPIPE') as NodeJS.ErrnoException
+        err.code = 'EPIPE'
+        stdinEmitter.emit('error', err)
+      })
+      return true
+    },
+    end: () => {},
   } as unknown as Writable
   child.stdout = new EventEmitter()
   child.stderr = new EventEmitter()
@@ -131,5 +162,61 @@ describe('runCodexCli', () => {
       stdio: ['pipe', 'pipe', 'pipe'],
       cwd: '/tmp',
     })
+  })
+
+  it('waits for child close before rejecting pending stdin EPIPE', async () => {
+    expect(typeof pipelineModule.runCodexCli).toBe('function')
+
+    const child = makeFakeCodexChildEmittingEpipeOnStdin()
+    vi.mocked(spawn).mockReturnValue(child as any)
+
+    const promise = pipelineModule.runCodexCli!({
+      prompt: 'x'.repeat(100_000),
+      model: 'gpt-5.1-codex',
+      cwd: '/tmp',
+    })
+    let settled = false
+    let rejection: unknown = null
+    const observed = promise.then(
+      () => {
+        settled = true
+      },
+      (err: unknown) => {
+        settled = true
+        rejection = err
+      },
+    )
+
+    await vi.waitFor(() => expect(child.kill).toHaveBeenCalledWith('SIGTERM'))
+    expect(child.kill).toHaveBeenCalledWith('SIGTERM')
+    expect(settled).toBe(false)
+
+    child.emit('close', 0)
+    await observed
+
+    expect(rejection).toBeInstanceOf(EpipeError)
+  })
+
+  it('prefers nonzero close errors over pending stdin EPIPE', async () => {
+    expect(typeof pipelineModule.runCodexCli).toBe('function')
+
+    const child = makeFakeCodexChildEmittingEpipeOnStdin()
+    vi.mocked(spawn).mockReturnValue(child as any)
+
+    const promise = pipelineModule.runCodexCli!({
+      prompt: 'x'.repeat(100_000),
+      model: 'gpt-5.1-codex',
+      cwd: '/tmp',
+    })
+
+    await vi.waitFor(() => expect(child.kill).toHaveBeenCalledWith('SIGTERM'))
+    child.stderr.emit('data', Buffer.from('permission denied'))
+    child.stdout.emit('data', Buffer.from('partial output that explains failure'))
+    child.emit('close', 1)
+
+    await expect(promise).rejects.toThrow(/codex exec exited with code 1/)
+    await expect(promise).rejects.toThrow(/stderr: permission denied/)
+    await expect(promise).rejects.toThrow(/stdout preview: partial output/)
+    await expect(promise).rejects.not.toThrow(EpipeError)
   })
 })
