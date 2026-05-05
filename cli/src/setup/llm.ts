@@ -48,6 +48,10 @@ const MODEL_OPTIONS: Record<string, Array<{ value: string; label: string; hint?:
     { value: 'claude-opus-4-6', label: 'Claude Opus 4.6', hint: 'most capable' },
     { value: 'claude-haiku-4-5', label: 'Claude Haiku 4.5', hint: 'fastest' },
   ],
+  'codex-cli': [
+    { value: 'gpt-5.1-codex', label: 'GPT-5.1 Codex', hint: 'recommended' },
+    { value: 'gpt-5.1-codex-mini', label: 'GPT-5.1 Codex Mini', hint: 'faster' },
+  ],
 }
 
 export async function runLlmSection(configDir: string, existingConfig: DtcConfig): Promise<void> {
@@ -58,6 +62,11 @@ export async function runLlmSection(configDir: string, existingConfig: DtcConfig
         value: 'claude-cli',
         label: 'Claude Code (local CLI)',
         hint: 'uses your local `claude` — no API key needed',
+      },
+      {
+        value: 'codex-cli',
+        label: 'Codex CLI (local auth)',
+        hint: 'uses your local `codex` - no API key stored',
       },
       { value: 'anthropic', label: 'Anthropic (Claude API)', hint: 'API key' },
       { value: 'openai', label: 'OpenAI (GPT)', hint: 'API key' },
@@ -108,6 +117,11 @@ export async function runLlmSection(configDir: string, existingConfig: DtcConfig
     }
   } else if (provider === 'claude-cli') {
     p.log.info('Using local Claude Code CLI — make sure `claude` is installed and authenticated.')
+    apiKey = ''
+  } else if (provider === 'codex-cli') {
+    p.log.info(
+      'Using local Codex CLI - make sure `codex` is installed and authenticated with `codex --login` or OPENAI_API_KEY.',
+    )
     apiKey = ''
   } else {
     const keyInput = await p.password({

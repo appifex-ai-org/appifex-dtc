@@ -66,7 +66,7 @@ export interface DtcConfig {
 }
 
 export interface LlmConfig {
-  provider: 'anthropic' | 'openai' | 'google' | 'copilot' | 'claude-cli'
+  provider: 'anthropic' | 'openai' | 'google' | 'copilot' | 'claude-cli' | 'codex-cli'
   apiKey: string
   githubToken?: string
   model?: string
