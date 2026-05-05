@@ -251,6 +251,11 @@ async function readAllowedFileSnapshot(
 
 function diffAllowedFileSnapshots(before: FileSnapshot, after: FileSnapshot): string[] {
   const changed: string[] = []
+  for (const file of before.keys()) {
+    if (!after.has(file)) {
+      changed.push(file)
+    }
+  }
   for (const [file, hash] of after) {
     if (before.get(file) !== hash) {
       changed.push(file)
@@ -439,6 +444,7 @@ function codexCliEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
     'LOGNAME',
     'SHELL',
     'TMPDIR',
+    'OPENAI_API_KEY',
   ]
   const next: NodeJS.ProcessEnv = {}
   for (const key of allowed) {

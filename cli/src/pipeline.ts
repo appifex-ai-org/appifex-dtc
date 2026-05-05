@@ -1389,7 +1389,7 @@ export async function runPipeline(
   // ── Run Context builder — accumulates phase outcomes for persistence ──
   const runMode: RunMode = opts.runMode ?? 'fresh'
   const previousContext = await loadRunContext(outputDir)
-  let modifiedScreensForFix = previousContext?.modifiedScreens
+  let modifiedScreensForFix = runMode !== 'fresh' ? previousContext?.modifiedScreens : undefined
 
   // On resume, preserve the original prompt from previous context instead of the placeholder
   const RESUME_PLACEHOLDER = 'Resume previous session'

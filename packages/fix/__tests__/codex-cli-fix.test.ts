@@ -219,6 +219,43 @@ describe('createCodexCliFixFn', () => {
     )
   })
 
+  it('preserves OPENAI_API_KEY in the minimal Codex CLI environment', async () => {
+    const previousOpenAiApiKey = process.env.OPENAI_API_KEY
+    const previousUnrelatedSecret = process.env.UNRELATED_SECRET
+    process.env.OPENAI_API_KEY = 'test-openai-key'
+    process.env.UNRELATED_SECRET = 'do-not-forward'
+    vi.mocked(spawn).mockReturnValue(makeFakeCodexChild() as any)
+    const fixFn = createCodexCliFixFn({
+      runner: fakeRunner(),
+      projectDir: '/tmp/proj',
+      timeoutMs: 60_000,
+    })
+
+    try {
+      await fixFn(failingValidation)
+    } finally {
+      if (previousOpenAiApiKey === undefined) {
+        delete process.env.OPENAI_API_KEY
+      } else {
+        process.env.OPENAI_API_KEY = previousOpenAiApiKey
+      }
+      if (previousUnrelatedSecret === undefined) {
+        delete process.env.UNRELATED_SECRET
+      } else {
+        process.env.UNRELATED_SECRET = previousUnrelatedSecret
+      }
+    }
+
+    expect(spawn).toHaveBeenCalledWith(
+      'codex',
+      expect.any(Array),
+      expect.objectContaining({
+        env: expect.objectContaining({ OPENAI_API_KEY: 'test-openai-key' }),
+      }),
+    )
+    expect(vi.mocked(spawn).mock.calls[0]?.[2]?.env).not.toHaveProperty('UNRELATED_SECRET')
+  })
+
   it('throws on nonzero close and does not report changed files', async () => {
     vi.mocked(spawn).mockReturnValue(
       makeFakeCodexChild({ code: 2, stderr: 'permission denied' }) as any,
@@ -369,5 +406,37 @@ describe('createCodexCliFixFn', () => {
       'src/NewView.tsx',
       '.maestro/e2e/save.yaml',
     ])
+  })
+
+  it('reports allowed file deletions when git baseline cannot be read', async () => {
+    vi.mocked(spawn).mockReturnValue(makeFakeCodexChild() as any)
+    let sourcesGlobCount = 0
+    const runner = fakeRunner({
+      glob: (pattern) => {
+        if (pattern.includes('/Sources/**/*')) {
+          sourcesGlobCount += 1
+          return sourcesGlobCount === 1 ? ['/tmp/proj/Sources/DeletedView.swift'] : []
+        }
+        return []
+      },
+      files: {
+        '/tmp/proj/Sources/DeletedView.swift': ['deleted source'],
+      },
+    })
+    vi.mocked(runner.exec).mockImplementation(async (command: string, args: string[]) => {
+      if (command === 'git') {
+        return makeGitResult('', args.includes('diff') ? 128 : 128)
+      }
+      return { command, exitCode: 0, stdout: '', stderr: '', duration: 0 }
+    })
+    const fixFn = createCodexCliFixFn({
+      runner,
+      projectDir: '/tmp/proj',
+      timeoutMs: 60_000,
+    })
+
+    const result = await fixFn(failingValidation)
+
+    expect(result.filesChanged).toEqual(['Sources/DeletedView.swift'])
   })
 })

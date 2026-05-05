@@ -140,7 +140,9 @@ describe('provider routing', () => {
   })
 
   it('passes modified screen context into Codex fix-loop factories', () => {
-    expect(pipelineSource).toContain('let modifiedScreensForFix = previousContext?.modifiedScreens')
+    expect(pipelineSource).toMatch(
+      /let modifiedScreensForFix =\s*runMode !== 'fresh' \? previousContext\?\.modifiedScreens : undefined/,
+    )
     expect(pipelineSource).toContain('modifiedScreensForFix = regeneratedModifiedScreens')
     expect(pipelineSource).toContain('modifiedScreens: modifiedScreensForFix')
   })
