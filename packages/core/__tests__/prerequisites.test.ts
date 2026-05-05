@@ -73,6 +73,32 @@ describe('checkCriticalPrerequisites — LLM access under fixture mode', () => {
     expect(llm.status).toBe('pass')
     expect(llm.message).toMatch(/fixture mode/)
   })
+
+  it('fixture short-circuit wins over the codex-cli provider branch', () => {
+    process.env.DTC_LLM_MODE = 'fixture'
+    const cfg: DtcConfig = {
+      llm: { provider: 'codex-cli', apiKey: '' },
+      design: { tool: 'pencil' },
+      runner: { type: 'local' },
+    }
+    const report = checkCriticalPrerequisites('kotlin-compose', cfg)
+    const llm = findLlmCheck(report)
+    expect(llm.status).toBe('pass')
+    expect(llm.message).toMatch(/fixture mode/)
+  })
+
+  it('codex-cli provider checks local codex binary instead of apiKey', () => {
+    const cfg: DtcConfig = {
+      llm: { provider: 'codex-cli', apiKey: '' },
+      design: { tool: 'pencil' },
+      runner: { type: 'local' },
+    }
+    const report = checkCriticalPrerequisites('kotlin-compose', cfg)
+    const llm = findLlmCheck(report)
+    expect(['pass', 'fail']).toContain(llm.status)
+    expect(llm.message).toMatch(/Codex CLI available|codex CLI not found/)
+    expect(llm.message).not.toMatch(/API key/)
+  })
 })
 
 // Phase 03 Plan 05 (SETUP-03, D-11): checkFirebaseTools tests

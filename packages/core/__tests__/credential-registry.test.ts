@@ -445,4 +445,38 @@ describe('CredentialRegistry — probe implementations', () => {
     const report = await runCredentialChecks(config, { deep: false })
     expect(report.hasBlockingFailures).toBe(true)
   })
+
+  it('codex-cli shallow LLM probe returns OK without apiKey', async () => {
+    delete process.env.DTC_LLM_MODE
+    const config = {
+      llm: { provider: 'codex-cli' as const, apiKey: '' },
+      design: { tool: 'pencil' as const },
+      runner: { type: 'local' as const },
+    } satisfies DtcConfig
+
+    const report = await runCredentialChecks(config, { deep: false })
+    const llmCheck = report.checks.find((c) => c.name === 'llm')
+
+    expect(llmCheck).toBeDefined()
+    expect(llmCheck!.status).toBe('OK')
+    expect(llmCheck!.message).toBe('codex-cli (local auth)')
+    expect(report.hasBlockingFailures).toBe(false)
+  })
+
+  it('codex-cli deep LLM probe skips API ping and returns OK', async () => {
+    delete process.env.DTC_LLM_MODE
+    const config = {
+      llm: { provider: 'codex-cli' as const, apiKey: '' },
+      design: { tool: 'pencil' as const },
+      runner: { type: 'local' as const },
+    } satisfies DtcConfig
+
+    const report = await runCredentialChecks(config, { deep: true })
+    const llmCheck = report.checks.find((c) => c.name === 'llm')
+
+    expect(llmCheck).toBeDefined()
+    expect(llmCheck!.status).toBe('OK')
+    expect(llmCheck!.message).toBe('codex-cli (local auth)')
+    expect(report.hasBlockingFailures).toBe(false)
+  })
 })

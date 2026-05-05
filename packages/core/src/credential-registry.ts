@@ -40,6 +40,14 @@ export async function probeLlm(
 ): Promise<CredentialCheck> {
   const base = { name: 'llm', severity: 'critical' as const }
   const key = config?.llm?.apiKey
+  if (config?.llm?.provider === 'codex-cli') {
+    return {
+      ...base,
+      status: 'OK',
+      message: 'codex-cli (local auth)',
+      remedy: undefined,
+    }
+  }
   if (!key || key.length === 0) {
     return {
       ...base,
