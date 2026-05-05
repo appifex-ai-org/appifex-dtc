@@ -369,6 +369,7 @@ export async function runCodexCli(opts: RunCodexCliOpts): Promise<{
         }
       }
       let pendingEpipeError: EpipeError | null = null
+      let killedDueToEpipe = false
       child.stdin.on('error', (err: NodeJS.ErrnoException) => {
         if (err.code === 'EPIPE') {
           pendingEpipeError =
@@ -378,6 +379,7 @@ export async function runCodexCli(opts: RunCodexCliOpts): Promise<{
               'cli/pipeline.ts:codex-cli',
               payloadBytes,
             )
+          killedDueToEpipe = true
           child.kill('SIGTERM')
           return
         }
@@ -396,7 +398,12 @@ export async function runCodexCli(opts: RunCodexCliOpts): Promise<{
       child.on('error', (err) => {
         settle(() => reject(err))
       })
-      child.on('close', (code) => {
+      child.on('close', (code, signal) => {
+        const epipeSignalClose = code === null && signal === 'SIGTERM' && killedDueToEpipe
+        if (pendingEpipeError && (code === 0 || epipeSignalClose)) {
+          settle(() => reject(pendingEpipeError))
+          return
+        }
         if (code !== 0) {
           settle(() =>
             reject(
@@ -405,10 +412,6 @@ export async function runCodexCli(opts: RunCodexCliOpts): Promise<{
               ),
             ),
           )
-          return
-        }
-        if (pendingEpipeError) {
-          settle(() => reject(pendingEpipeError))
           return
         }
         void readFile(outputPath, 'utf-8')

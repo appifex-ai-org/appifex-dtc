@@ -219,4 +219,22 @@ describe('runCodexCli', () => {
     await expect(promise).rejects.toThrow(/stdout preview: partial output/)
     await expect(promise).rejects.not.toThrow(EpipeError)
   })
+
+  it('preserves pending stdin EPIPE when the child closes from SIGTERM', async () => {
+    expect(typeof pipelineModule.runCodexCli).toBe('function')
+
+    const child = makeFakeCodexChildEmittingEpipeOnStdin()
+    vi.mocked(spawn).mockReturnValue(child as any)
+
+    const promise = pipelineModule.runCodexCli!({
+      prompt: 'x'.repeat(100_000),
+      model: 'gpt-5.1-codex',
+      cwd: '/tmp',
+    })
+
+    await vi.waitFor(() => expect(child.kill).toHaveBeenCalledWith('SIGTERM'))
+    child.emit('close', null, 'SIGTERM')
+
+    await expect(promise).rejects.toThrow(EpipeError)
+  })
 })
