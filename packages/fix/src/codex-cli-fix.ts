@@ -1,9 +1,36 @@
 import { spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import type { ModifiedScreens, Platform, Runner, TokenBudget } from '@appifex/core'
 import type { ValidationResult } from '@appifex/validate'
 import type { FixFnResult } from './fix-loop.js'
 
 const SIGKILL_GRACE_MS = 5_000
+const SNAPSHOT_GLOB_PATTERNS = [
+  'Sources/**/*',
+  'src/**/*',
+  'app/**/*',
+  '__tests__/**/*',
+  'Tests/**/*',
+  'test/**/*',
+  'androidTest/**/*',
+  'ios/**/*',
+  'android/**/*',
+  '.maestro/**/*.yaml',
+] as const
+const EXCLUDED_SNAPSHOT_SEGMENTS = new Set([
+  '.build',
+  '.git',
+  '.gradle',
+  '.next',
+  'DerivedData',
+  'Pods',
+  'build',
+  'coverage',
+  'dist',
+  'node_modules',
+  'out',
+  'vendor',
+])
 
 export interface CodexCliFixOpts {
   runner: Runner
@@ -29,6 +56,9 @@ export function createCodexCliFixFn(
 
   return async (failures: ValidationResult): Promise<FixFnResult> => {
     const baseline = await readGitChangeSet(opts.runner, opts.projectDir)
+    const snapshotBaseline = baseline
+      ? null
+      : await readAllowedFileSnapshot(opts.runner, opts.projectDir)
     const errorLines = buildErrorLines(failures)
     const flowFiles = await readMaestroFlows(opts.runner, opts.projectDir)
     const prompt = buildCodexFixPrompt({
@@ -51,7 +81,16 @@ export function createCodexCliFixFn(
     }
 
     if (!baseline) {
-      return { filesChanged: [], tokensUsed: 0 }
+      const snapshotAfter = snapshotBaseline
+        ? await readAllowedFileSnapshot(opts.runner, opts.projectDir)
+        : null
+      return {
+        filesChanged:
+          snapshotBaseline && snapshotAfter
+            ? diffAllowedFileSnapshots(snapshotBaseline, snapshotAfter)
+            : [],
+        tokensUsed: 0,
+      }
     }
 
     const after = await readGitChangeSet(opts.runner, opts.projectDir)
@@ -188,6 +227,76 @@ function diffGitChangeSets(before: GitChangeSet, after: GitChangeSet): string[] 
     ...after.tracked.filter((file) => !beforeTracked.has(file)),
     ...after.untracked.filter((file) => !beforeUntracked.has(file)),
   ]
+}
+
+type FileSnapshot = Map<string, string>
+
+async function readAllowedFileSnapshot(
+  runner: Runner,
+  projectDir: string,
+): Promise<FileSnapshot | null> {
+  try {
+    const snapshot: FileSnapshot = new Map()
+    for (const pattern of SNAPSHOT_GLOB_PATTERNS) {
+      const files = await runner.glob(`${projectDir}/${pattern}`)
+      for (const file of files) {
+        const relativePath = normalizeProjectRelativePath(projectDir, file)
+        if (!relativePath || !isAllowedSnapshotPath(relativePath)) continue
+        try {
+          const content = await runner.readFile(file)
+          snapshot.set(relativePath, sha256(content))
+        } catch {
+          // Files may disappear during the attempt. Treat unreadable paths as absent.
+        }
+      }
+    }
+    return snapshot
+  } catch {
+    return null
+  }
+}
+
+function diffAllowedFileSnapshots(before: FileSnapshot, after: FileSnapshot): string[] {
+  const changed: string[] = []
+  for (const [file, hash] of after) {
+    if (before.get(file) !== hash) {
+      changed.push(file)
+    }
+  }
+  return changed
+}
+
+function normalizeProjectRelativePath(projectDir: string, filePath: string): string | null {
+  const normalizedProjectDir = projectDir.replaceAll('\\', '/').replace(/\/+$/, '')
+  const normalizedFilePath = filePath.replaceAll('\\', '/')
+  if (normalizedFilePath.startsWith(`${normalizedProjectDir}/`)) {
+    return normalizedFilePath.slice(normalizedProjectDir.length + 1)
+  }
+  if (normalizedFilePath.startsWith('/') || normalizedFilePath.includes('..')) {
+    return null
+  }
+  return normalizedFilePath
+}
+
+function isAllowedSnapshotPath(relativePath: string): boolean {
+  const segments = relativePath.split('/')
+  if (segments.some((segment) => EXCLUDED_SNAPSHOT_SEGMENTS.has(segment))) return false
+  return (
+    relativePath.startsWith('Sources/') ||
+    relativePath.startsWith('src/') ||
+    relativePath.startsWith('app/') ||
+    relativePath.startsWith('__tests__/') ||
+    relativePath.startsWith('Tests/') ||
+    relativePath.startsWith('test/') ||
+    relativePath.startsWith('androidTest/') ||
+    relativePath.startsWith('ios/') ||
+    relativePath.startsWith('android/') ||
+    (relativePath.startsWith('.maestro/') && relativePath.endsWith('.yaml'))
+  )
+}
+
+function sha256(content: string): string {
+  return createHash('sha256').update(content).digest('hex')
 }
 
 function runCodexFixCli(opts: {

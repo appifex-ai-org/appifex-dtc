@@ -138,6 +138,12 @@ describe('provider routing', () => {
     expect(pipelineSource).toContain('providerSupportsImages(config.llm.provider)')
     expect(pipelineSource).not.toContain("config.llm.provider !== 'claude-cli'")
   })
+
+  it('passes modified screen context into Codex fix-loop factories', () => {
+    expect(pipelineSource).toContain('let modifiedScreensForFix = previousContext?.modifiedScreens')
+    expect(pipelineSource).toContain('modifiedScreensForFix = regeneratedModifiedScreens')
+    expect(pipelineSource).toContain('modifiedScreens: modifiedScreensForFix')
+  })
 })
 
 describe('serializeMessagesForCli', () => {

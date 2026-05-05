@@ -11,15 +11,6 @@ vi.mock('node:child_process', () => ({
 const { spawn } = await import('node:child_process')
 const { createCodexCliFixFn } = await import('../src/index.js')
 
-type FakeCodexChild = EventEmitter & {
-  stdin: Writable
-  stdout: EventEmitter
-  stderr: EventEmitter
-  kill: ReturnType<typeof vi.fn>
-  writtenPrompt: string
-  emitStdinError: (err: NodeJS.ErrnoException) => void
-}
-
 function makeFakeCodexChild(opts: { closeOnEnd?: boolean; code?: number; stderr?: string } = {}) {
   const child = new EventEmitter() as EventEmitter & {
     stdin: Writable
@@ -68,11 +59,22 @@ function makeGitResult(stdout: string, exitCode = 0) {
   }
 }
 
-function fakeRunner(opts: { diff?: string[]; untracked?: string[] } = {}): Runner {
+function fakeRunner(
+  opts: {
+    diff?: string[]
+    untracked?: string[]
+    glob?: string[][] | ((pattern: string) => string[])
+    files?: Record<string, string[]>
+  } = {},
+): Runner {
   const diff = opts.diff ?? ['Sources/AppView.swift\n', 'Sources/AppView.swift\n']
   const untracked = opts.untracked ?? ['Tests/AppViewTests.swift\n', 'Tests/AppViewTests.swift\n']
+  const glob = opts.glob ?? [['/tmp/proj/.maestro/e2e/save.yaml']]
+  const files = opts.files ?? { '/tmp/proj/.maestro/e2e/save.yaml': ['- tapOn: Save'] }
   let diffIndex = 0
   let untrackedIndex = 0
+  let globIndex = 0
+  const fileReadIndexes = new Map<string, number>()
   return {
     exec: vi.fn(async (command: string, args: string[]) => {
       if (command === 'git' && args.join(' ') === 'diff --name-only') {
@@ -83,10 +85,20 @@ function fakeRunner(opts: { diff?: string[]; untracked?: string[] } = {}): Runne
       }
       return { command, exitCode: 0, stdout: '', stderr: '', duration: 0 }
     }),
-    readFile: vi.fn(async () => '- tapOn: Save'),
+    readFile: vi.fn(async (path: string) => {
+      const versions = files[path] ?? ['']
+      const index = fileReadIndexes.get(path) ?? 0
+      fileReadIndexes.set(path, index + 1)
+      return versions[Math.min(index, versions.length - 1)] ?? ''
+    }),
     writeFile: vi.fn(async () => {}),
     exists: vi.fn(async () => true),
-    glob: vi.fn(async () => ['/tmp/proj/.maestro/e2e/save.yaml']),
+    glob: vi.fn(async (pattern: string) => {
+      if (typeof glob === 'function') {
+        return glob(pattern)
+      }
+      return glob[Math.min(globIndex++, glob.length - 1)] ?? []
+    }),
     capabilities: {
       hasMaestro: false,
       hasXcode: false,
@@ -101,10 +113,6 @@ function fakeRunner(opts: { diff?: string[]; untracked?: string[] } = {}): Runne
       platform: 'darwin',
     },
   }
-}
-
-function nonGitRunner(): Runner {
-  return fakeRunner({ diff: [''], untracked: [''] })
 }
 
 const failingValidation: ValidationResult = {
@@ -274,9 +282,29 @@ describe('createCodexCliFixFn', () => {
     expect(result.filesChanged).toEqual(['Sources/NewFix.swift', '.maestro/new.yaml'])
   })
 
-  it('returns no changed files when git baseline cannot be read', async () => {
+  it('uses an allowed-file snapshot when git baseline cannot be read', async () => {
     vi.mocked(spawn).mockReturnValue(makeFakeCodexChild() as any)
-    const runner = nonGitRunner()
+    let snapshotPass = 0
+    const runner = fakeRunner({
+      glob: (pattern) => {
+        if (pattern.includes('/.maestro/**/*.yaml')) {
+          snapshotPass += 1
+          return ['/tmp/proj/.maestro/e2e/save.yaml']
+        }
+        if (pattern.includes('/Sources/**/*')) {
+          return ['/tmp/proj/Sources/AppView.swift']
+        }
+        if (pattern.includes('/src/**/*')) {
+          return snapshotPass >= 2 ? ['/tmp/proj/src/NewView.tsx'] : []
+        }
+        return []
+      },
+      files: {
+        '/tmp/proj/Sources/AppView.swift': ['before', 'after'],
+        '/tmp/proj/src/NewView.tsx': ['new file'],
+        '/tmp/proj/.maestro/e2e/save.yaml': ['- tapOn: Save', '- tapOn: Save', '- tapOn: Done'],
+      },
+    })
     vi.mocked(runner.exec).mockImplementation(async (command: string, args: string[]) => {
       if (command === 'git') {
         return makeGitResult('', args.includes('diff') ? 128 : 128)
@@ -291,6 +319,10 @@ describe('createCodexCliFixFn', () => {
 
     const result = await fixFn(failingValidation)
 
-    expect(result.filesChanged).toEqual([])
+    expect(result.filesChanged).toEqual([
+      'Sources/AppView.swift',
+      'src/NewView.tsx',
+      '.maestro/e2e/save.yaml',
+    ])
   })
 })

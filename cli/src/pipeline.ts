@@ -97,7 +97,7 @@ import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { writeFileSync as writeFileSyncFs, mkdirSync as mkdirSyncFs } from 'node:fs'
 import { writeFile as writeFileAsync, mkdir as mkdirAsync } from 'node:fs/promises'
-import type { DesignTokens, DesignDeltaReport } from '@appifex/core'
+import type { DesignTokens, DesignDeltaReport, ModifiedScreens } from '@appifex/core'
 
 // Phase 14 (D-09): phases that ALWAYS re-run on resume regardless of
 // checkpoint/previousContext state. Matches PROJECT.md principle
@@ -788,7 +788,9 @@ export interface RunTestRegenDeps {
  *     filename (ViewTests+Regen.swift / ScreenTestRegen.kt) so the original
  *     combined ViewTests.swift / ScreenTest.kt is never overwritten.
  */
-export async function runTestRegenPhase(deps: RunTestRegenDeps): Promise<void> {
+export async function runTestRegenPhase(
+  deps: RunTestRegenDeps,
+): Promise<ModifiedScreens | undefined> {
   const {
     runner,
     outputDir,
@@ -806,7 +808,7 @@ export async function runTestRegenPhase(deps: RunTestRegenDeps): Promise<void> {
   } = deps
 
   // Pitfall 6 double-gate: fresh-app runs must not reach the diff.
-  if (runMode !== 'add-feature' || !preAgentSnapshot) return
+  if (runMode !== 'add-feature' || !preAgentSnapshot) return undefined
 
   const modifiedScreens = await diffScreenInventory(outputDir, platform, runner, preAgentSnapshot)
   ctxBuilder.setModifiedScreens(modifiedScreens)
@@ -817,7 +819,7 @@ export async function runTestRegenPhase(deps: RunTestRegenDeps): Promise<void> {
     // D-10: zero-delta → emit skipped, write nothing, flush and move on.
     emit('test_regen', 'skipped', 'No modified screens')
     await flushContext()
-    return
+    return modifiedScreens
   }
 
   emit(
@@ -850,6 +852,7 @@ export async function runTestRegenPhase(deps: RunTestRegenDeps): Promise<void> {
     `Regenerated ${filteredFlows.length + filteredUnitTests.length} test file(s)`,
   )
   await flushContext()
+  return modifiedScreens
 }
 
 /**
@@ -1386,6 +1389,7 @@ export async function runPipeline(
   // ── Run Context builder — accumulates phase outcomes for persistence ──
   const runMode: RunMode = opts.runMode ?? 'fresh'
   const previousContext = await loadRunContext(outputDir)
+  let modifiedScreensForFix = previousContext?.modifiedScreens
 
   // On resume, preserve the original prompt from previous context instead of the placeholder
   const RESUME_PLACEHOLDER = 'Resume previous session'
@@ -3271,7 +3275,7 @@ export async function runPipeline(
       // pollute the diff (Pitfall 1). runTestRegenPhase is a no-op on fresh-app
       // runs or when preAgentSnapshot is undefined (Pitfall 6 double-gate).
       if (platformSpec) {
-        await runTestRegenPhase({
+        const regeneratedModifiedScreens = await runTestRegenPhase({
           runner,
           outputDir,
           platform: opts.platform,
@@ -3286,6 +3290,9 @@ export async function runPipeline(
           bundleId,
           designScreenshots,
         })
+        if (regeneratedModifiedScreens) {
+          modifiedScreensForFix = regeneratedModifiedScreens
+        }
       }
 
       if (result.success) {
@@ -3348,7 +3355,12 @@ export async function runPipeline(
           }
           const secFixFn =
             config.llm.provider === 'claude-cli'
-              ? createClaudeCliFixFn({ runner, projectDir: outputDir, model: config.llm.model })
+              ? createClaudeCliFixFn({
+                  runner,
+                  projectDir: outputDir,
+                  model: config.llm.model,
+                  modifiedScreens: modifiedScreensForFix,
+                })
               : config.llm.provider === 'codex-cli'
                 ? createCodexCliFixFn({
                     runner,
@@ -3356,6 +3368,7 @@ export async function runPipeline(
                     model: config.llm.model,
                     platform: opts.platform,
                     tokenBudget: budget,
+                    modifiedScreens: modifiedScreensForFix,
                   })
                 : createDefaultFixFn({
                     apiKey: config.llm.apiKey ?? '',
@@ -3365,6 +3378,7 @@ export async function runPipeline(
                     createMessage: await getCreateMessage(),
                     skillPrompt: skills.fixPrompt,
                     verbose: opts.verbose,
+                    modifiedScreens: modifiedScreensForFix,
                   })
           const fr = await fixLoop(secValidation, {
             fixFn: secFixFn,
@@ -3783,6 +3797,7 @@ export async function runPipeline(
             runner,
             projectDir: outputDir,
             model: config.llm.model,
+            modifiedScreens: modifiedScreensForFix,
           })
         } else if (config.llm.provider === 'codex-cli') {
           opts.fixFn = createCodexCliFixFn({
@@ -3791,6 +3806,7 @@ export async function runPipeline(
             model: config.llm.model,
             platform: opts.platform,
             tokenBudget: budget,
+            modifiedScreens: modifiedScreensForFix,
           })
         } else {
           opts.fixFn = createDefaultFixFn({
@@ -3801,6 +3817,7 @@ export async function runPipeline(
             createMessage: await getCreateMessage(),
             skillPrompt: skills.fixPrompt,
             verbose: opts.verbose,
+            modifiedScreens: modifiedScreensForFix,
           })
         }
       }
@@ -3869,6 +3886,7 @@ export async function runPipeline(
               runner,
               projectDir: outputDir,
               model: config.llm.model,
+              modifiedScreens: modifiedScreensForFix,
             })
           } else if (config.llm.provider === 'codex-cli') {
             opts.fixFn = createCodexCliFixFn({
@@ -3877,6 +3895,7 @@ export async function runPipeline(
               model: config.llm.model,
               platform: opts.platform,
               tokenBudget: budget,
+              modifiedScreens: modifiedScreensForFix,
             })
           } else {
             opts.fixFn = createDefaultFixFn({
@@ -3887,6 +3906,7 @@ export async function runPipeline(
               createMessage: await getCreateMessage(),
               skillPrompt: skills.fixPrompt,
               verbose: opts.verbose,
+              modifiedScreens: modifiedScreensForFix,
             })
           }
         }
@@ -3979,7 +3999,12 @@ export async function runPipeline(
           emit('fix', 'started', 'Fixing security findings')
           const secFixFn =
             config.llm.provider === 'claude-cli'
-              ? createClaudeCliFixFn({ runner, projectDir: outputDir, model: config.llm.model })
+              ? createClaudeCliFixFn({
+                  runner,
+                  projectDir: outputDir,
+                  model: config.llm.model,
+                  modifiedScreens: modifiedScreensForFix,
+                })
               : config.llm.provider === 'codex-cli'
                 ? createCodexCliFixFn({
                     runner,
@@ -3987,6 +4012,7 @@ export async function runPipeline(
                     model: config.llm.model,
                     platform: opts.platform,
                     tokenBudget: budget,
+                    modifiedScreens: modifiedScreensForFix,
                   })
                 : createDefaultFixFn({
                     apiKey: config.llm.apiKey ?? '',
@@ -3996,6 +4022,7 @@ export async function runPipeline(
                     createMessage: await getCreateMessage(),
                     skillPrompt: skills.fixPrompt,
                     verbose: opts.verbose,
+                    modifiedScreens: modifiedScreensForFix,
                   })
           const fr = await fixLoop(secValidation, {
             fixFn: secFixFn,
