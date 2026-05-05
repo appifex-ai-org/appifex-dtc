@@ -3346,18 +3346,23 @@ export async function runPipeline(
               allPassed: sec.failed === 0,
             }
           }
-          const createMessage = await getCreateMessage()
           const secFixFn =
             config.llm.provider === 'claude-cli'
               ? createClaudeCliFixFn({ runner, projectDir: outputDir, model: config.llm.model })
               : config.llm.provider === 'codex-cli'
-                ? createCodexCliFixFn({ runner, projectDir: outputDir, model: config.llm.model })
+                ? createCodexCliFixFn({
+                    runner,
+                    projectDir: outputDir,
+                    model: config.llm.model,
+                    platform: opts.platform,
+                    tokenBudget: budget,
+                  })
                 : createDefaultFixFn({
                     apiKey: config.llm.apiKey ?? '',
                     runner,
                     projectDir: outputDir,
                     model: config.llm.model,
-                    createMessage,
+                    createMessage: await getCreateMessage(),
                     skillPrompt: skills.fixPrompt,
                     verbose: opts.verbose,
                   })
@@ -3742,7 +3747,6 @@ export async function runPipeline(
     let fixResult = undefined
     if (!buildResult.success) {
       emit('fix', 'started', 'Fixing build errors')
-      const createMessage = await getCreateMessage()
 
       // Create a synthetic validation result from build errors
       // Include file paths so the fix function reads only failing files
@@ -3794,7 +3798,7 @@ export async function runPipeline(
             runner,
             projectDir: outputDir,
             model: config.llm.model,
-            createMessage,
+            createMessage: await getCreateMessage(),
             skillPrompt: skills.fixPrompt,
             verbose: opts.verbose,
           })
@@ -3859,7 +3863,6 @@ export async function runPipeline(
       // 7. Fix test failures (if build passed but tests failed)
       if (!validation.allPassed && !fixResult) {
         emit('fix', 'started', 'Fixing test failures')
-        const createMessage = await getCreateMessage()
         if (!opts.fixFn) {
           if (config.llm.provider === 'claude-cli') {
             opts.fixFn = createClaudeCliFixFn({
@@ -3881,7 +3884,7 @@ export async function runPipeline(
               runner,
               projectDir: outputDir,
               model: config.llm.model,
-              createMessage,
+              createMessage: await getCreateMessage(),
               skillPrompt: skills.fixPrompt,
               verbose: opts.verbose,
             })
@@ -3974,18 +3977,23 @@ export async function runPipeline(
             }
           }
           emit('fix', 'started', 'Fixing security findings')
-          const createMessage = await getCreateMessage()
           const secFixFn =
             config.llm.provider === 'claude-cli'
               ? createClaudeCliFixFn({ runner, projectDir: outputDir, model: config.llm.model })
               : config.llm.provider === 'codex-cli'
-                ? createCodexCliFixFn({ runner, projectDir: outputDir, model: config.llm.model })
+                ? createCodexCliFixFn({
+                    runner,
+                    projectDir: outputDir,
+                    model: config.llm.model,
+                    platform: opts.platform,
+                    tokenBudget: budget,
+                  })
                 : createDefaultFixFn({
                     apiKey: config.llm.apiKey ?? '',
                     runner,
                     projectDir: outputDir,
                     model: config.llm.model,
-                    createMessage,
+                    createMessage: await getCreateMessage(),
                     skillPrompt: skills.fixPrompt,
                     verbose: opts.verbose,
                   })

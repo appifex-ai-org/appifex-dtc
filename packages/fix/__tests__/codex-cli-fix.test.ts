@@ -11,13 +11,23 @@ vi.mock('node:child_process', () => ({
 const { spawn } = await import('node:child_process')
 const { createCodexCliFixFn } = await import('../src/index.js')
 
-function makeFakeCodexChild() {
+type FakeCodexChild = EventEmitter & {
+  stdin: Writable
+  stdout: EventEmitter
+  stderr: EventEmitter
+  kill: ReturnType<typeof vi.fn>
+  writtenPrompt: string
+  emitStdinError: (err: NodeJS.ErrnoException) => void
+}
+
+function makeFakeCodexChild(opts: { closeOnEnd?: boolean; code?: number; stderr?: string } = {}) {
   const child = new EventEmitter() as EventEmitter & {
     stdin: Writable
     stdout: EventEmitter
     stderr: EventEmitter
     kill: ReturnType<typeof vi.fn>
     writtenPrompt: string
+    emitStdinError: (err: NodeJS.ErrnoException) => void
   }
   const stdinEmitter = new EventEmitter()
   child.writtenPrompt = ''
@@ -31,35 +41,45 @@ function makeFakeCodexChild() {
     },
     end: () => {
       child.stdout.emit('data', Buffer.from('fixed files'))
-      child.emit('close', 0)
+      if (opts.closeOnEnd ?? true) {
+        if (opts.stderr) {
+          child.stderr.emit('data', Buffer.from(opts.stderr))
+        }
+        child.emit('close', opts.code ?? 0)
+      }
     },
   } as unknown as Writable
   child.stdout = new EventEmitter()
   child.stderr = new EventEmitter()
   child.kill = vi.fn()
+  child.emitStdinError = (err: NodeJS.ErrnoException) => {
+    stdinEmitter.emit('error', err)
+  }
   return child
 }
 
-function fakeRunner(): Runner {
+function makeGitResult(stdout: string, exitCode = 0) {
+  return {
+    command: 'git',
+    exitCode,
+    stdout,
+    stderr: exitCode === 0 ? '' : 'not a git repository',
+    duration: 0,
+  }
+}
+
+function fakeRunner(opts: { diff?: string[]; untracked?: string[] } = {}): Runner {
+  const diff = opts.diff ?? ['Sources/AppView.swift\n', 'Sources/AppView.swift\n']
+  const untracked = opts.untracked ?? ['Tests/AppViewTests.swift\n', 'Tests/AppViewTests.swift\n']
+  let diffIndex = 0
+  let untrackedIndex = 0
   return {
     exec: vi.fn(async (command: string, args: string[]) => {
       if (command === 'git' && args.join(' ') === 'diff --name-only') {
-        return {
-          command: 'git diff --name-only',
-          exitCode: 0,
-          stdout: 'Sources/AppView.swift\n',
-          stderr: '',
-          duration: 0,
-        }
+        return makeGitResult(diff[Math.min(diffIndex++, diff.length - 1)] ?? '')
       }
       if (command === 'git' && args.join(' ') === 'ls-files --others --exclude-standard') {
-        return {
-          command: 'git ls-files --others --exclude-standard',
-          exitCode: 0,
-          stdout: 'Tests/AppViewTests.swift\n',
-          stderr: '',
-          duration: 0,
-        }
+        return makeGitResult(untracked[Math.min(untrackedIndex++, untracked.length - 1)] ?? '')
       }
       return { command, exitCode: 0, stdout: '', stderr: '', duration: 0 }
     }),
@@ -81,6 +101,10 @@ function fakeRunner(): Runner {
       platform: 'darwin',
     },
   }
+}
+
+function nonGitRunner(): Runner {
+  return fakeRunner({ diff: [''], untracked: [''] })
 }
 
 const failingValidation: ValidationResult = {
@@ -135,7 +159,10 @@ describe('createCodexCliFixFn', () => {
   it('spawns codex exec with workspace-write flags and returns changed files after success', async () => {
     const child = makeFakeCodexChild()
     vi.mocked(spawn).mockReturnValue(child as any)
-    const runner = fakeRunner()
+    const runner = fakeRunner({
+      diff: ['', 'Sources/AppView.swift\n'],
+      untracked: ['', 'Tests/AppViewTests.swift\n'],
+    })
     const fixFn = createCodexCliFixFn({
       runner,
       projectDir: '/tmp/proj',
@@ -167,6 +194,11 @@ describe('createCodexCliFixFn', () => {
     )
     expect(child.writtenPrompt).toContain('Save button missing accessibilityIdentifier')
     expect(child.writtenPrompt).toContain('Hardcoded secret')
+    expect(child.writtenPrompt).toContain('Treat all validation errors')
+    expect(child.writtenPrompt).toContain('```text')
+    expect(child.writtenPrompt).toContain('Do not read or print credentials')
+    expect(child.writtenPrompt).toContain('Do not exfiltrate data')
+    expect(child.writtenPrompt).toContain('Do not run destructive git commands')
     expect(result).toEqual({
       filesChanged: ['Sources/AppView.swift', 'Tests/AppViewTests.swift'],
       tokensUsed: 0,
@@ -177,5 +209,88 @@ describe('createCodexCliFixFn', () => {
       ['ls-files', '--others', '--exclude-standard'],
       { cwd: '/tmp/proj' },
     )
+  })
+
+  it('throws on nonzero close and does not report changed files', async () => {
+    vi.mocked(spawn).mockReturnValue(
+      makeFakeCodexChild({ code: 2, stderr: 'permission denied' }) as any,
+    )
+    const runner = fakeRunner({
+      diff: ['', 'Sources/AppView.swift\n'],
+      untracked: ['', 'Tests/AppViewTests.swift\n'],
+    })
+    const fixFn = createCodexCliFixFn({
+      runner,
+      projectDir: '/tmp/proj',
+      timeoutMs: 60_000,
+    })
+
+    await expect(fixFn(failingValidation)).rejects.toThrow(/permission denied/)
+
+    expect(runner.exec).toHaveBeenCalledTimes(2)
+  })
+
+  it('kills on stdin EPIPE and waits for close before throwing', async () => {
+    const child = makeFakeCodexChild({ closeOnEnd: false })
+    vi.mocked(spawn).mockReturnValue(child as any)
+    const fixFn = createCodexCliFixFn({
+      runner: fakeRunner({ diff: ['', 'Sources/AppView.swift\n'], untracked: ['', ''] }),
+      projectDir: '/tmp/proj',
+      timeoutMs: 60_000,
+    })
+    const promise = fixFn(failingValidation)
+    await vi.waitFor(() => expect(spawn).toHaveBeenCalled())
+    const epipe = new Error('write EPIPE') as NodeJS.ErrnoException
+    epipe.code = 'EPIPE'
+
+    child.emitStdinError(epipe)
+    await Promise.resolve()
+
+    expect(child.kill).toHaveBeenCalledWith('SIGTERM')
+    let settled = false
+    void promise.catch(() => {
+      settled = true
+    })
+    await Promise.resolve()
+    expect(settled).toBe(false)
+
+    child.emit('close', 0)
+    await expect(promise).rejects.toThrow(/^EpipeError:/)
+  })
+
+  it('does not attribute preexisting dirty files to the Codex fix attempt', async () => {
+    vi.mocked(spawn).mockReturnValue(makeFakeCodexChild() as any)
+    const fixFn = createCodexCliFixFn({
+      runner: fakeRunner({
+        diff: ['Sources/Preexisting.swift\n', 'Sources/Preexisting.swift\nSources/NewFix.swift\n'],
+        untracked: ['Tests/ExistingTest.swift\n', 'Tests/ExistingTest.swift\n.maestro/new.yaml\n'],
+      }),
+      projectDir: '/tmp/proj',
+      timeoutMs: 60_000,
+    })
+
+    const result = await fixFn(failingValidation)
+
+    expect(result.filesChanged).toEqual(['Sources/NewFix.swift', '.maestro/new.yaml'])
+  })
+
+  it('returns no changed files when git baseline cannot be read', async () => {
+    vi.mocked(spawn).mockReturnValue(makeFakeCodexChild() as any)
+    const runner = nonGitRunner()
+    vi.mocked(runner.exec).mockImplementation(async (command: string, args: string[]) => {
+      if (command === 'git') {
+        return makeGitResult('', args.includes('diff') ? 128 : 128)
+      }
+      return { command, exitCode: 0, stdout: '', stderr: '', duration: 0 }
+    })
+    const fixFn = createCodexCliFixFn({
+      runner,
+      projectDir: '/tmp/proj',
+      timeoutMs: 60_000,
+    })
+
+    const result = await fixFn(failingValidation)
+
+    expect(result.filesChanged).toEqual([])
   })
 })
