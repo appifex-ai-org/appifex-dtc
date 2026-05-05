@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { EventEmitter } from 'node:events'
 import { writeFile } from 'node:fs/promises'
 import type { Writable } from 'node:stream'
-import { EpipeError } from '@appifex/core'
+import { CliError, EpipeError } from '@appifex/core'
 
 vi.mock('node:child_process', () => ({
   spawn: vi.fn(),
@@ -45,6 +45,35 @@ function makeFakeCodexChildWritingLastMessage(text: string, args: string[]) {
           child.emit('close', 0)
         })
         .catch((err: unknown) => child.emit('error', err))
+    },
+  } as unknown as Writable
+  child.stdout = new EventEmitter()
+  child.stderr = new EventEmitter()
+  child.kill = vi.fn()
+  return child
+}
+
+function makeFakeCodexChildClosingNonZero(code: number, stderr: string, stdout = '') {
+  const child = new EventEmitter() as EventEmitter & {
+    stdin: Writable
+    stdout: EventEmitter
+    stderr: EventEmitter
+    kill: (sig?: string) => void
+  }
+  const stdinEmitter = new EventEmitter()
+  child.stdin = {
+    on: stdinEmitter.on.bind(stdinEmitter),
+    once: stdinEmitter.once.bind(stdinEmitter),
+    emit: stdinEmitter.emit.bind(stdinEmitter),
+    write: () => true,
+    end: () => {
+      if (stdout) {
+        child.stdout.emit('data', Buffer.from(stdout))
+      }
+      if (stderr) {
+        child.stderr.emit('data', Buffer.from(stderr))
+      }
+      child.emit('close', code)
     },
   } as unknown as Writable
   child.stdout = new EventEmitter()
@@ -164,7 +193,39 @@ describe('runCodexCli', () => {
     })
   })
 
-  it('waits for child close before rejecting pending stdin EPIPE', async () => {
+  it('rejects when codex exits non-zero', async () => {
+    expect(typeof pipelineModule.runCodexCli).toBe('function')
+
+    vi.mocked(spawn).mockReturnValue(
+      makeFakeCodexChildClosingNonZero(2, 'invalid invocation') as any,
+    )
+
+    await expect(
+      pipelineModule.runCodexCli!({
+        prompt: 'build the app',
+        model: 'gpt-5.1-codex',
+        cwd: '/tmp',
+      }),
+    ).rejects.toThrow(/codex exec exited with code 2/)
+  })
+
+  it('rejects when codex writes an empty final response', async () => {
+    expect(typeof pipelineModule.runCodexCli).toBe('function')
+
+    vi.mocked(spawn).mockImplementation(((command: string, args: string[]) => {
+      return makeFakeCodexChildWritingLastMessage('\n  \t\n', args)
+    }) as any)
+
+    await expect(
+      pipelineModule.runCodexCli!({
+        prompt: 'build the app',
+        model: 'gpt-5.1-codex',
+        cwd: '/tmp',
+      }),
+    ).rejects.toThrow(/codex exec returned empty response/)
+  })
+
+  it('rejects with EpipeError when stdin emits EPIPE after child close', async () => {
     expect(typeof pipelineModule.runCodexCli).toBe('function')
 
     const child = makeFakeCodexChildEmittingEpipeOnStdin()
@@ -195,6 +256,12 @@ describe('runCodexCli', () => {
     await observed
 
     expect(rejection).toBeInstanceOf(EpipeError)
+    expect(rejection).toBeInstanceOf(CliError)
+    expect(rejection).toMatchObject({
+      name: 'EpipeError',
+      site: 'cli/pipeline.ts:codex-cli',
+      payloadBytes: 100_000,
+    })
   })
 
   it('prefers nonzero close errors over pending stdin EPIPE', async () => {
