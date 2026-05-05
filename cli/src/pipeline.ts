@@ -82,7 +82,12 @@ import {
 // runTestFlightUploadPhase orchestrator.
 import { PlayConsoleClient, runTestFlightUploadPhase } from '@appifex/provision'
 import { validateAll, type ValidationResult } from '@appifex/validate'
-import { fixLoop, createDefaultFixFn, createClaudeCliFixFn } from '@appifex/fix'
+import {
+  fixLoop,
+  createDefaultFixFn,
+  createClaudeCliFixFn,
+  createCodexCliFixFn,
+} from '@appifex/fix'
 import { buildReport, formatMarkdown, formatJson, type PipelineReport } from '@appifex/report'
 import { deliver, type DeliverResult } from '@appifex/deliver'
 import { detectBaasProvider } from '@appifex/baas'
@@ -100,8 +105,8 @@ import type { DesignTokens, DesignDeltaReport } from '@appifex/core'
 // the resumed run.
 const FORCE_RERUN_PHASES: ReadonlySet<PhaseId> = new Set(['validate', 'fix', 'deliver', 'report'])
 
-function providerSupportsImages(provider: DtcConfig['llm']['provider']): boolean {
-  return provider !== 'claude-cli' && provider !== 'codex-cli'
+export function providerSupportsImages(provider: DtcConfig['llm']['provider']): boolean {
+  return provider === 'anthropic' || provider === 'openai' || provider === 'google'
 }
 
 /**
@@ -3345,15 +3350,17 @@ export async function runPipeline(
           const secFixFn =
             config.llm.provider === 'claude-cli'
               ? createClaudeCliFixFn({ runner, projectDir: outputDir, model: config.llm.model })
-              : createDefaultFixFn({
-                  apiKey: config.llm.apiKey ?? '',
-                  runner,
-                  projectDir: outputDir,
-                  model: config.llm.model,
-                  createMessage,
-                  skillPrompt: skills.fixPrompt,
-                  verbose: opts.verbose,
-                })
+              : config.llm.provider === 'codex-cli'
+                ? createCodexCliFixFn({ runner, projectDir: outputDir, model: config.llm.model })
+                : createDefaultFixFn({
+                    apiKey: config.llm.apiKey ?? '',
+                    runner,
+                    projectDir: outputDir,
+                    model: config.llm.model,
+                    createMessage,
+                    skillPrompt: skills.fixPrompt,
+                    verbose: opts.verbose,
+                  })
           const fr = await fixLoop(secValidation, {
             fixFn: secFixFn,
             buildFn: secBuildFn,
@@ -3773,6 +3780,14 @@ export async function runPipeline(
             projectDir: outputDir,
             model: config.llm.model,
           })
+        } else if (config.llm.provider === 'codex-cli') {
+          opts.fixFn = createCodexCliFixFn({
+            runner,
+            projectDir: outputDir,
+            model: config.llm.model,
+            platform: opts.platform,
+            tokenBudget: budget,
+          })
         } else {
           opts.fixFn = createDefaultFixFn({
             apiKey: config.llm.apiKey ?? '',
@@ -3785,9 +3800,13 @@ export async function runPipeline(
           })
         }
       }
+      const buildFixFn = opts.fixFn
+      if (!buildFixFn) {
+        throw new Error('Fix function was not configured')
+      }
 
       const fr = await fixLoop(buildFailValidation, {
-        fixFn: opts.fixFn,
+        fixFn: buildFixFn,
         buildFn,
         validateFn,
         maxAttempts: opts.benchmark ? 999 : 5,
@@ -3848,6 +3867,14 @@ export async function runPipeline(
               projectDir: outputDir,
               model: config.llm.model,
             })
+          } else if (config.llm.provider === 'codex-cli') {
+            opts.fixFn = createCodexCliFixFn({
+              runner,
+              projectDir: outputDir,
+              model: config.llm.model,
+              platform: opts.platform,
+              tokenBudget: budget,
+            })
           } else {
             opts.fixFn = createDefaultFixFn({
               apiKey: config.llm.apiKey ?? '',
@@ -3860,8 +3887,12 @@ export async function runPipeline(
             })
           }
         }
+        const validationFixFn = opts.fixFn
+        if (!validationFixFn) {
+          throw new Error('Fix function was not configured')
+        }
         const fr = await fixLoop(validation, {
-          fixFn: opts.fixFn,
+          fixFn: validationFixFn,
           buildFn,
           validateFn,
           maxAttempts: opts.benchmark ? 999 : 5,
@@ -3947,15 +3978,17 @@ export async function runPipeline(
           const secFixFn =
             config.llm.provider === 'claude-cli'
               ? createClaudeCliFixFn({ runner, projectDir: outputDir, model: config.llm.model })
-              : createDefaultFixFn({
-                  apiKey: config.llm.apiKey ?? '',
-                  runner,
-                  projectDir: outputDir,
-                  model: config.llm.model,
-                  createMessage,
-                  skillPrompt: skills.fixPrompt,
-                  verbose: opts.verbose,
-                })
+              : config.llm.provider === 'codex-cli'
+                ? createCodexCliFixFn({ runner, projectDir: outputDir, model: config.llm.model })
+                : createDefaultFixFn({
+                    apiKey: config.llm.apiKey ?? '',
+                    runner,
+                    projectDir: outputDir,
+                    model: config.llm.model,
+                    createMessage,
+                    skillPrompt: skills.fixPrompt,
+                    verbose: opts.verbose,
+                  })
           const fr = await fixLoop(secValidation, {
             fixFn: secFixFn,
             buildFn,

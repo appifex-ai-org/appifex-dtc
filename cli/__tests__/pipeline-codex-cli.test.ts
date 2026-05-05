@@ -12,6 +12,7 @@ vi.mock('node:child_process', () => ({
 const { spawn } = await import('node:child_process')
 const pipelineSource = readFileSync(new URL('../src/pipeline.ts', import.meta.url), 'utf-8')
 const pipelineModule: {
+  providerSupportsImages?: (provider: string) => boolean
   serializeMessagesForCli?: (messages: Array<{ role: string; content: unknown }>) => {
     prompt: string
     omittedImageCount: number
@@ -113,6 +114,17 @@ function makeFakeCodexChildEmittingEpipeOnStdin() {
 }
 
 describe('provider routing', () => {
+  it('allows images only for providers with implemented image transport', () => {
+    expect(typeof pipelineModule.providerSupportsImages).toBe('function')
+
+    expect(pipelineModule.providerSupportsImages!('anthropic')).toBe(true)
+    expect(pipelineModule.providerSupportsImages!('openai')).toBe(true)
+    expect(pipelineModule.providerSupportsImages!('google')).toBe(true)
+    expect(pipelineModule.providerSupportsImages!('claude-cli')).toBe(false)
+    expect(pipelineModule.providerSupportsImages!('codex-cli')).toBe(false)
+    expect(pipelineModule.providerSupportsImages!('copilot')).toBe(false)
+  })
+
   it('routes codex-cli LLM calls through Codex CLI with serialized text prompts', () => {
     expect(pipelineSource).toContain("cfg.llm.provider === 'codex-cli'")
     expect(pipelineSource).toContain('serializeMessagesForCli(params.messages)')
