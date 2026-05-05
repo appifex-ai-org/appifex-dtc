@@ -79,11 +79,8 @@ export async function runDoctor(opts: DoctorOpts = {}): Promise<void> {
   let config: Awaited<ReturnType<typeof loadConfig>> | undefined
   try {
     config = await loadConfig(configDir)
-    if (
-      !config.llm.apiKey &&
-      config.llm.provider !== 'claude-cli' &&
-      config.llm.provider !== 'copilot'
-    ) {
+    const localAuthProviders = new Set<string>(['claude-cli', 'codex-cli', 'copilot'])
+    if (!config.llm.apiKey && !localAuthProviders.has(config.llm.provider)) {
       config = undefined
     }
   } catch {

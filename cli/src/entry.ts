@@ -613,7 +613,8 @@ async function main() {
       const { createRunner } = await import('@appifex/runner')
       const { loadConfig, createFileSkillProvider, createBundledSkillProvider } =
         await import('@appifex/core')
-      const { fixLoop, createDefaultFixFn } = await import('@appifex/fix')
+      const { fixLoop, createDefaultFixFn, createClaudeCliFixFn, createCodexCliFixFn } =
+        await import('@appifex/fix')
       const { validateAll } = await import('@appifex/validate')
       const { buildSwift, buildKotlin } = await import('@appifex/build')
       const { homedir } = await import('node:os')
@@ -625,13 +626,28 @@ async function main() {
         ? createFileSkillProvider(config.skillsDir)
         : createBundledSkillProvider()
       const skills = await skillProvider.load(platform as Platform)
-      const fixFn = createDefaultFixFn({
-        apiKey: config.llm.apiKey ?? '',
-        runner,
-        projectDir: project,
-        model: config.llm.model,
-        skillPrompt: skills.fixPrompt,
-      })
+      const fixFn =
+        config.llm.provider === 'claude-cli'
+          ? createClaudeCliFixFn({
+              runner,
+              projectDir: project,
+              model: config.llm.model,
+              platform: platform as Platform,
+            })
+          : config.llm.provider === 'codex-cli'
+            ? createCodexCliFixFn({
+                runner,
+                projectDir: project,
+                model: config.llm.model,
+                platform: platform as Platform,
+              })
+            : createDefaultFixFn({
+                apiKey: config.llm.apiKey ?? '',
+                runner,
+                projectDir: project,
+                model: config.llm.model,
+                skillPrompt: skills.fixPrompt,
+              })
       const buildFn = async () =>
         platform === 'kotlin-compose'
           ? buildKotlin(runner, { projectDir: project })

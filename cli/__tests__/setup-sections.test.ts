@@ -104,6 +104,31 @@ describe('runLlmSection', () => {
     expect(updatedConfig.llm).toBeDefined()
     expect(updatedConfig.llm.provider).toBe('anthropic')
   })
+
+  it('stores empty apiKey when Codex CLI provider is selected', async () => {
+    const { saveConfig, loadConfig } = await import('@appifex/core')
+    await saveConfig(configDir, {
+      llm: { provider: 'anthropic', apiKey: 'sk-old', model: 'claude-3' },
+      design: { tool: 'pencil' },
+      runner: { type: 'local' },
+    })
+
+    const clack = await import('@clack/prompts')
+    vi.mocked(clack.select)
+      .mockResolvedValueOnce('codex-cli')
+      .mockResolvedValueOnce('gpt-5.1-codex')
+
+    const { runLlmSection } = await import('../src/setup/llm.js')
+    const existingConfig = await loadConfig(configDir)
+    await runLlmSection(configDir, existingConfig)
+
+    const updatedConfig = await loadConfig(configDir)
+    expect(updatedConfig.llm.provider).toBe('codex-cli')
+    expect(updatedConfig.llm.apiKey).toBe('')
+    expect(updatedConfig.llm.model).toBe('gpt-5.1-codex')
+    expect(clack.password).not.toHaveBeenCalled()
+    expect(clack.log.info).toHaveBeenCalledWith(expect.stringContaining('Using local Codex CLI'))
+  })
 })
 
 // ── setupWizard ordering tests ────────────────────────────────────────────

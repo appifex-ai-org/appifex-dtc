@@ -82,7 +82,12 @@ import {
 // runTestFlightUploadPhase orchestrator.
 import { PlayConsoleClient, runTestFlightUploadPhase } from '@appifex/provision'
 import { validateAll, type ValidationResult } from '@appifex/validate'
-import { fixLoop, createDefaultFixFn, createClaudeCliFixFn } from '@appifex/fix'
+import {
+  fixLoop,
+  createDefaultFixFn,
+  createClaudeCliFixFn,
+  createCodexCliFixFn,
+} from '@appifex/fix'
 import { buildReport, formatMarkdown, formatJson, type PipelineReport } from '@appifex/report'
 import { deliver, type DeliverResult } from '@appifex/deliver'
 import { detectBaasProvider } from '@appifex/baas'
@@ -92,13 +97,17 @@ import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { writeFileSync as writeFileSyncFs, mkdirSync as mkdirSyncFs } from 'node:fs'
 import { writeFile as writeFileAsync, mkdir as mkdirAsync } from 'node:fs/promises'
-import type { DesignTokens, DesignDeltaReport } from '@appifex/core'
+import type { DesignTokens, DesignDeltaReport, ModifiedScreens } from '@appifex/core'
 
 // Phase 14 (D-09): phases that ALWAYS re-run on resume regardless of
 // checkpoint/previousContext state. Matches PROJECT.md principle
 // "validate/fix/deliver always re-run"; report is cheap and must reflect
 // the resumed run.
 const FORCE_RERUN_PHASES: ReadonlySet<PhaseId> = new Set(['validate', 'fix', 'deliver', 'report'])
+
+export function providerSupportsImages(provider: DtcConfig['llm']['provider']): boolean {
+  return provider === 'anthropic' || provider === 'openai' || provider === 'google'
+}
 
 /**
  * Narrow a CodegenResult to LayeredCodegenResult. Used when serializing
@@ -259,6 +268,50 @@ export function createSkipGate(inputs: SkipGateInputs): SkipGate {
   }
 }
 
+export function serializeMessagesForCli(messages: Array<{ role: string; content: unknown }>): {
+  prompt: string
+  omittedImageCount: number
+} {
+  let omittedImageCount = 0
+  const sections = messages.map((message) => {
+    let text = ''
+    if (typeof message.content === 'string') {
+      text = message.content
+    } else if (Array.isArray(message.content)) {
+      const parts: string[] = []
+      for (const part of message.content) {
+        if (
+          part &&
+          typeof part === 'object' &&
+          'type' in part &&
+          (part as { type?: unknown }).type === 'text' &&
+          typeof (part as { text?: unknown }).text === 'string'
+        ) {
+          parts.push((part as { text: string }).text)
+        } else if (
+          part &&
+          typeof part === 'object' &&
+          'type' in part &&
+          (part as { type?: unknown }).type === 'image_url'
+        ) {
+          omittedImageCount += 1
+        }
+      }
+      text = parts.join('\n')
+    } else {
+      text = String(message.content)
+    }
+    return `## ${message.role}\n\n${text}`
+  })
+
+  const omittedNote =
+    omittedImageCount > 0
+      ? `\n\n[dtc note: omitted ${omittedImageCount} image part(s); codex-cli provider is text-only in this release.]`
+      : ''
+
+  return { prompt: sections.join('\n\n') + omittedNote, omittedImageCount }
+}
+
 /**
  * Phase 02 Plan 03 (FOUND-03): Exported helper that invokes `claude --print` for
  * text-only LLM calls. Extracted from `buildCreateMessageFn` so the spawn site is
@@ -269,6 +322,138 @@ export interface RunClaudePrintOpts {
   prompt: string
   model: string
   cwd: string
+}
+
+export interface RunCodexCliOpts {
+  prompt: string
+  model: string
+  cwd: string
+}
+
+export async function runCodexCli(opts: RunCodexCliOpts): Promise<{
+  content: Array<{ type: string; text: string }>
+  usage: { input_tokens: number; output_tokens: number }
+}> {
+  const { spawn } = await import('node:child_process')
+  const { mkdtemp, readFile, rm } = await import('node:fs/promises')
+  const { join } = await import('node:path')
+  const { tmpdir } = await import('node:os')
+  const { prompt, model, cwd } = opts
+  const payloadBytes = Buffer.byteLength(prompt, 'utf8')
+  const tempDir = await mkdtemp(join(tmpdir(), 'dtc-codex-cli-'))
+  const outputPath = join(tempDir, 'last-message.txt')
+
+  try {
+    return await new Promise<{
+      content: Array<{ type: string; text: string }>
+      usage: { input_tokens: number; output_tokens: number }
+    }>((resolve, reject) => {
+      const child = spawn(
+        'codex',
+        [
+          '--ask-for-approval',
+          'never',
+          'exec',
+          '--model',
+          model,
+          '--sandbox',
+          'read-only',
+          '--skip-git-repo-check',
+          '--color',
+          'never',
+          '--output-last-message',
+          outputPath,
+          '-',
+        ],
+        {
+          stdio: ['pipe', 'pipe', 'pipe'],
+          cwd,
+        },
+      )
+      let settled = false
+      const settle = (fn: () => void) => {
+        if (!settled) {
+          settled = true
+          fn()
+        }
+      }
+      let pendingEpipeError: EpipeError | null = null
+      let killedDueToEpipe = false
+      child.stdin.on('error', (err: NodeJS.ErrnoException) => {
+        if (err.code === 'EPIPE') {
+          pendingEpipeError =
+            pendingEpipeError ??
+            new EpipeError(
+              `LLM CLI closed stdin before prompt fully written (site=cli/pipeline.ts:codex-cli, ${payloadBytes} bytes)`,
+              'cli/pipeline.ts:codex-cli',
+              payloadBytes,
+            )
+          killedDueToEpipe = true
+          child.kill('SIGTERM')
+          return
+        }
+        child.kill('SIGTERM')
+        settle(() => reject(err))
+      })
+
+      let stdout = ''
+      let stderr = ''
+      child.stdout.on('data', (d: Buffer) => {
+        stdout += d.toString()
+      })
+      child.stderr.on('data', (d: Buffer) => {
+        stderr += d.toString()
+      })
+      child.on('error', (err) => {
+        settle(() => reject(err))
+      })
+      child.on('close', (code, signal) => {
+        const epipeSignalClose = code === null && signal === 'SIGTERM' && killedDueToEpipe
+        if (pendingEpipeError && (code === 0 || epipeSignalClose)) {
+          settle(() => reject(pendingEpipeError))
+          return
+        }
+        if (code !== 0) {
+          settle(() =>
+            reject(
+              new Error(
+                `codex exec exited with code ${code}\nstderr: ${stderr}\nstdout preview: ${stdout.slice(0, 200)}\nInstall Codex CLI and run \`codex --login\`.`,
+              ),
+            ),
+          )
+          return
+        }
+        void readFile(outputPath, 'utf-8')
+          .then((raw) => {
+            const text = raw.trim()
+            if (!text) {
+              settle(() =>
+                reject(
+                  new Error(
+                    `codex exec returned empty response${stderr ? `\nstderr: ${stderr}` : ''}`,
+                  ),
+                ),
+              )
+              return
+            }
+            settle(() =>
+              resolve({
+                content: [{ type: 'text', text }],
+                usage: { input_tokens: 0, output_tokens: 0 },
+              }),
+            )
+          })
+          .catch((err: unknown) => {
+            settle(() => reject(err))
+          })
+      })
+
+      child.stdin.write(prompt)
+      child.stdin.end()
+    })
+  } finally {
+    await rm(tempDir, { recursive: true, force: true })
+  }
 }
 
 export async function runClaudePrint(opts: RunClaudePrintOpts): Promise<{
@@ -603,7 +788,9 @@ export interface RunTestRegenDeps {
  *     filename (ViewTests+Regen.swift / ScreenTestRegen.kt) so the original
  *     combined ViewTests.swift / ScreenTest.kt is never overwritten.
  */
-export async function runTestRegenPhase(deps: RunTestRegenDeps): Promise<void> {
+export async function runTestRegenPhase(
+  deps: RunTestRegenDeps,
+): Promise<ModifiedScreens | undefined> {
   const {
     runner,
     outputDir,
@@ -621,7 +808,7 @@ export async function runTestRegenPhase(deps: RunTestRegenDeps): Promise<void> {
   } = deps
 
   // Pitfall 6 double-gate: fresh-app runs must not reach the diff.
-  if (runMode !== 'add-feature' || !preAgentSnapshot) return
+  if (runMode !== 'add-feature' || !preAgentSnapshot) return undefined
 
   const modifiedScreens = await diffScreenInventory(outputDir, platform, runner, preAgentSnapshot)
   ctxBuilder.setModifiedScreens(modifiedScreens)
@@ -632,7 +819,7 @@ export async function runTestRegenPhase(deps: RunTestRegenDeps): Promise<void> {
     // D-10: zero-delta → emit skipped, write nothing, flush and move on.
     emit('test_regen', 'skipped', 'No modified screens')
     await flushContext()
-    return
+    return modifiedScreens
   }
 
   emit(
@@ -665,6 +852,7 @@ export async function runTestRegenPhase(deps: RunTestRegenDeps): Promise<void> {
     `Regenerated ${filteredFlows.length + filteredUnitTests.length} test file(s)`,
   )
   await flushContext()
+  return modifiedScreens
 }
 
 /**
@@ -991,6 +1179,24 @@ export async function runPipeline(
       }
     }
 
+    if (cfg.llm.provider === 'codex-cli') {
+      return async (params: {
+        model: string
+        max_tokens: number
+        messages: Array<{ role: string; content: any }>
+      }) => {
+        const { prompt, omittedImageCount } = serializeMessagesForCli(params.messages)
+        if (omittedImageCount > 0) {
+          await debug.log(
+            'codex-cli-omitted-images.txt',
+            `Omitted ${omittedImageCount} image part(s); codex-cli provider is text-only in this release.`,
+          )
+        }
+        const model = cfg.llm.model ?? 'gpt-5.1-codex'
+        return runCodexCli({ prompt, model, cwd: outputDir })
+      }
+    }
+
     if (cfg.llm.provider === 'copilot' && cfg.llm.githubToken) {
       // Use Copilot SDK — create a fresh session per call to avoid reusing a disconnected session
       const { CopilotClient } = await import('@github/copilot-sdk')
@@ -1183,6 +1389,7 @@ export async function runPipeline(
   // ── Run Context builder — accumulates phase outcomes for persistence ──
   const runMode: RunMode = opts.runMode ?? 'fresh'
   const previousContext = await loadRunContext(outputDir)
+  let modifiedScreensForFix = runMode !== 'fresh' ? previousContext?.modifiedScreens : undefined
 
   // On resume, preserve the original prompt from previous context instead of the placeholder
   const RESUME_PLACEHOLDER = 'Resume previous session'
@@ -2036,7 +2243,7 @@ export async function runPipeline(
           ? readFileSync(designArtifacts.htmlPaths[0], 'utf-8')
           : ''
       const createMessage = await getCreateMessage()
-      const canSendImages = config.llm.provider !== 'claude-cli'
+      const canSendImages = providerSupportsImages(config.llm.provider)
       const result = await extractSpecFromFigmaMake({
         codeContent,
         metadata: {},
@@ -2065,7 +2272,7 @@ export async function runPipeline(
         })),
       )
       const createMessage = await getCreateMessage()
-      const canSendImages = config.llm.provider !== 'claude-cli'
+      const canSendImages = providerSupportsImages(config.llm.provider)
       const result = await extractSpecFromHtmlDesign({
         designMdContent,
         htmlContents,
@@ -2127,8 +2334,7 @@ export async function runPipeline(
             `Generating spec via LLM (${config.llm.provider}/${config.llm.model ?? 'default'})`,
           )
           const createMessage = await getCreateMessage()
-          // claude-cli provider (claude --print) is text-only — skip design image
-          const canSendImages = config.llm.provider !== 'claude-cli'
+          const canSendImages = providerSupportsImages(config.llm.provider)
           const specDesignImage =
             canSendImages && (await runner.exists(previewPath)) ? previewPath : undefined
           try {
@@ -2161,7 +2367,7 @@ export async function runPipeline(
         `Generating spec via LLM (${config.llm.provider}/${config.llm.model ?? 'default'})`,
       )
       const createMessage = await getCreateMessage()
-      const canSendImages = config.llm.provider !== 'claude-cli'
+      const canSendImages = providerSupportsImages(config.llm.provider)
       const specDesignImage =
         canSendImages && (await runner.exists(previewPath)) ? previewPath : undefined
       const result = await generateSpecFromPrompt({
@@ -3069,7 +3275,7 @@ export async function runPipeline(
       // pollute the diff (Pitfall 1). runTestRegenPhase is a no-op on fresh-app
       // runs or when preAgentSnapshot is undefined (Pitfall 6 double-gate).
       if (platformSpec) {
-        await runTestRegenPhase({
+        const regeneratedModifiedScreens = await runTestRegenPhase({
           runner,
           outputDir,
           platform: opts.platform,
@@ -3084,6 +3290,9 @@ export async function runPipeline(
           bundleId,
           designScreenshots,
         })
+        if (regeneratedModifiedScreens) {
+          modifiedScreensForFix = regeneratedModifiedScreens
+        }
       }
 
       if (result.success) {
@@ -3144,19 +3353,33 @@ export async function runPipeline(
               allPassed: sec.failed === 0,
             }
           }
-          const createMessage = await getCreateMessage()
           const secFixFn =
             config.llm.provider === 'claude-cli'
-              ? createClaudeCliFixFn({ runner, projectDir: outputDir, model: config.llm.model })
-              : createDefaultFixFn({
-                  apiKey: config.llm.apiKey ?? '',
+              ? createClaudeCliFixFn({
                   runner,
                   projectDir: outputDir,
                   model: config.llm.model,
-                  createMessage,
-                  skillPrompt: skills.fixPrompt,
-                  verbose: opts.verbose,
+                  modifiedScreens: modifiedScreensForFix,
                 })
+              : config.llm.provider === 'codex-cli'
+                ? createCodexCliFixFn({
+                    runner,
+                    projectDir: outputDir,
+                    model: config.llm.model,
+                    platform: opts.platform,
+                    tokenBudget: budget,
+                    modifiedScreens: modifiedScreensForFix,
+                  })
+                : createDefaultFixFn({
+                    apiKey: config.llm.apiKey ?? '',
+                    runner,
+                    projectDir: outputDir,
+                    model: config.llm.model,
+                    createMessage: await getCreateMessage(),
+                    skillPrompt: skills.fixPrompt,
+                    verbose: opts.verbose,
+                    modifiedScreens: modifiedScreensForFix,
+                  })
           const fr = await fixLoop(secValidation, {
             fixFn: secFixFn,
             buildFn: secBuildFn,
@@ -3538,7 +3761,6 @@ export async function runPipeline(
     let fixResult = undefined
     if (!buildResult.success) {
       emit('fix', 'started', 'Fixing build errors')
-      const createMessage = await getCreateMessage()
 
       // Create a synthetic validation result from build errors
       // Include file paths so the fix function reads only failing files
@@ -3575,6 +3797,16 @@ export async function runPipeline(
             runner,
             projectDir: outputDir,
             model: config.llm.model,
+            modifiedScreens: modifiedScreensForFix,
+          })
+        } else if (config.llm.provider === 'codex-cli') {
+          opts.fixFn = createCodexCliFixFn({
+            runner,
+            projectDir: outputDir,
+            model: config.llm.model,
+            platform: opts.platform,
+            tokenBudget: budget,
+            modifiedScreens: modifiedScreensForFix,
           })
         } else {
           opts.fixFn = createDefaultFixFn({
@@ -3582,15 +3814,20 @@ export async function runPipeline(
             runner,
             projectDir: outputDir,
             model: config.llm.model,
-            createMessage,
+            createMessage: await getCreateMessage(),
             skillPrompt: skills.fixPrompt,
             verbose: opts.verbose,
+            modifiedScreens: modifiedScreensForFix,
           })
         }
       }
+      const buildFixFn = opts.fixFn
+      if (!buildFixFn) {
+        throw new Error('Fix function was not configured')
+      }
 
       const fr = await fixLoop(buildFailValidation, {
-        fixFn: opts.fixFn,
+        fixFn: buildFixFn,
         buildFn,
         validateFn,
         maxAttempts: opts.benchmark ? 999 : 5,
@@ -3643,13 +3880,22 @@ export async function runPipeline(
       // 7. Fix test failures (if build passed but tests failed)
       if (!validation.allPassed && !fixResult) {
         emit('fix', 'started', 'Fixing test failures')
-        const createMessage = await getCreateMessage()
         if (!opts.fixFn) {
           if (config.llm.provider === 'claude-cli') {
             opts.fixFn = createClaudeCliFixFn({
               runner,
               projectDir: outputDir,
               model: config.llm.model,
+              modifiedScreens: modifiedScreensForFix,
+            })
+          } else if (config.llm.provider === 'codex-cli') {
+            opts.fixFn = createCodexCliFixFn({
+              runner,
+              projectDir: outputDir,
+              model: config.llm.model,
+              platform: opts.platform,
+              tokenBudget: budget,
+              modifiedScreens: modifiedScreensForFix,
             })
           } else {
             opts.fixFn = createDefaultFixFn({
@@ -3657,14 +3903,19 @@ export async function runPipeline(
               runner,
               projectDir: outputDir,
               model: config.llm.model,
-              createMessage,
+              createMessage: await getCreateMessage(),
               skillPrompt: skills.fixPrompt,
               verbose: opts.verbose,
+              modifiedScreens: modifiedScreensForFix,
             })
           }
         }
+        const validationFixFn = opts.fixFn
+        if (!validationFixFn) {
+          throw new Error('Fix function was not configured')
+        }
         const fr = await fixLoop(validation, {
-          fixFn: opts.fixFn,
+          fixFn: validationFixFn,
           buildFn,
           validateFn,
           maxAttempts: opts.benchmark ? 999 : 5,
@@ -3746,19 +3997,33 @@ export async function runPipeline(
             }
           }
           emit('fix', 'started', 'Fixing security findings')
-          const createMessage = await getCreateMessage()
           const secFixFn =
             config.llm.provider === 'claude-cli'
-              ? createClaudeCliFixFn({ runner, projectDir: outputDir, model: config.llm.model })
-              : createDefaultFixFn({
-                  apiKey: config.llm.apiKey ?? '',
+              ? createClaudeCliFixFn({
                   runner,
                   projectDir: outputDir,
                   model: config.llm.model,
-                  createMessage,
-                  skillPrompt: skills.fixPrompt,
-                  verbose: opts.verbose,
+                  modifiedScreens: modifiedScreensForFix,
                 })
+              : config.llm.provider === 'codex-cli'
+                ? createCodexCliFixFn({
+                    runner,
+                    projectDir: outputDir,
+                    model: config.llm.model,
+                    platform: opts.platform,
+                    tokenBudget: budget,
+                    modifiedScreens: modifiedScreensForFix,
+                  })
+                : createDefaultFixFn({
+                    apiKey: config.llm.apiKey ?? '',
+                    runner,
+                    projectDir: outputDir,
+                    model: config.llm.model,
+                    createMessage: await getCreateMessage(),
+                    skillPrompt: skills.fixPrompt,
+                    verbose: opts.verbose,
+                    modifiedScreens: modifiedScreensForFix,
+                  })
           const fr = await fixLoop(secValidation, {
             fixFn: secFixFn,
             buildFn,

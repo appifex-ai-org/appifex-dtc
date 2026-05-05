@@ -4,6 +4,7 @@
 // throws PreflightError before any LLM spend. Fixture mode short-circuits per RESEARCH Pitfall 7.
 import { access } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
+import { execSync } from 'node:child_process'
 import type { DtcConfig } from './types.js'
 import { isFixtureMode } from './llm-fixture.js'
 import { probeAscOffline, probeAscLive, signAscJwt } from './asc-jwt.js'
@@ -28,6 +29,15 @@ export interface CredentialCheckOpts {
   deep: boolean
 }
 
+function isCodexCliAvailable(): boolean {
+  try {
+    execSync('which codex', { stdio: 'ignore' })
+    return true
+  } catch {
+    return false
+  }
+}
+
 // ── probeLlm ───────────────────────────────────────────────────────────────
 // Shallow: validates API key shape (non-empty, min length).
 // Deep: performs a 1-token ping to the LLM endpoint per RESEARCH D-03.
@@ -40,6 +50,22 @@ export async function probeLlm(
 ): Promise<CredentialCheck> {
   const base = { name: 'llm', severity: 'critical' as const }
   const key = config?.llm?.apiKey
+  if (config?.llm?.provider === 'codex-cli') {
+    if (!isCodexCliAvailable()) {
+      return {
+        ...base,
+        status: 'MISSING',
+        message: 'codex CLI not found',
+        remedy: 'Install Codex CLI and run `codex --login`.',
+      }
+    }
+    return {
+      ...base,
+      status: 'OK',
+      message: 'codex-cli (local auth)',
+      remedy: undefined,
+    }
+  }
   if (!key || key.length === 0) {
     return {
       ...base,
