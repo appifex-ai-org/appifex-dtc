@@ -266,12 +266,57 @@ describe('createCodexCliFixFn', () => {
     await expect(promise).rejects.toThrow(/^EpipeError:/)
   })
 
-  it('does not attribute preexisting dirty files to the Codex fix attempt', async () => {
+  it('reports content changes to preexisting dirty and untracked files', async () => {
     vi.mocked(spawn).mockReturnValue(makeFakeCodexChild() as any)
+    const fixFn = createCodexCliFixFn({
+      runner: fakeRunner({
+        diff: ['Sources/Preexisting.swift\n', 'Sources/Preexisting.swift\n'],
+        untracked: ['Tests/ExistingTest.swift\n', 'Tests/ExistingTest.swift\n'],
+        glob: (pattern) => {
+          if (pattern.includes('/Sources/**/*')) return ['/tmp/proj/Sources/Preexisting.swift']
+          if (pattern.includes('/Tests/**/*')) return ['/tmp/proj/Tests/ExistingTest.swift']
+          return []
+        },
+        files: {
+          '/tmp/proj/Sources/Preexisting.swift': ['dirty before', 'dirty after'],
+          '/tmp/proj/Tests/ExistingTest.swift': ['untracked before', 'untracked after'],
+        },
+      }),
+      projectDir: '/tmp/proj',
+      timeoutMs: 60_000,
+    })
+
+    const result = await fixFn(failingValidation)
+
+    expect(result.filesChanged).toEqual(['Sources/Preexisting.swift', 'Tests/ExistingTest.swift'])
+  })
+
+  it('does not attribute unchanged preexisting dirty files to the Codex fix attempt', async () => {
+    vi.mocked(spawn).mockReturnValue(makeFakeCodexChild() as any)
+    let maestroGlobCount = 0
     const fixFn = createCodexCliFixFn({
       runner: fakeRunner({
         diff: ['Sources/Preexisting.swift\n', 'Sources/Preexisting.swift\nSources/NewFix.swift\n'],
         untracked: ['Tests/ExistingTest.swift\n', 'Tests/ExistingTest.swift\n.maestro/new.yaml\n'],
+        glob: (pattern) => {
+          if (pattern.includes('/Sources/**/*')) {
+            return maestroGlobCount >= 2
+              ? ['/tmp/proj/Sources/Preexisting.swift', '/tmp/proj/Sources/NewFix.swift']
+              : ['/tmp/proj/Sources/Preexisting.swift']
+          }
+          if (pattern.includes('/Tests/**/*')) return ['/tmp/proj/Tests/ExistingTest.swift']
+          if (pattern.includes('/.maestro/**/*.yaml')) {
+            maestroGlobCount += 1
+            return maestroGlobCount >= 3 ? ['/tmp/proj/.maestro/new.yaml'] : []
+          }
+          return []
+        },
+        files: {
+          '/tmp/proj/Sources/Preexisting.swift': ['dirty before', 'dirty before'],
+          '/tmp/proj/Tests/ExistingTest.swift': ['untracked before', 'untracked before'],
+          '/tmp/proj/Sources/NewFix.swift': ['new fix'],
+          '/tmp/proj/.maestro/new.yaml': ['new flow'],
+        },
       }),
       projectDir: '/tmp/proj',
       timeoutMs: 60_000,

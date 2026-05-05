@@ -56,9 +56,7 @@ export function createCodexCliFixFn(
 
   return async (failures: ValidationResult): Promise<FixFnResult> => {
     const baseline = await readGitChangeSet(opts.runner, opts.projectDir)
-    const snapshotBaseline = baseline
-      ? null
-      : await readAllowedFileSnapshot(opts.runner, opts.projectDir)
+    const snapshotBaseline = await readAllowedFileSnapshot(opts.runner, opts.projectDir)
     const errorLines = buildErrorLines(failures)
     const flowFiles = await readMaestroFlows(opts.runner, opts.projectDir)
     const prompt = buildCodexFixPrompt({
@@ -80,21 +78,16 @@ export function createCodexCliFixFn(
       throw new Error(result.error ?? 'Codex CLI fix failed')
     }
 
-    if (!baseline) {
-      const snapshotAfter = snapshotBaseline
-        ? await readAllowedFileSnapshot(opts.runner, opts.projectDir)
-        : null
-      return {
-        filesChanged:
-          snapshotBaseline && snapshotAfter
-            ? diffAllowedFileSnapshots(snapshotBaseline, snapshotAfter)
-            : [],
-        tokensUsed: 0,
-      }
-    }
-
+    const snapshotAfter = snapshotBaseline
+      ? await readAllowedFileSnapshot(opts.runner, opts.projectDir)
+      : null
+    const snapshotChanged =
+      snapshotBaseline && snapshotAfter
+        ? diffAllowedFileSnapshots(snapshotBaseline, snapshotAfter)
+        : []
     const after = await readGitChangeSet(opts.runner, opts.projectDir)
-    const filesChanged = after ? diffGitChangeSets(baseline, after) : []
+    const gitChanged = baseline && after ? diffGitChangeSets(baseline, after) : []
+    const filesChanged = mergeFileChanges(snapshotChanged, gitChanged)
 
     return { filesChanged, tokensUsed: 0 }
   }
@@ -264,6 +257,18 @@ function diffAllowedFileSnapshots(before: FileSnapshot, after: FileSnapshot): st
     }
   }
   return changed
+}
+
+function mergeFileChanges(primary: string[], secondary: string[]): string[] {
+  const merged = [...primary]
+  const seen = new Set(primary)
+  for (const file of secondary) {
+    if (!seen.has(file)) {
+      merged.push(file)
+      seen.add(file)
+    }
+  }
+  return merged
 }
 
 function normalizeProjectRelativePath(projectDir: string, filePath: string): string | null {
