@@ -100,6 +100,10 @@ import type { DesignTokens, DesignDeltaReport } from '@appifex/core'
 // the resumed run.
 const FORCE_RERUN_PHASES: ReadonlySet<PhaseId> = new Set(['validate', 'fix', 'deliver', 'report'])
 
+function providerSupportsImages(provider: DtcConfig['llm']['provider']): boolean {
+  return provider !== 'claude-cli' && provider !== 'codex-cli'
+}
+
 /**
  * Narrow a CodegenResult to LayeredCodegenResult. Used when serializing
  * codegen output for debug logs so the layered-specific arrays are typed.
@@ -1167,6 +1171,24 @@ export async function runPipeline(
       }
     }
 
+    if (cfg.llm.provider === 'codex-cli') {
+      return async (params: {
+        model: string
+        max_tokens: number
+        messages: Array<{ role: string; content: any }>
+      }) => {
+        const { prompt, omittedImageCount } = serializeMessagesForCli(params.messages)
+        if (omittedImageCount > 0) {
+          await debug.log(
+            'codex-cli-omitted-images.txt',
+            `Omitted ${omittedImageCount} image part(s); codex-cli provider is text-only in this release.`,
+          )
+        }
+        const model = cfg.llm.model ?? 'gpt-5.1-codex'
+        return runCodexCli({ prompt, model, cwd: outputDir })
+      }
+    }
+
     if (cfg.llm.provider === 'copilot' && cfg.llm.githubToken) {
       // Use Copilot SDK — create a fresh session per call to avoid reusing a disconnected session
       const { CopilotClient } = await import('@github/copilot-sdk')
@@ -2212,7 +2234,7 @@ export async function runPipeline(
           ? readFileSync(designArtifacts.htmlPaths[0], 'utf-8')
           : ''
       const createMessage = await getCreateMessage()
-      const canSendImages = config.llm.provider !== 'claude-cli'
+      const canSendImages = providerSupportsImages(config.llm.provider)
       const result = await extractSpecFromFigmaMake({
         codeContent,
         metadata: {},
@@ -2241,7 +2263,7 @@ export async function runPipeline(
         })),
       )
       const createMessage = await getCreateMessage()
-      const canSendImages = config.llm.provider !== 'claude-cli'
+      const canSendImages = providerSupportsImages(config.llm.provider)
       const result = await extractSpecFromHtmlDesign({
         designMdContent,
         htmlContents,
@@ -2303,8 +2325,7 @@ export async function runPipeline(
             `Generating spec via LLM (${config.llm.provider}/${config.llm.model ?? 'default'})`,
           )
           const createMessage = await getCreateMessage()
-          // claude-cli provider (claude --print) is text-only — skip design image
-          const canSendImages = config.llm.provider !== 'claude-cli'
+          const canSendImages = providerSupportsImages(config.llm.provider)
           const specDesignImage =
             canSendImages && (await runner.exists(previewPath)) ? previewPath : undefined
           try {
@@ -2337,7 +2358,7 @@ export async function runPipeline(
         `Generating spec via LLM (${config.llm.provider}/${config.llm.model ?? 'default'})`,
       )
       const createMessage = await getCreateMessage()
-      const canSendImages = config.llm.provider !== 'claude-cli'
+      const canSendImages = providerSupportsImages(config.llm.provider)
       const specDesignImage =
         canSendImages && (await runner.exists(previewPath)) ? previewPath : undefined
       const result = await generateSpecFromPrompt({

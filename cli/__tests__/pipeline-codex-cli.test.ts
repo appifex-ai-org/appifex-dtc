@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { EventEmitter } from 'node:events'
+import { readFileSync } from 'node:fs'
 import { writeFile } from 'node:fs/promises'
 import type { Writable } from 'node:stream'
 import { CliError, EpipeError } from '@appifex/core'
@@ -9,6 +10,7 @@ vi.mock('node:child_process', () => ({
 }))
 
 const { spawn } = await import('node:child_process')
+const pipelineSource = readFileSync(new URL('../src/pipeline.ts', import.meta.url), 'utf-8')
 const pipelineModule: {
   serializeMessagesForCli?: (messages: Array<{ role: string; content: unknown }>) => {
     prompt: string
@@ -109,6 +111,22 @@ function makeFakeCodexChildEmittingEpipeOnStdin() {
   child.kill = vi.fn()
   return child
 }
+
+describe('provider routing', () => {
+  it('routes codex-cli LLM calls through Codex CLI with serialized text prompts', () => {
+    expect(pipelineSource).toContain("cfg.llm.provider === 'codex-cli'")
+    expect(pipelineSource).toContain('serializeMessagesForCli(params.messages)')
+    expect(pipelineSource).toContain('return runCodexCli({ prompt, model, cwd: outputDir })')
+  })
+
+  it('uses provider image capability routing for text-only CLI providers', () => {
+    expect(pipelineSource).toContain(
+      "function providerSupportsImages(provider: DtcConfig['llm']['provider']): boolean",
+    )
+    expect(pipelineSource).toContain('providerSupportsImages(config.llm.provider)')
+    expect(pipelineSource).not.toContain("config.llm.provider !== 'claude-cli'")
+  })
+})
 
 describe('serializeMessagesForCli', () => {
   it('serializes text and omits image data for the text-only Codex CLI provider', () => {
